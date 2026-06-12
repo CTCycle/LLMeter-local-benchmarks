@@ -12,20 +12,20 @@
 | `LLMETER_NUM_PREDICT` | `128` | Default `num_predict` option passed to Ollama. |
 | `LLMETER_TEMPERATURE` | `0.2` | Default temperature option passed to Ollama. |
 
-## AppConfig dataclass
+## AppConfig struct
 
-The `AppConfig` class in `config.py` reads these environment variables at instantiation time using `os.getenv()` with defaults. The dataclass uses `field(default_factory=...)` so that environment variables are evaluated once per instance, not once at import time.
+The `AppConfig` struct in `config.rs` reads these environment variables at instantiation time using `std::env::var()` with defaults. CLI flag values (parsed by `clap`) override the environment variables.
 
-Properties:
+Fields:
 
-- `host` — Ollama host URL.
-- `timeout` — float, HTTP timeout.
-- `output_dir` — `Path`, output directory.
-- `state_dir` — `Path`, state directory.
-- `default_runs` — int, default repetitions.
-- `default_num_predict` — int, default token cap.
-- `default_temperature` — float, default temperature.
-- `api_base_url` — derived property that ensures a trailing `/api` path.
+- `host` — `String`, Ollama host URL.
+- `timeout` — `f64`, HTTP timeout in seconds.
+- `output_dir` — `PathBuf`, output directory for results.
+- `state_dir` — `PathBuf`, state directory for PID and logs.
+- `default_runs` — `u32`, default repetitions.
+- `default_num_predict` — `u32`, default token cap.
+- `default_temperature` — `f64`, default temperature.
+- `api_base_url` — derived `String`, ensures a trailing `/api` path.
 
 ## CLI overrides
 

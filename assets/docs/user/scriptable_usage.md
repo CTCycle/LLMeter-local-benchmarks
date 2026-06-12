@@ -47,11 +47,13 @@ llmeter --output-dir ./ci-runs bench run --models all --benchmarks all
 
 Use `--start-server` to let LLMeter manage the Ollama server lifecycle in CI. The command exits with a non-zero code on fatal errors, making it suitable for CI pipelines.
 
-Example GitHub Actions step:
+Example GitHub Actions step (using prebuilt binary):
 
 ```yaml
+- name: Download llmeter
+  run: curl -Lo llmeter https://github.com/.../releases/latest/download/llmeter-linux-x86_64 && chmod +x llmeter
 - name: Run benchmarks
-  run: llmeter bench run --models all --benchmarks all --start-server --export json --report md
+  run: ./llmeter bench run --models all --benchmarks all --start-server --export json --report md
 ```
 
 Last updated: 2026-06-12

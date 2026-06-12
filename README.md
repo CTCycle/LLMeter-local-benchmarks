@@ -1,153 +1,84 @@
 # LLMeter
 
-A Python 3.14 interactive CLI for benchmarking locally installed Ollama models.
+A self-contained Rust CLI for benchmarking locally installed Ollama models — with zero runtime dependencies.
 
-The project is intentionally small. It supports Ollama only, uses the local Ollama REST API, and keeps the benchmark system modular so new tests can be added without rewriting the CLI.
+Single statically-linked binary. No Python. No `node_modules`. No virtualenvs.
 
-## Current MVP features
+## Features
 
-- Modern interactive terminal menu built with Rich.
-- Scriptable subcommands for automation and CI usage.
-- Ollama installation and server status checks.
-- Start `ollama serve` when the server is not running.
-- Stop only the server process started by this CLI, unless `--force` is used.
-- List installed local Ollama models.
-- Show model metadata from Ollama.
-- Run one, many, or all benchmark tests against one or many models.
-- Save raw benchmark results as JSON and CSV.
-- Generate formatted Markdown and HTML reports.
-- Render saved benchmark results as a readable terminal report.
+- Modern interactive terminal menu built with `inquire`.
+- Scriptable subcommands for automation and CI.
+- Ollama installation and server status checks, start/stop lifecycle management.
+- List installed models with size, quantization, and family info.
+- Three built-in benchmarks:
+  - **generation-latency** — wall time, TTFT, token throughput.
+  - **consistency** — exact-match ratio, pairwise text similarity.
+  - **prompt-sizes** — short/medium/long prompt comparison.
+- Save raw results as JSON and CSV.
+- Generate formatted Markdown and HTML reports with dark mode support.
+- `rustls`-based HTTP — fully static binary, no `openssl` dependency.
 
-## Requirements
-
-- Python 3.14+
-- Ollama installed and available on `PATH`
-- At least one local Ollama model, for example:
+## Quick start
 
 ```bash
-ollama pull llama3.2
+# Download binary, then:
+llmeter status                     # check Ollama
+llmeter bench run --models all --benchmarks all --start-server   # run everything
 ```
 
-## Installation
-
-```bash
-git clone <your-new-repo-url>
-cd llmeter
-python3.14 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e '.[dev]'
-```
-
-On Windows PowerShell:
-
-```powershell
-py -3.14 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-```
-
-## Interactive usage
-
-Open the main menu:
+Or open the interactive menu:
 
 ```bash
 llmeter
 ```
 
-Open the benchmark workspace directly:
+## Requirements
+
+- Ollama installed and available on `PATH`
+- At least one local Ollama model (`ollama pull llama3.2`)
+
+No Python or runtime dependencies required.
+
+## Installation
+
+### Prebuilt binary
+
+Download from the releases page for your platform.
+
+### From source
 
 ```bash
-llmeter bench menu
+cargo build --release
+cp target/release/llmeter ~/.local/bin/   # or your PATH directory
 ```
 
-Open the report workspace directly:
+## Usage
 
-```bash
-llmeter report
-```
+| Command | Description |
+|---|---|
+| `llmeter` | Interactive main menu |
+| `llmeter status` | Show Ollama status |
+| `llmeter server start` | Start `ollama serve` |
+| `llmeter server stop` | Stop tracked server |
+| `llmeter models` | List installed models |
+| `llmeter show <model>` | Show model metadata |
+| `llmeter bench list` | List available benchmarks |
+| `llmeter bench run --models all --benchmarks all` | Run all benchmarks |
+| `llmeter report list` | List saved results |
+| `llmeter report show` | View latest result |
+| `llmeter report generate` | Generate MD/HTML report |
 
-## Scriptable usage
-
-Check status:
-
-```bash
-llmeter status
-```
-
-Start Ollama if needed:
-
-```bash
-llmeter server start
-```
-
-List installed models:
-
-```bash
-llmeter models
-```
-
-Show model metadata:
-
-```bash
-llmeter show llama3.2
-```
-
-List benchmark tests:
-
-```bash
-llmeter bench list
-```
-
-Run all benchmarks against all installed models and generate raw plus formatted outputs:
-
-```bash
-llmeter bench run --models all --benchmarks all --start-server
-```
-
-Run selected benchmarks:
-
-```bash
-llmeter bench run \
-  --models llama3.2,mistral \
-  --benchmarks generation-latency,prompt-sizes \
-  --runs 3 \
-  --num-predict 128 \
-  --temperature 0.2 \
-  --export both \
-  --report both
-```
-
-Generate a report from the latest saved JSON result:
-
-```bash
-llmeter report generate --format both
-```
-
-Show the latest saved result as a terminal report:
-
-```bash
-llmeter report show
-```
-
-## Benchmark tests included
+## Benchmark tests
 
 | ID | Purpose |
 |---|---|
-| `generation-latency` | Measures wall time, time to first token, Ollama duration fields, and output token throughput. |
-| `consistency` | Repeats the same prompt and reports exact-match and pairwise text similarity. |
-| `prompt-sizes` | Runs short, medium, and long prompts to compare prompt processing and generation timing. |
+| `generation-latency` | Wall time, TTFT, Ollama duration fields, token throughput |
+| `consistency` | Repeated prompt: exact-match ratio, pairwise similarity |
+| `prompt-sizes` | Short, medium, and long prompt comparison |
 
 ## Output files
 
-By default files are saved to:
-
-```text
-benchmark_results/
-```
-
-Generated outputs can include:
+Default: `benchmark_results/`
 
 ```text
 <run-id>.json
@@ -156,89 +87,79 @@ Generated outputs can include:
 <run-id>.report.html
 ```
 
-Change the output directory with:
+## Configuration
 
-```bash
-llmeter --output-dir ./runs bench run --models all --benchmarks all
-```
-
-Or set:
-
-```bash
-export LLMETER_OUTPUT_DIR=./runs
-```
-
-## Configuration environment variables
-
-| Variable | Default |
-|---|---:|
-| `OLLAMA_HOST` | `http://localhost:11434` |
-| `LLMETER_TIMEOUT` | `120` |
-| `LLMETER_OUTPUT_DIR` | `benchmark_results` |
-| `LLMETER_STATE_DIR` | `~/.llmeter` |
-| `LLMETER_RUNS` | `3` |
-| `LLMETER_NUM_PREDICT` | `128` |
-| `LLMETER_TEMPERATURE` | `0.2` |
+| Variable | Default | Description |
+|---|---|---|
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
+| `LLMETER_TIMEOUT` | `120` | HTTP timeout (seconds) |
+| `LLMETER_OUTPUT_DIR` | `benchmark_results` | Output directory |
+| `LLMETER_STATE_DIR` | `~/.llmeter` | State directory |
+| `LLMETER_RUNS` | `3` | Default repetitions |
+| `LLMETER_NUM_PREDICT` | `128` | Default token cap |
+| `LLMETER_TEMPERATURE` | `0.2` | Default temperature |
 
 ## Architecture
 
 ```text
-src/llmeter/
-  cli.py                 argparse entrypoint and interactive menu orchestration
-  ui.py                  Rich tables, panels, prompts, and terminal report rendering
-  reporting.py           Markdown and HTML report generation
-  results.py             JSON and CSV persistence
-  runner.py              benchmark execution orchestration
-  prompts.py             built-in benchmark prompts
+src/
+  main.rs              Entry point
+  lib.rs               Crate root
+  cli.rs               Clap CLI definition
+  config.rs            AppConfig (env + CLI overrides)
+  errors.rs            Error types
+  utils.rs             Helpers (timestamps, slugify)
+  prompts.rs           Built-in prompts
   ollama/
-    client.py            small Ollama REST client
-    server.py            install detection plus server start and stop logic
+    client.rs          Ollama REST client (reqwest, streaming)
+    server.rs          Server lifecycle management
   benchmarks/
-    base.py              benchmark protocol and result dataclasses
-    registry.py          benchmark registration
-    generation.py        latency benchmark
-    consistency.py       consistency benchmark
-    prompt_sizes.py      short, medium, and long prompt benchmark
-    metrics.py           metric helpers
+    base.rs            Benchmark trait and data structs
+    registry.rs        Benchmark registration
+    metrics.rs         Metric helpers, pairwise similarity
+    generation.rs      Latency benchmark
+    consistency.rs     Consistency benchmark
+    prompt_sizes.rs    Prompt size benchmark
+  runner.rs            Benchmark orchestration
+  results.rs           JSON/CSV persistence
+  reporting.rs         Markdown/HTML report generation
+  ui.rs                Interactive terminal UI
 ```
 
 ## Adding a benchmark
 
-Create a class with the benchmark interface:
+Implement the `Benchmark` trait and register it:
 
-```python
-from llmeter.benchmarks.base import BenchmarkContext, BenchmarkResultRecord
-from llmeter.ollama.client import OllamaClient
+```rust
+struct MyBenchmark;
 
-class MyBenchmark:
-    id = "my-benchmark"
-    name = "My benchmark"
-    description = "What this benchmark measures."
+impl Benchmark for MyBenchmark {
+    fn id(&self) -> &str { "my-benchmark" }
+    fn name(&self) -> &str { "My benchmark" }
+    fn description(&self) -> &str { "What it measures." }
+    fn run(&self, client: &OllamaClient, model: &str, context: &BenchmarkContext) -> Vec<BenchmarkResultRecord> {
+        // ...
+    }
+}
 
-    def run(self, client: OllamaClient, model: str, context: BenchmarkContext) -> list[BenchmarkResultRecord]:
-        ...
+// In registry.rs:
+registry.register(Box::new(MyBenchmark));
 ```
-
-Register it in `src/llmeter/benchmarks/registry.py`.
 
 ## Development
 
-Run tests:
-
 ```bash
-python -m pytest -q
+cargo test              # run tests
+cargo clippy            # lint
+cargo fmt --check       # format check
+cargo build --release   # release build
 ```
 
-Run the CLI without installing:
+## Limitations
 
-```bash
-PYTHONPATH=src python -m llmeter
-```
+- Ollama only. No other providers.
+- No concurrent benchmark execution.
+- Results are machine-specific.
+- HTML reports are intentionally minimal.
 
-## Current limitations
-
-- Ollama only.
-- No async execution yet.
-- No multi-host comparison yet.
-- HTML reports are intentionally minimal and dependency-light.
-- Real benchmarks are machine-specific and should be compared only on the same host under comparable load.
+Last updated: 2026-06-12

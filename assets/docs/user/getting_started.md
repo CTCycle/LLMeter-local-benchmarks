@@ -2,29 +2,26 @@
 
 ## Requirements
 
-- Python 3.14+
-- Ollama installed and available on `PATH`
-- At least one local Ollama model
+- Rust toolchain (stable) — only needed to build from source.
+- Prebuilt binary — no requirements beyond the OS.
+- Ollama installed and available on `PATH`.
+- At least one local Ollama model.
 
 ## Installation
+
+### Using a prebuilt binary
+
+Download the binary for your platform from the releases page, rename it to `llmeter` (or `llmeter.exe` on Windows), and place it in a directory on your `PATH`.
+
+### Building from source
 
 ```bash
 git clone <repo-url>
 cd llmeter
-python3.14 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e '.[dev]'
+cargo build --release
 ```
 
-On Windows PowerShell:
-
-```powershell
-py -3.14 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-```
+The binary is at `target/release/llmeter` (or `target/release/llmeter.exe` on Windows).
 
 ## First run
 
