@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from ollama_bench.benchmarks.base import BenchmarkResultRecord
-from ollama_bench.results import BenchmarkRun, ResultStore
+from llmeter.benchmarks.base import BenchmarkResultRecord
+from llmeter.results import BenchmarkRun, ResultStore
 
 
 def test_result_store_saves_json_and_csv(tmp_path: Path):

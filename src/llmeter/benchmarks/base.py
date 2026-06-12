@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from ollama_bench.ollama.client import OllamaClient
+from llmeter.ollama.client import OllamaClient
 
 
 @dataclass(slots=True)

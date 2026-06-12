@@ -13,16 +13,16 @@ from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
-from ollama_bench.benchmarks.registry import default_registry
-from ollama_bench.ollama.server import ServerStatus
-from ollama_bench.reporting import build_summary_rows, render_markdown_report
-from ollama_bench.results import BenchmarkRun
+from llmeter.benchmarks.registry import default_registry
+from llmeter.ollama.server import ServerStatus
+from llmeter.reporting import build_summary_rows, render_markdown_report
+from llmeter.results import BenchmarkRun
 
 console = Console()
 
 
-APP_TITLE = "Ollama Local Bench"
-APP_SUBTITLE = "Interactive local LLM benchmarking for Ollama"
+APP_TITLE = "LLMeter"
+APP_SUBTITLE = "Local LLM benchmarking for Ollama"
 
 
 def human_size(num_bytes: int | None) -> str:

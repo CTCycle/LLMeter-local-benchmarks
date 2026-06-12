@@ -6,7 +6,7 @@ import time
 from typing import Any, Iterable
 from urllib import error, request
 
-from ollama_bench.errors import OllamaServerError
+from llmeter.errors import OllamaServerError
 
 
 @dataclass(slots=True)

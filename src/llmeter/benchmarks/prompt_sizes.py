@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from ollama_bench.benchmarks.base import BenchmarkContext, BenchmarkResultRecord
-from ollama_bench.benchmarks.metrics import generation_metrics, preview
-from ollama_bench.ollama.client import OllamaClient
-from ollama_bench.prompts import PROMPTS_BY_SIZE
+from llmeter.benchmarks.base import BenchmarkContext, BenchmarkResultRecord
+from llmeter.benchmarks.metrics import generation_metrics, preview
+from llmeter.ollama.client import OllamaClient
+from llmeter.prompts import PROMPTS_BY_SIZE
 
 
 class PromptSizePerformanceBenchmark:

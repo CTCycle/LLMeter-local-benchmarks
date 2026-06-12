@@ -1,4 +1,4 @@
-from ollama_bench.benchmarks.registry import default_registry
+from llmeter.benchmarks.registry import default_registry
 
 
 def test_default_registry_contains_initial_benchmarks():

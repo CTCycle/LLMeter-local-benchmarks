@@ -11,9 +11,9 @@ import subprocess
 import time
 from typing import Any
 
-from ollama_bench.errors import OllamaNotInstalledError, OllamaServerError
-from ollama_bench.ollama.client import OllamaClient
-from ollama_bench.utils import ensure_dir
+from llmeter.errors import OllamaNotInstalledError, OllamaServerError
+from llmeter.ollama.client import OllamaClient
+from llmeter.utils import ensure_dir
 
 
 @dataclass(slots=True)

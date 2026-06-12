@@ -7,7 +7,7 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
-from ollama_bench.results import BenchmarkRun
+from llmeter.results import BenchmarkRun
 
 
 @dataclass(slots=True)
@@ -69,7 +69,7 @@ def render_markdown_report(run: BenchmarkRun) -> str:
     fastest = fastest_latency_row(rows)
 
     lines: list[str] = []
-    lines.append(f"# Ollama Local Bench Report")
+    lines.append("# LLMeter Report")
     lines.append("")
     lines.append(f"**Run ID:** `{run.run_id}`")
     lines.append(f"**Created:** {run.created_at}")
@@ -272,7 +272,7 @@ def render_html_report(run: BenchmarkRun) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ollama Local Bench Report {escape(run.run_id)}</title>
+  <title>LLMeter Report {escape(run.run_id)}</title>
   <style>
     :root {{ color-scheme: light dark; --border: color-mix(in srgb, CanvasText 20%, Canvas); --soft: color-mix(in srgb, CanvasText 8%, Canvas); }}
     body {{ font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; line-height: 1.5; background: Canvas; color: CanvasText; }}
@@ -297,7 +297,7 @@ def render_html_report(run: BenchmarkRun) -> str:
 <body>
 <main>
 <header>
-  <h1>Ollama Local Bench Report</h1>
+  <h1>LLMeter Report</h1>
   <div class="meta">
     <strong>Run ID</strong><code>{escape(run.run_id)}</code>
     <strong>Created</strong><span>{escape(run.created_at)}</span>

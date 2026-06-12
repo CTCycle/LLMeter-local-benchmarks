@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any
 from difflib import SequenceMatcher
 
-from ollama_bench.ollama.client import GenerateResult
-from ollama_bench.utils import ns_to_ms
+from llmeter.ollama.client import GenerateResult
+from llmeter.utils import ns_to_ms
 
 
 def generation_metrics(result: GenerateResult) -> dict[str, Any]:

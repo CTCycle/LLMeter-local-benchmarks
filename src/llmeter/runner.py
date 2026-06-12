@@ -3,13 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable
 
-from ollama_bench.benchmarks.base import BenchmarkContext
-from ollama_bench.benchmarks.registry import default_registry
-from ollama_bench.config import AppConfig
-from ollama_bench.errors import ModelNotFoundError, OllamaServerError
-from ollama_bench.ollama.client import OllamaClient
-from ollama_bench.results import BenchmarkRun, ResultStore
-from ollama_bench.utils import utc_now_iso
+from llmeter.benchmarks.base import BenchmarkContext
+from llmeter.benchmarks.registry import default_registry
+from llmeter.config import AppConfig
+from llmeter.errors import ModelNotFoundError, OllamaServerError
+from llmeter.ollama.client import OllamaClient
+from llmeter.results import BenchmarkRun, ResultStore
+from llmeter.utils import utc_now_iso
 
 
 def installed_model_names(client: OllamaClient) -> list[str]:

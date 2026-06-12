@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from ollama_bench.benchmarks.base import BenchmarkResultRecord
-from ollama_bench.reporting import build_summary_rows, render_markdown_report
-from ollama_bench.results import BenchmarkRun
+from llmeter.benchmarks.base import BenchmarkResultRecord
+from llmeter.reporting import build_summary_rows, render_markdown_report
+from llmeter.results import BenchmarkRun
 
 
 def test_markdown_report_contains_summary() -> None:
@@ -29,6 +29,6 @@ def test_markdown_report_contains_summary() -> None:
     assert rows[0].avg_tokens_per_second == 42.0
 
     report = render_markdown_report(run)
-    assert "Ollama Local Bench Report" in report
+    assert "LLMeter Report" in report
     assert "generation-latency" in report
     assert "42.00" in report
