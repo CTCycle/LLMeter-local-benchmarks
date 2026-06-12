@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtualenvs
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+
+# Local benchmark outputs
+benchmark_results/
+.ollama-bench/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
