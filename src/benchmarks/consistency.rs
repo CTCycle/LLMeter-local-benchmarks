@@ -5,8 +5,8 @@ use serde_json::Value;
 
 use crate::benchmarks::base::{Benchmark, BenchmarkContext, BenchmarkResultRecord};
 use crate::benchmarks::metrics::{generation_metrics, pairwise_similarity, preview};
-use crate::ollama::client::OllamaClient;
 use crate::prompts::CONSISTENCY_PROMPT;
+use crate::providers::ProviderClient;
 use crate::utils::ns_to_ms;
 
 pub struct ResponseConsistencyBenchmark;
@@ -26,26 +26,31 @@ impl Benchmark for ResponseConsistencyBenchmark {
 
     fn run(
         &self,
-        client: &OllamaClient,
+        client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
     ) -> Vec<BenchmarkResultRecord> {
         let runs = context.runs.max(2);
-        let options = context.generation_options(Some(context.temperature), None);
+        let options = context.request_options(Some(context.temperature), None);
+        let messages = serde_json::json!([
+            {"role": "user", "content": CONSISTENCY_PROMPT}
+        ]);
         let mut responses: Vec<String> = Vec::new();
         let mut per_run_metrics_list: Vec<HashMap<String, Value>> = Vec::new();
         let mut errors: Vec<String> = Vec::new();
         let started = Instant::now();
 
         for _ in 0..runs {
-            match client.generate(
+            match client.chat_completion(
                 model,
-                CONSISTENCY_PROMPT,
+                messages.clone(),
+                context.max_tokens,
+                context.temperature,
+                false,
                 Some(&options),
-                Some(&context.keep_alive),
             ) {
                 Ok(result) => {
-                    responses.push(result.response.trim().to_string());
+                    responses.push(result.response_text.trim().to_string());
                     per_run_metrics_list.push(generation_metrics(&result));
                 }
                 Err(e) => {
@@ -85,10 +90,19 @@ impl Benchmark for ResponseConsistencyBenchmark {
 
         let mut metrics = HashMap::new();
         metrics.insert("requested_runs".to_string(), Value::from(runs));
-        metrics.insert("successful_runs".to_string(), Value::from(responses.len() as u64));
+        metrics.insert(
+            "successful_runs".to_string(),
+            Value::from(responses.len() as u64),
+        );
         metrics.insert("failed_runs".to_string(), Value::from(errors.len() as u64));
-        metrics.insert("unique_responses".to_string(), Value::from(unique_count as u64));
-        metrics.insert("exact_match_ratio".to_string(), Value::from(exact_match_ratio));
+        metrics.insert(
+            "unique_responses".to_string(),
+            Value::from(unique_count as u64),
+        );
+        metrics.insert(
+            "exact_match_ratio".to_string(),
+            Value::from(exact_match_ratio),
+        );
 
         if !scores.is_empty() {
             let mean = scores.iter().sum::<f64>() / scores.len() as f64;
@@ -120,11 +134,7 @@ impl Benchmark for ResponseConsistencyBenchmark {
         let response_preview = if responses.is_empty() {
             None
         } else {
-            let previews: Vec<String> = responses
-                .iter()
-                .take(3)
-                .map(|t| preview(t, 80))
-                .collect();
+            let previews: Vec<String> = responses.iter().take(3).map(|t| preview(t, 80)).collect();
             Some(previews.join(" | "))
         };
 

@@ -18,7 +18,7 @@ This is the entry point for the LLMeter document ontology.
 |---|---|
 | `architecture/system_overview.md` | Design goals, Rust technology stack, and module map. |
 | `architecture/cli_flow.md` | Main menu, benchmark workspace, and reports workspace flows. |
-| `architecture/ollama_integration.md` | Ollama REST API endpoints, server lifecycle, and PID tracking. |
+| `architecture/provider_integration.md` | Provider presets, OpenAI-compatible API endpoints, and lifecycle policy. |
 | `architecture/result_storage.md` | BenchmarkRun model, result records, and JSON/CSV/HTML/MD file formats. |
 
 ### `coding/`

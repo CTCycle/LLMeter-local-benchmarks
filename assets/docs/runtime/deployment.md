@@ -45,15 +45,11 @@ Prebuilt binaries for Linux (x86_64, aarch64 with musl), macOS (x86_64, arm64), 
 
 ## Versioning
 
-Current version: `0.2.0`. Follows semantic versioning. Defined in `Cargo.toml`.
+Current version: `0.3.0`. Follows semantic versioning. Defined in `Cargo.toml`.
 
 ## Platforms
 
-Cross-platform (Windows, macOS, Linux). Platform-specific behavior:
-
-- **Process management**: `taskkill` on Windows, `kill` on Unix — handled in `ollama/server.rs`.
-- **Process detachment**: `DETACHED_PROCESS` flag on Windows, process group on Unix.
-- **Binary naming**: `llmeter.exe` on Windows, `llmeter` on Unix.
+Cross-platform (Windows, macOS, Linux). Binary naming is `llmeter.exe` on Windows and `llmeter` on Unix.
 
 The binary is compiled with `rustls` (no `openssl`), making it fully statically linkable for musl targets.
 

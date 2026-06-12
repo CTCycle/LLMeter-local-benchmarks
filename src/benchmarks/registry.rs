@@ -1,3 +1,7 @@
+use crate::benchmarks::api_calls::{
+    EmbeddingsBenchmark, ResponsesGenerationBenchmark, StructuredOutputBenchmark,
+    ToolCallingBenchmark,
+};
 use crate::benchmarks::base::Benchmark;
 use crate::benchmarks::consistency::ResponseConsistencyBenchmark;
 use crate::benchmarks::generation::BasicGenerationLatencyBenchmark;
@@ -16,11 +20,7 @@ impl BenchmarkRegistry {
     }
 
     pub fn register(&mut self, benchmark: Box<dyn Benchmark>) {
-        if self
-            .benchmarks
-            .iter()
-            .any(|b| b.id() == benchmark.id())
-        {
+        if self.benchmarks.iter().any(|b| b.id() == benchmark.id()) {
             return;
         }
         self.benchmarks.push(benchmark);
@@ -34,17 +34,20 @@ impl BenchmarkRegistry {
         self.benchmarks.iter().map(|b| b.id()).collect()
     }
 
-    pub fn get(&self, benchmark_id: &str) -> Option<&Box<dyn Benchmark>> {
-        self.benchmarks.iter().find(|b| b.id() == benchmark_id)
+    pub fn get(&self, benchmark_id: &str) -> Option<&dyn Benchmark> {
+        self.benchmarks
+            .iter()
+            .find(|b| b.id() == benchmark_id)
+            .map(|b| b.as_ref())
     }
 
     pub fn select(
         &self,
         benchmark_ids: Option<&[String]>,
         all_benchmarks: bool,
-    ) -> Result<Vec<&Box<dyn Benchmark>>, LLMeterError> {
+    ) -> Result<Vec<&dyn Benchmark>, LLMeterError> {
         if all_benchmarks || benchmark_ids.is_none() {
-            return Ok(self.benchmarks.iter().collect());
+            return Ok(self.benchmarks.iter().map(|b| b.as_ref()).collect());
         }
 
         let ids = benchmark_ids.unwrap();
@@ -64,10 +67,20 @@ impl BenchmarkRegistry {
     }
 }
 
+impl Default for BenchmarkRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub fn default_registry() -> BenchmarkRegistry {
     let mut registry = BenchmarkRegistry::new();
     registry.register(Box::new(BasicGenerationLatencyBenchmark));
+    registry.register(Box::new(ResponsesGenerationBenchmark));
     registry.register(Box::new(ResponseConsistencyBenchmark));
     registry.register(Box::new(PromptSizePerformanceBenchmark));
+    registry.register(Box::new(StructuredOutputBenchmark));
+    registry.register(Box::new(ToolCallingBenchmark));
+    registry.register(Box::new(EmbeddingsBenchmark));
     registry
 }

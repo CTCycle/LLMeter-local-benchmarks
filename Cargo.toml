@@ -1,11 +1,11 @@
 [package]
 name = "llmeter"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
-description = "A modern interactive CLI benchmarking tool for local Ollama models."
+description = "A modern interactive CLI benchmarking tool for local OpenAI-compatible LLM providers."
 license = "MIT"
 authors = ["CTCycle"]
-keywords = ["ollama", "llm", "benchmark", "cli", "local-llm"]
+keywords = ["llm", "benchmark", "cli", "local-llm", "openai-compatible"]
 categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]

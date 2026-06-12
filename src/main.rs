@@ -6,8 +6,7 @@ use colored::Colorize;
 use llmeter::cli::{self, Cli};
 use llmeter::config::AppConfig;
 use llmeter::errors::LLMeterError;
-use llmeter::ollama::client::OllamaClient;
-use llmeter::ollama::server::OllamaServerManager;
+use llmeter::providers::ProviderClient;
 
 fn main() {
     let cli = Cli::parse();
@@ -28,31 +27,22 @@ fn main() {
 
 fn run(cli: Cli) -> anyhow::Result<i32> {
     let config = AppConfig::from_env(&cli);
-    let client = OllamaClient::new(&config.api_base_url, config.timeout);
-    let manager = OllamaServerManager::new(client.clone(), config.state_dir.clone());
+    let client = ProviderClient::new(config.provider, &config.base_url, config.timeout);
 
     match cli.command {
         None | Some(cli::Commands::Menu) => {
-            llmeter::ui::main_menu(&config, &client, &manager)?;
+            llmeter::ui::main_menu(&config, &client)?;
             Ok(0)
         }
         Some(cli::Commands::Status) => {
-            llmeter::ui::print_status_panel(&manager.status(), &manager.installed_version_cli());
+            llmeter::ui::print_status_panel(&client.status());
             Ok(0)
         }
-        Some(cli::Commands::Server { ref server_command }) => {
-            match server_command {
-                cli::ServerCommands::Status => {
-                    llmeter::ui::print_status_panel(&manager.status(), &manager.installed_version_cli());
-                }
-                cli::ServerCommands::Start => {
-                    let status = manager.start(10.0)?;
-                    llmeter::ui::print_status_panel(&status, &manager.installed_version_cli());
-                }
-                cli::ServerCommands::Stop { force } => {
-                    let msg = manager.stop(*force)?;
-                    println!("{msg}");
-                }
+        Some(cli::Commands::Providers {
+            ref provider_command,
+        }) => {
+            match provider_command {
+                cli::ProviderCommands::List => llmeter::ui::print_provider_catalog(),
             }
             Ok(0)
         }
@@ -61,7 +51,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             if json {
                 println!("{}", serde_json::to_string_pretty(&models)?);
             } else {
-                llmeter::ui::print_models(&models);
+                llmeter::ui::print_models(&models, config.provider);
             }
             Ok(0)
         }
@@ -73,7 +63,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
         Some(cli::Commands::Bench { ref bench_command }) => {
             match bench_command {
                 cli::BenchCommands::Menu => {
-                    llmeter::ui::benchmark_menu(&config, &client, &manager)?;
+                    llmeter::ui::benchmark_menu(&config, &client)?;
                 }
                 cli::BenchCommands::List => {
                     llmeter::ui::print_benchmark_catalog();
@@ -82,17 +72,12 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     ref models,
                     ref benchmarks,
                     runs,
-                    num_predict,
+                    max_tokens,
                     temperature,
                     ref export,
                     ref report,
-                    start_server,
-                    ref option,
+                    ref param,
                 } => {
-                    if *start_server && !client.is_running() {
-                        manager.start(10.0)?;
-                    }
-
                     let available_models = llmeter::runner::installed_model_names(&client)?;
                     let selected_models: Vec<String> = match models.as_deref() {
                         None => return Err(anyhow::anyhow!("--models is required for non-interactive benchmark runs. Use 'all' or a comma-separated list.")),
@@ -102,19 +87,30 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
 
                     let (selected_benchmarks, all_benchmarks) = match benchmarks.as_deref() {
                         None | Some("all") => (None, true),
-                        Some(b) => (Some(b.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect::<Vec<_>>()), false),
+                        Some(b) => (
+                            Some(
+                                b.split(',')
+                                    .map(|s| s.trim().to_string())
+                                    .filter(|s| !s.is_empty())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            false,
+                        ),
                     };
 
+                    let extra_params = cli::parse_params(param)?;
                     let run = llmeter::runner::run_benchmarks(
                         &client,
                         &config,
-                        &selected_models,
-                        selected_benchmarks.as_deref(),
-                        all_benchmarks,
-                        runs.unwrap_or(config.default_runs),
-                        num_predict.unwrap_or(config.default_num_predict),
-                        temperature.unwrap_or(config.default_temperature),
-                        &cli::parse_options(option)?,
+                        llmeter::runner::BenchmarkRunRequest {
+                            model_names: &selected_models,
+                            benchmark_ids: selected_benchmarks.as_deref(),
+                            all_benchmarks,
+                            runs: runs.unwrap_or(config.default_runs),
+                            max_tokens: max_tokens.unwrap_or(config.default_max_tokens),
+                            temperature: temperature.unwrap_or(config.default_temperature),
+                            extra_options: &extra_params,
+                        },
                     )?;
 
                     llmeter::ui::summarize_run(&run);
@@ -126,6 +122,10 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
         }
         Some(cli::Commands::Report { ref report_command }) => {
             llmeter::runner::command_report(&config, report_command)?;
+            Ok(0)
+        }
+        Some(cli::Commands::Help { ref topic }) => {
+            llmeter::ui::print_help_topic(topic.as_deref());
             Ok(0)
         }
     }

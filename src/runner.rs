@@ -7,26 +7,27 @@ use crate::benchmarks::registry::default_registry;
 use crate::cli::ReportCommands;
 use crate::config::AppConfig;
 use crate::errors::LLMeterError;
-use crate::ollama::client::OllamaClient;
+use crate::providers::ProviderClient;
 use crate::reporting::{save_html_report, save_markdown_report};
 use crate::results::{BenchmarkRun, ResultStore};
 use crate::utils::utc_now_iso;
 
-pub fn installed_model_names(client: &OllamaClient) -> anyhow::Result<Vec<String>> {
-    let models = client.list_models()?;
-    Ok(models
-        .iter()
-        .filter_map(|m| {
-            m.get("name")
-                .or_else(|| m.get("model"))
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        })
-        .collect())
+pub struct BenchmarkRunRequest<'a> {
+    pub model_names: &'a [String],
+    pub benchmark_ids: Option<&'a [String]>,
+    pub all_benchmarks: bool,
+    pub runs: u32,
+    pub max_tokens: u32,
+    pub temperature: f64,
+    pub extra_options: &'a std::collections::HashMap<String, Value>,
+}
+
+pub fn installed_model_names(client: &ProviderClient) -> anyhow::Result<Vec<String>> {
+    client.model_names()
 }
 
 pub fn validate_models(
-    client: &OllamaClient,
+    client: &ProviderClient,
     selected_models: &[String],
 ) -> anyhow::Result<Vec<String>> {
     let available: std::collections::HashSet<String> =
@@ -48,7 +49,9 @@ pub fn validate_models(
 
     if !missing.is_empty() {
         return Err(LLMeterError::ModelNotFound(format!(
-            "Model(s) not installed locally: {}",
+            "Model(s) not exposed by {} at {}: {}",
+            client.provider().display_name(),
+            client.base_url(),
             missing.join(", ")
         ))
         .into());
@@ -60,31 +63,29 @@ pub fn validate_models(
 }
 
 pub fn run_benchmarks(
-    client: &OllamaClient,
+    client: &ProviderClient,
     config: &AppConfig,
-    model_names: &[String],
-    benchmark_ids: Option<&[String]>,
-    all_benchmarks: bool,
-    runs: u32,
-    num_predict: u32,
-    temperature: f64,
-    extra_options: &std::collections::HashMap<String, Value>,
+    request: BenchmarkRunRequest<'_>,
 ) -> anyhow::Result<BenchmarkRun> {
     if !client.is_running() {
-        return Err(LLMeterError::OllamaServer("Ollama server is not running.".to_string()).into());
+        return Err(LLMeterError::Provider(format!(
+            "{} provider is not reachable at {}.",
+            config.provider.display_name(),
+            config.base_url
+        ))
+        .into());
     }
 
-    let models = validate_models(client, model_names)?;
+    let models = validate_models(client, request.model_names)?;
     let registry = default_registry();
-    let benchmarks = registry.select(benchmark_ids, all_benchmarks)?;
+    let benchmarks = registry.select(request.benchmark_ids, request.all_benchmarks)?;
 
     let context = BenchmarkContext {
-        runs,
-        num_predict,
-        temperature,
+        runs: request.runs,
+        max_tokens: request.max_tokens,
+        temperature: request.temperature,
         timeout: config.timeout,
-        keep_alive: "5m".to_string(),
-        options: extra_options.clone(),
+        options: request.extra_options.clone(),
     };
 
     let store = ResultStore::new(&config.output_dir);
@@ -98,12 +99,13 @@ pub fn run_benchmarks(
         config: {
             let mut c = std::collections::HashMap::new();
             c.insert(
-                "api_base_url".to_string(),
-                Value::from(config.api_base_url.clone()),
+                "provider".to_string(),
+                Value::from(config.provider.to_string()),
             );
-            c.insert("runs".to_string(), Value::from(runs));
-            c.insert("num_predict".to_string(), Value::from(num_predict));
-            c.insert("temperature".to_string(), Value::from(temperature));
+            c.insert("base_url".to_string(), Value::from(config.base_url.clone()));
+            c.insert("runs".to_string(), Value::from(request.runs));
+            c.insert("max_tokens".to_string(), Value::from(request.max_tokens));
+            c.insert("temperature".to_string(), Value::from(request.temperature));
             c.insert("timeout".to_string(), Value::from(config.timeout));
             c
         },
@@ -112,8 +114,7 @@ pub fn run_benchmarks(
 
     for model in &models {
         for benchmark in &benchmarks {
-            run.results
-                .extend(benchmark.run(client, model, &context));
+            run.results.extend(benchmark.run(client, model, &context));
         }
     }
 

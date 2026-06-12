@@ -1,22 +1,20 @@
 use llmeter::benchmarks::metrics::{generation_metrics, pairwise_similarity, preview};
-use llmeter::ollama::client::GenerateResult;
+use llmeter::providers::ApiResult;
 use serde_json::json;
 
-fn make_result(eval_count: u64, eval_duration_ns: u64) -> GenerateResult {
-    GenerateResult {
-        model: "test-model".to_string(),
-        prompt: "test prompt".to_string(),
-        response: "hello world".to_string(),
+fn make_result(output_tokens: u64, wall_time_ns: u128) -> ApiResult {
+    ApiResult {
+        endpoint: "/v1/chat/completions".to_string(),
+        response_text: "hello world".to_string(),
         raw: json!({
-            "eval_count": eval_count,
-            "eval_duration": eval_duration_ns,
-            "total_duration": 1_000_000_000,
-            "load_duration": 100_000_000,
-            "prompt_eval_count": 10,
-            "prompt_eval_duration": 200_000_000,
-            "done_reason": "stop"
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": output_tokens,
+                "total_tokens": output_tokens + 10
+            },
+            "choices": [{"finish_reason": "stop"}]
         }),
-        wall_time_ns: 1_500_000_000,
+        wall_time_ns,
         time_to_first_token_ns: Some(300_000_000),
     }
 }
@@ -34,10 +32,11 @@ fn test_generation_metrics_contains_all_keys() {
     let metrics = generation_metrics(&result);
     assert!(metrics.contains_key("wall_time_ms"));
     assert!(metrics.contains_key("time_to_first_token_ms"));
-    assert!(metrics.contains_key("api_total_duration_ms"));
+    assert!(metrics.contains_key("input_tokens"));
+    assert!(metrics.contains_key("output_tokens"));
+    assert!(metrics.contains_key("total_tokens"));
     assert!(metrics.contains_key("tokens_per_second"));
-    assert!(metrics.contains_key("eval_count"));
-    assert!(metrics.contains_key("done_reason"));
+    assert!(metrics.contains_key("finish_reason"));
 }
 
 #[test]
@@ -48,7 +47,11 @@ fn test_tokens_per_second_zero_duration_returns_none() {
 
 #[test]
 fn test_pairwise_similarity_identical_texts() {
-    let texts = vec!["hello".to_string(), "hello".to_string(), "hello".to_string()];
+    let texts = vec![
+        "hello".to_string(),
+        "hello".to_string(),
+        "hello".to_string(),
+    ];
     let scores = pairwise_similarity(&texts);
     assert_eq!(scores.len(), 3);
     for score in &scores {

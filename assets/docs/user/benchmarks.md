@@ -4,9 +4,13 @@
 
 | ID | Name | Description |
 |---|---|---|
-| `generation-latency` | Basic generation latency | Measures wall time, time to first token, Ollama duration fields, and output token throughput for a short prompt. |
-| `consistency` | Response consistency | Repeats the same prompt multiple times and reports exact-match ratio and pairwise text similarity. |
-| `prompt-sizes` | Performance across prompt sizes | Runs short, medium, and long prompts to compare prompt processing time vs generation time. |
+| `chat-generation` | Basic generation latency | Streams `/v1/chat/completions` and measures wall time, TTFT, usage, and throughput. |
+| `responses-generation` | Responses API generation | Calls `/v1/responses` when supported. |
+| `consistency` | Response consistency | Repeats a prompt and reports exact-match ratio and pairwise text similarity. |
+| `prompt-sizes` | Performance across prompt sizes | Runs short, medium, and long prompts. |
+| `structured-output` | Structured JSON output | Requests JSON schema output and validates required keys. |
+| `tool-calling` | Function/tool calling | Requests a tool call and validates function name and arguments. |
+| `embeddings` | Embeddings API | Calls `/v1/embeddings` and reports latency and vector dimensions. |
 
 ## Benchmark trait
 
@@ -19,7 +23,7 @@ pub trait Benchmark: Send + Sync {
     fn description(&self) -> &str;
     fn run(
         &self,
-        client: &OllamaClient,
+        client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
     ) -> Vec<BenchmarkResultRecord>;
@@ -28,20 +32,16 @@ pub trait Benchmark: Send + Sync {
 
 Key types:
 
-- `OllamaClient` — reqwest-based HTTP client for the Ollama API.
-- `BenchmarkContext` — holds `runs`, `num_predict`, `temperature`, and extra options.
-- `BenchmarkResultRecord` — struct with `benchmark_id`, `model`, `run_index`, `prompt_name`, `metrics` (HashMap), `response_preview`, and optional `error`.
+- `ProviderClient` - OpenAI-compatible HTTP client.
+- `BenchmarkContext` - holds runs, max tokens, temperature, timeout, and extra request parameters.
+- `BenchmarkResultRecord` - benchmark ID/name, model, prompt/run metadata, metrics, response preview, error, and metadata.
 
 ## Adding a benchmark
 
-1. Create a new file in `src/benchmarks/`.
-2. Implement the `Benchmark` trait for your struct.
-3. Register it in `src/benchmarks/registry.rs`:
+1. Create or extend a file in `src/benchmarks/`.
+2. Implement `Benchmark`.
+3. Register it in `src/benchmarks/registry.rs`.
 
-```rust
-registry.register(Box::new(MyBenchmark));
-```
-
-The benchmark will automatically appear in the catalog and be selectable in both interactive and scriptable modes.
+The benchmark appears in both interactive and scriptable flows.
 
 Last updated: 2026-06-12

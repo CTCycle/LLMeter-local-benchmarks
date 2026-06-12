@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use crate::benchmarks::base::{Benchmark, BenchmarkContext, BenchmarkResultRecord};
 use crate::benchmarks::metrics::{generation_metrics, preview};
-use crate::ollama::client::OllamaClient;
 use crate::prompts::SHORT_PROMPT;
+use crate::providers::ProviderClient;
 
 pub struct BasicGenerationLatencyBenchmark;
 
 impl Benchmark for BasicGenerationLatencyBenchmark {
     fn id(&self) -> &str {
-        "generation-latency"
+        "chat-generation"
     }
 
     fn name(&self) -> &str {
@@ -17,24 +17,29 @@ impl Benchmark for BasicGenerationLatencyBenchmark {
     }
 
     fn description(&self) -> &str {
-        "Measures wall time, time to first token, Ollama duration fields, and output token throughput."
+        "Measures wall time, time to first token, usage fields, and output token throughput."
     }
 
     fn run(
         &self,
-        client: &OllamaClient,
+        client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
     ) -> Vec<BenchmarkResultRecord> {
         let mut records = Vec::new();
-        let options = context.generation_options(Some(0.0), None);
+        let options = context.request_options(Some(0.0), None);
+        let messages = serde_json::json!([
+            {"role": "user", "content": SHORT_PROMPT}
+        ]);
 
         for run_index in 1..=context.runs {
-            let record = match client.generate_stream(
+            let record = match client.chat_completion(
                 model,
-                SHORT_PROMPT,
+                messages.clone(),
+                context.max_tokens,
+                0.0,
+                true,
                 Some(&options),
-                Some(&context.keep_alive),
             ) {
                 Ok(result) => BenchmarkResultRecord {
                     benchmark_id: self.id().to_string(),
@@ -43,7 +48,7 @@ impl Benchmark for BasicGenerationLatencyBenchmark {
                     run_index: Some(run_index),
                     prompt_name: Some("short".to_string()),
                     metrics: generation_metrics(&result),
-                    response_preview: Some(preview(&result.response, 180)),
+                    response_preview: Some(preview(&result.response_text, 180)),
                     error: None,
                     metadata: Some({
                         let mut m = HashMap::new();

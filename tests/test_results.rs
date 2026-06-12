@@ -7,14 +7,14 @@ fn sample_run() -> BenchmarkRun {
         run_id: "test-run-id".to_string(),
         created_at: "2026-06-12T12:00:00".to_string(),
         models: vec!["llama3".to_string()],
-        benchmark_ids: vec!["generation-latency".to_string()],
+        benchmark_ids: vec!["chat-generation".to_string()],
         config: {
             let mut c = std::collections::HashMap::new();
             c.insert("runs".to_string(), json!(3));
             c
         },
         results: vec![BenchmarkResultRecord {
-            benchmark_id: "generation-latency".to_string(),
+            benchmark_id: "chat-generation".to_string(),
             benchmark_name: "Basic generation latency".to_string(),
             model: "llama3".to_string(),
             run_index: Some(1),
@@ -42,7 +42,7 @@ fn test_result_store_saves_json_and_csv() {
     assert!(json_path.exists());
     let content = std::fs::read_to_string(&json_path).unwrap();
     assert!(content.contains("test-run-id"));
-    assert!(content.contains("generation-latency"));
+    assert!(content.contains("chat-generation"));
 
     let csv_path = store.save_csv(&run).unwrap();
     assert!(csv_path.exists());
@@ -65,7 +65,7 @@ fn test_load_json_roundtrip() {
     assert_eq!(loaded.run_id, "test-run-id");
     assert_eq!(loaded.models, vec!["llama3"]);
     assert_eq!(loaded.results.len(), 1);
-    assert_eq!(loaded.results[0].benchmark_id, "generation-latency");
+    assert_eq!(loaded.results[0].benchmark_id, "chat-generation");
 }
 
 #[test]

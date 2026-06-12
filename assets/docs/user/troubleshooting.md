@@ -2,41 +2,35 @@
 
 ## Common issues
 
-### "ollama executable was not found on PATH"
+### Provider is not reachable
 
-Ensure Ollama is installed and `ollama` is available in your terminal. Test with:
+Check the selected provider and base URL:
 
 ```bash
-ollama --version
+llmeter providers list
+llmeter --provider lmstudio status
+llmeter --provider openai-compatible --base-url http://localhost:9000/v1 status
 ```
 
-### "Ollama did not become ready"
+Start the provider server externally and confirm its `/v1/models` endpoint is available.
 
-The server took too long to start. Check the server log:
+### No models found
 
-```text
-~/.llmeter/ollama-server.log
-```
-
-Common causes: another Ollama process is already running, port 11434 is in use, or the system is under high load.
-
-### "Model not found"
-
-Verify the model is installed:
+Verify that the provider has a loaded or exposed model:
 
 ```bash
 llmeter models
 ```
 
-If the model is not listed, pull it:
+For LM Studio, load a model and start the local server. For llama.cpp, start `llama-server` with a model file. For Ollama, pull or create a model before benchmarking.
 
-```bash
-ollama pull <model-name>
-```
+### Benchmark records show endpoint errors
+
+Not every provider/model supports every OpenAI-compatible capability. `responses-generation`, `structured-output`, `tool-calling`, and `embeddings` may fail independently. These failures are saved as error records in JSON/CSV and shown in reports.
 
 ### Reports are empty or missing data
 
-Check that the JSON result file exists in the output directory and is valid JSON. The output directory defaults to `benchmark_results/` in the current working directory.
+Check that the JSON result file exists in the output directory and is valid JSON. The output directory defaults to `benchmark_results/`.
 
 ## File locations
 
@@ -46,14 +40,12 @@ Check that the JSON result file exists in the output directory and is valid JSON
 | CSV exports | `benchmark_results/<run-id>.csv` |
 | Markdown reports | `benchmark_results/<run-id>.report.md` |
 | HTML reports | `benchmark_results/<run-id>.report.html` |
-| Server PID file | `~/.llmeter/ollama-server.pid.json` |
-| Server log | `~/.llmeter/ollama-server.log` |
 
 ## Known limitations
 
-- Ollama only. Other providers are not supported.
+- LLMeter does not start or stop provider servers.
+- Provider OpenAI compatibility varies by server version and model.
 - No concurrent benchmark execution. Each benchmark runs serially.
 - Results are machine-specific. Compare runs from the same host under similar load.
-- HTML reports are intentionally minimal and dependency-light.
 
 Last updated: 2026-06-12

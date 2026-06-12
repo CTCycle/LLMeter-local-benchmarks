@@ -50,12 +50,4 @@ Default: `benchmark_results/` in the current working directory.
 
 Overridable via `--output-dir` flag or `LLMETER_OUTPUT_DIR` environment variable.
 
-## State directory
-
-Default: `~/.llmeter/`
-
-Stores the tracked PID file (`ollama-server.pid.json`) and server logs (`ollama-server.log`).
-
-Overridable via `LLMETER_STATE_DIR` environment variable.
-
 Last updated: 2026-06-12

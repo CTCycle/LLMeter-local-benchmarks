@@ -27,7 +27,7 @@ Only the crates listed in `Cargo.toml` under `[dependencies]`. No runtime depend
 ## Module structure
 
 - One module per file. Modules declared in `lib.rs`.
-- Internal submodules (`ollama/`, `benchmarks/`) each have their own `mod.rs`.
+- Internal benchmark modules live under `benchmarks/`; provider integration lives in `providers.rs`.
 - Tests live in `tests/` as integration tests, plus inline `#[cfg(test)] mod tests` where appropriate.
 
 Last updated: 2026-06-12

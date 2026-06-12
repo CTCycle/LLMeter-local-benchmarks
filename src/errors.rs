@@ -2,11 +2,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum LLMeterError {
-    #[error("The 'ollama' executable was not found on PATH.")]
-    OllamaNotInstalled,
-
     #[error("{0}")]
-    OllamaServer(String),
+    Provider(String),
 
     #[error("{0}")]
     ModelNotFound(String),
