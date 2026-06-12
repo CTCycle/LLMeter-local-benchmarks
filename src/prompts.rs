@@ -23,6 +23,18 @@ pub const CONSISTENCY_PROMPT: &str =
      The topic is: using a local LLM for lightweight software engineering assistance.\n\
      Keep each value short.";
 
+pub const RESPONSES_PROMPT: &str =
+    "In two concise bullet points, explain what a local LLM benchmark should measure.";
+
+pub const STRUCTURED_OUTPUT_PROMPT: &str =
+    "Analyze local LLM benchmarking. Return only a JSON object with keys summary, metrics, and recommendation. metrics must be an array of three short strings.";
+
+pub const TOOL_CALL_PROMPT: &str =
+    "Use the available tool to record a benchmark observation for model latency. The provider is local and the metric is time_to_first_token_ms with value 125.";
+
+pub const EMBEDDINGS_INPUT: &str =
+    "Local LLM benchmarking measures latency, throughput, reliability, and API capability support.";
+
 pub fn prompts_by_size() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
     map.insert("short", SHORT_PROMPT);

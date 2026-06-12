@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
@@ -23,9 +23,9 @@ pub struct ResultStore {
 }
 
 impl ResultStore {
-    pub fn new(output_dir: &PathBuf) -> Self {
+    pub fn new(output_dir: &Path) -> Self {
         ResultStore {
-            output_dir: output_dir.clone(),
+            output_dir: output_dir.to_path_buf(),
         }
     }
 
@@ -50,8 +50,12 @@ impl ResultStore {
 
     pub fn save_json(&self, run: &BenchmarkRun) -> anyhow::Result<PathBuf> {
         let path = self.output_dir.join(format!("{}.json", run.run_id));
-        utils::ensure_dir(&self.output_dir)
-            .with_context(|| format!("Failed to create output directory: {}", self.output_dir.display()))?;
+        utils::ensure_dir(&self.output_dir).with_context(|| {
+            format!(
+                "Failed to create output directory: {}",
+                self.output_dir.display()
+            )
+        })?;
         let content = serde_json::to_string_pretty(run)?;
         std::fs::write(&path, content)
             .with_context(|| format!("Failed to write JSON result: {}", path.display()))?;
@@ -62,8 +66,12 @@ impl ResultStore {
         use std::io::Write;
 
         let path = self.output_dir.join(format!("{}.csv", run.run_id));
-        utils::ensure_dir(&self.output_dir)
-            .with_context(|| format!("Failed to create output directory: {}", self.output_dir.display()))?;
+        utils::ensure_dir(&self.output_dir).with_context(|| {
+            format!(
+                "Failed to create output directory: {}",
+                self.output_dir.display()
+            )
+        })?;
 
         // Collect all metric keys across all records
         let mut metric_keys_set: HashSet<String> = HashSet::new();
@@ -109,13 +117,11 @@ impl ResultStore {
                 let value = record
                     .metrics
                     .get(key)
-                    .map(|v| {
-                        match v {
-                            Value::String(s) => s.clone(),
-                            Value::Number(n) => n.to_string(),
-                            Value::Bool(b) => b.to_string(),
-                            _ => v.to_string(),
-                        }
+                    .map(|v| match v {
+                        Value::String(s) => s.clone(),
+                        Value::Number(n) => n.to_string(),
+                        Value::Bool(b) => b.to_string(),
+                        _ => v.to_string(),
                     })
                     .unwrap_or_default();
                 row.push(value);
@@ -202,10 +208,10 @@ impl ResultStore {
     }
 
     pub fn load_json(&self, path: &PathBuf) -> anyhow::Result<BenchmarkRun> {
-        let content =
-            std::fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?;
-        let run: BenchmarkRun =
-            serde_json::from_str(&content).with_context(|| format!("Invalid JSON in {}", path.display()))?;
+        let content = std::fs::read_to_string(path)
+            .with_context(|| format!("Failed to read {}", path.display()))?;
+        let run: BenchmarkRun = serde_json::from_str(&content)
+            .with_context(|| format!("Invalid JSON in {}", path.display()))?;
         Ok(run)
     }
 }

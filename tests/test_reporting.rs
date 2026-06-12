@@ -1,7 +1,5 @@
 use llmeter::benchmarks::base::BenchmarkResultRecord;
-use llmeter::reporting::{
-    build_summary_rows, render_html_report, render_markdown_report,
-};
+use llmeter::reporting::{build_summary_rows, render_html_report, render_markdown_report};
 use llmeter::results::BenchmarkRun;
 use serde_json::json;
 
@@ -10,11 +8,11 @@ fn sample_run() -> BenchmarkRun {
         run_id: "test-run-1".to_string(),
         created_at: "2026-06-12T12:00:00".to_string(),
         models: vec!["llama3".to_string()],
-        benchmark_ids: vec!["generation-latency".to_string()],
+        benchmark_ids: vec!["chat-generation".to_string()],
         config: std::collections::HashMap::new(),
         results: vec![
             BenchmarkResultRecord {
-                benchmark_id: "generation-latency".to_string(),
+                benchmark_id: "chat-generation".to_string(),
                 benchmark_name: "Basic generation latency".to_string(),
                 model: "llama3".to_string(),
                 run_index: Some(1),
@@ -31,7 +29,7 @@ fn sample_run() -> BenchmarkRun {
                 metadata: None,
             },
             BenchmarkResultRecord {
-                benchmark_id: "generation-latency".to_string(),
+                benchmark_id: "chat-generation".to_string(),
                 benchmark_name: "Basic generation latency".to_string(),
                 model: "llama3".to_string(),
                 run_index: Some(2),
@@ -56,7 +54,7 @@ fn test_markdown_report_contains_summary() {
     let report = render_markdown_report(&run);
     assert!(report.contains("# LLMeter Report"));
     assert!(report.contains("test-run-1"));
-    assert!(report.contains("generation-latency"));
+    assert!(report.contains("chat-generation"));
     assert!(report.contains("llama3"));
     assert!(report.contains("tokens_per_second") || report.contains("tok/s"));
 }
@@ -90,7 +88,7 @@ fn test_build_summary_rows() {
 fn test_error_records_section_appears_in_markdown() {
     let mut run = sample_run();
     run.results.push(BenchmarkResultRecord {
-        benchmark_id: "generation-latency".to_string(),
+        benchmark_id: "chat-generation".to_string(),
         benchmark_name: "Basic generation latency".to_string(),
         model: "llama3".to_string(),
         run_index: Some(3),

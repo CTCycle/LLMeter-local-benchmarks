@@ -2,11 +2,11 @@
 
 ## Main menu
 
-1. Start Ollama server.
-2. Stop Ollama server.
-3. List installed models.
-4. Benchmark workspace.
-5. Reports.
+1. List providers.
+2. List models.
+3. Benchmark workspace.
+4. Reports.
+5. Help.
 6. Exit.
 
 ## Benchmark workspace
@@ -24,8 +24,8 @@
 3. Generate Markdown or HTML report.
 4. Back.
 
-## Entry point
+## Scriptable entry point
 
-The `main()` function in `src/main.rs` parses arguments with `clap` and dispatches to the appropriate command handler or interactive menu via `llmeter::ui::main_menu()`.
+`src/main.rs` parses arguments with `clap`, builds `AppConfig`, creates a `ProviderClient`, and dispatches to provider, model, benchmark, report, menu, or built-in help commands.
 
 Last updated: 2026-06-12

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use serde_json::Value;
@@ -17,15 +17,19 @@ pub struct SummaryRow {
     pub avg_wall_time_ms: Option<f64>,
     pub avg_time_to_first_token_ms: Option<f64>,
     pub avg_tokens_per_second: Option<f64>,
-    pub avg_total_duration_ms: Option<f64>,
-    pub avg_prompt_eval_duration_ms: Option<f64>,
-    pub avg_eval_duration_ms: Option<f64>,
+    pub avg_input_tokens: Option<f64>,
+    pub avg_output_tokens: Option<f64>,
+    pub avg_embedding_dimensions: Option<f64>,
     pub mean_similarity: Option<f64>,
+    pub avg_schema_valid: Option<f64>,
+    pub avg_tool_call_valid: Option<f64>,
 }
 
 pub fn build_summary_rows(run: &BenchmarkRun) -> Vec<SummaryRow> {
-    let mut grouped: HashMap<(String, String, Option<String>), Vec<&crate::benchmarks::base::BenchmarkResultRecord>> =
-        HashMap::new();
+    let mut grouped: HashMap<
+        (String, String, Option<String>),
+        Vec<&crate::benchmarks::base::BenchmarkResultRecord>,
+    > = HashMap::new();
 
     for record in &run.results {
         let key = (
@@ -54,10 +58,12 @@ pub fn build_summary_rows(run: &BenchmarkRun) -> Vec<SummaryRow> {
             avg_time_to_first_token_ms: metric_mean(&records, "time_to_first_token_ms"),
             avg_tokens_per_second: metric_mean(&records, "tokens_per_second")
                 .or_else(|| metric_mean(&records, "mean_tokens_per_second")),
-            avg_total_duration_ms: metric_mean(&records, "api_total_duration_ms"),
-            avg_prompt_eval_duration_ms: metric_mean(&records, "api_prompt_eval_duration_ms"),
-            avg_eval_duration_ms: metric_mean(&records, "api_eval_duration_ms"),
+            avg_input_tokens: metric_mean(&records, "input_tokens"),
+            avg_output_tokens: metric_mean(&records, "output_tokens"),
+            avg_embedding_dimensions: metric_mean(&records, "embedding_dimensions"),
             mean_similarity: metric_mean(&records, "mean_pairwise_similarity"),
+            avg_schema_valid: metric_success_ratio(&records, "schema_valid"),
+            avg_tool_call_valid: metric_success_ratio(&records, "tool_call_valid"),
         });
     }
     rows
@@ -77,6 +83,22 @@ fn metric_mean(
     }
     let mean = values.iter().sum::<f64>() / values.len() as f64;
     Some((mean * 10000.0).round() / 10000.0)
+}
+
+fn metric_success_ratio(
+    records: &[&crate::benchmarks::base::BenchmarkResultRecord],
+    key: &str,
+) -> Option<f64> {
+    let values: Vec<bool> = records
+        .iter()
+        .filter_map(|r| r.metrics.get(key))
+        .filter_map(|v| v.as_bool())
+        .collect();
+    if values.is_empty() {
+        return None;
+    }
+    let success = values.iter().filter(|&&v| v).count() as f64;
+    Some((success / values.len() as f64 * 1000.0).round() / 1000.0)
 }
 
 pub fn best_throughput_row(rows: &[SummaryRow]) -> Option<&SummaryRow> {
@@ -127,6 +149,12 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
             run.benchmark_ids.join(", ")
         }
     ));
+    if let Some(provider) = run.config.get("provider") {
+        lines.push(format!("**Provider:** `{provider}`"));
+    }
+    if let Some(base_url) = run.config.get("base_url") {
+        lines.push(format!("**Base URL:** `{base_url}`"));
+    }
     lines.push(String::new());
     lines.push("## Executive summary".to_string());
     lines.push(String::new());
@@ -169,11 +197,11 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
 
     lines.push("## Aggregated benchmark results".to_string());
     lines.push(String::new());
-    lines.push("| Model | Benchmark | Prompt | Records | Errors | Avg wall ms | Avg TTFT ms | Avg tok/s | Avg total ms | Prompt eval ms | Eval ms | Similarity |".to_string());
-    lines.push("|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:---:|".to_string());
+    lines.push("| Model | Benchmark | Prompt | Records | Errors | Avg wall ms | Avg TTFT ms | Avg tok/s | Input tok | Output tok | Embed dims | Similarity | Schema ok | Tool ok |".to_string());
+    lines.push("|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|".to_string());
     for row in &rows {
         lines.push(format!(
-            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
             md(&row.model),
             md(&row.benchmark_id),
             md(row.prompt_name.as_deref().unwrap_or("all")),
@@ -182,17 +210,22 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
             fmt(row.avg_wall_time_ms),
             fmt(row.avg_time_to_first_token_ms),
             fmt(row.avg_tokens_per_second),
-            fmt(row.avg_total_duration_ms),
-            fmt(row.avg_prompt_eval_duration_ms),
-            fmt(row.avg_eval_duration_ms),
+            fmt(row.avg_input_tokens),
+            fmt(row.avg_output_tokens),
+            fmt(row.avg_embedding_dimensions),
             fmt_digits(row.mean_similarity, 4),
+            fmt_ratio(row.avg_schema_valid),
+            fmt_ratio(row.avg_tool_call_valid),
         ));
     }
     lines.push(String::new());
 
     lines.push("## Detailed records".to_string());
     lines.push(String::new());
-    lines.push("| Model | Benchmark | Prompt | Run | Wall ms | TTFT ms | Tok/s | Status | Preview |".to_string());
+    lines.push(
+        "| Model | Benchmark | Prompt | Run | Wall ms | TTFT ms | Tok/s | Status | Preview |"
+            .to_string(),
+    );
     lines.push("|---|---|---|---:|---:|---:|---:|---|---|".to_string());
     for record in &run.results {
         let metrics = &record.metrics;
@@ -209,7 +242,11 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
             fmt(wall),
             fmt(ttft),
             fmt(tps),
-            if record.error.is_some() { "ERROR" } else { "OK" },
+            if record.error.is_some() {
+                "ERROR"
+            } else {
+                "OK"
+            },
             md(record.response_preview.as_deref().unwrap_or("")),
         ));
     }
@@ -236,7 +273,8 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
     lines.push(String::new());
     lines.push("- Wall time is measured by the CLI around the request.".to_string());
     lines.push("- Time to first token is measured only for streaming benchmark calls.".to_string());
-    lines.push("- Ollama duration fields come from the final API response when available.".to_string());
+    lines.push("- Token counts and endpoint-specific fields are reported only when the provider returns them.".to_string());
+    lines.push("- Structured output, tool calling, responses, and embeddings may be unsupported by some local servers or models.".to_string());
     lines.push("- Results are local-machine specific. Compare runs from the same host for useful conclusions.".to_string());
     lines.push(String::new());
 
@@ -315,7 +353,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
         .iter()
         .map(|row| {
             format!(
-                "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+        "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
                 escape(&row.model),
                 escape(&row.benchmark_id),
                 escape(row.prompt_name.as_deref().unwrap_or("all")),
@@ -324,10 +362,12 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
                 fmt(row.avg_wall_time_ms),
                 fmt(row.avg_time_to_first_token_ms),
                 fmt(row.avg_tokens_per_second),
-                fmt(row.avg_total_duration_ms),
-                fmt(row.avg_prompt_eval_duration_ms),
-                fmt(row.avg_eval_duration_ms),
+                fmt(row.avg_input_tokens),
+                fmt(row.avg_output_tokens),
+                fmt(row.avg_embedding_dimensions),
                 fmt_digits(row.mean_similarity, 4),
+                fmt_ratio(row.avg_schema_valid),
+                fmt_ratio(row.avg_tool_call_valid),
             )
         })
         .collect::<Vec<_>>()
@@ -442,7 +482,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
   <h2>Aggregated benchmark results</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Model</th><th>Benchmark</th><th>Prompt</th><th>Records</th><th>Errors</th><th>Avg wall ms</th><th>Avg TTFT ms</th><th>Avg tok/s</th><th>Avg total ms</th><th>Prompt eval ms</th><th>Eval ms</th><th>Similarity</th></tr></thead>
+      <thead><tr><th>Model</th><th>Benchmark</th><th>Prompt</th><th>Records</th><th>Errors</th><th>Avg wall ms</th><th>Avg TTFT ms</th><th>Avg tok/s</th><th>Input tok</th><th>Output tok</th><th>Embed dims</th><th>Similarity</th><th>Schema ok</th><th>Tool ok</th></tr></thead>
       <tbody>{aggregate_rows}</tbody>
     </table>
   </div>
@@ -462,7 +502,8 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
   <ul>
     <li>Wall time is measured by the CLI around the request.</li>
     <li>Time to first token is measured only for streaming benchmark calls.</li>
-    <li>Ollama duration fields come from the final API response when available.</li>
+    <li>Token counts and endpoint-specific fields are reported only when the provider returns them.</li>
+    <li>Structured output, tool calling, responses, and embeddings may be unsupported by some local servers or models.</li>
     <li>Results are local-machine specific. Compare runs from the same host for useful conclusions.</li>
   </ul>
 </section>
@@ -472,20 +513,16 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
 "#,
         run_id = escape(&run.run_id),
         created = escape(&run.created_at),
-        models = escape(
-            &if run.models.is_empty() {
-                "none".to_string()
-            } else {
-                run.models.join(", ")
-            }
-        ),
-        benchmarks = escape(
-            &if run.benchmark_ids.is_empty() {
-                "none".to_string()
-            } else {
-                run.benchmark_ids.join(", ")
-            }
-        ),
+        models = escape(&if run.models.is_empty() {
+            "none".to_string()
+        } else {
+            run.models.join(", ")
+        }),
+        benchmarks = escape(&if run.benchmark_ids.is_empty() {
+            "none".to_string()
+        } else {
+            run.benchmark_ids.join(", ")
+        }),
         summary_cards = summary_cards,
         config_rows = config_rows,
         aggregate_rows = aggregate_rows,
@@ -494,20 +531,28 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
     )
 }
 
-pub fn save_markdown_report(run: &BenchmarkRun, output_dir: &PathBuf) -> anyhow::Result<PathBuf> {
+pub fn save_markdown_report(run: &BenchmarkRun, output_dir: &Path) -> anyhow::Result<PathBuf> {
     let path = output_dir.join(format!("{}.report.md", run.run_id));
-    utils::ensure_dir(output_dir)
-        .with_context(|| format!("Failed to create output directory: {}", output_dir.display()))?;
+    utils::ensure_dir(output_dir).with_context(|| {
+        format!(
+            "Failed to create output directory: {}",
+            output_dir.display()
+        )
+    })?;
     let content = render_markdown_report(run);
     std::fs::write(&path, content)
         .with_context(|| format!("Failed to write markdown report: {}", path.display()))?;
     Ok(path)
 }
 
-pub fn save_html_report(run: &BenchmarkRun, output_dir: &PathBuf) -> anyhow::Result<PathBuf> {
+pub fn save_html_report(run: &BenchmarkRun, output_dir: &Path) -> anyhow::Result<PathBuf> {
     let path = output_dir.join(format!("{}.report.html", run.run_id));
-    utils::ensure_dir(output_dir)
-        .with_context(|| format!("Failed to create output directory: {}", output_dir.display()))?;
+    utils::ensure_dir(output_dir).with_context(|| {
+        format!(
+            "Failed to create output directory: {}",
+            output_dir.display()
+        )
+    })?;
     let content = render_html_report(run);
     std::fs::write(&path, content)
         .with_context(|| format!("Failed to write HTML report: {}", path.display()))?;
@@ -537,6 +582,17 @@ fn fmt_digits(value: Option<f64>, digits: usize) -> String {
     }
 }
 
+fn fmt_ratio(value: Option<f64>) -> String {
+    match value {
+        Some(v) => format!("{:.0}%", v * 100.0),
+        None => String::new(),
+    }
+}
+
 fn md(value: &str) -> String {
-    value.replace('|', "\\|").replace('\n', " ").trim().to_string()
+    value
+        .replace('|', "\\|")
+        .replace('\n', " ")
+        .trim()
+        .to_string()
 }

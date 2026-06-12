@@ -4,37 +4,45 @@
 
 | Command | Description |
 |---|---|
-| `llmeter status` | Show Ollama installation and server status. |
-| `llmeter server status` | Show server status (same as above). |
-| `llmeter server start` | Start `ollama serve` if not running. |
-| `llmeter server stop` | Stop tracked server process. Add `--force` for broad termination. |
-| `llmeter models` | List installed local models. Add `--json` for raw output. |
-| `llmeter show <model>` | Show model metadata from Ollama. |
+| `llmeter status` | Show selected provider status. |
+| `llmeter providers list` | List provider presets and default base URLs. |
+| `llmeter models` | List models exposed by the selected provider. |
+| `llmeter show <model>` | Show model metadata from `/v1/models`. |
 | `llmeter bench list` | List available benchmarks. |
 | `llmeter bench run [options]` | Run benchmarks non-interactively. |
 | `llmeter report list` | List saved result and report files. |
 | `llmeter report show [result]` | Render a saved JSON result as a terminal report. |
 | `llmeter report generate [result]` | Generate Markdown and/or HTML reports. |
+| `llmeter help [topic]` | Show built-in help. |
+| `llmeter /help [topic]` | Built-in help alias. |
 
 ## Automation patterns
 
-Run everything against all models:
+Run everything against all models exposed by Ollama:
 
 ```bash
-llmeter bench run --models all --benchmarks all --start-server --export both --report both
+llmeter --provider ollama bench run --models all --benchmarks all --export both --report both
 ```
 
-Run specific benchmarks with custom settings:
+Run selected capability benchmarks against LM Studio:
 
 ```bash
-llmeter bench run \
-  --models llama3.2,mistral \
-  --benchmarks generation-latency,prompt-sizes \
+llmeter --provider lmstudio bench run \
+  --models all \
+  --benchmarks chat-generation,structured-output,tool-calling \
   --runs 5 \
-  --num-predict 256 \
-  --temperature 0.5 \
+  --max-tokens 256 \
+  --temperature 0.2 \
   --export json \
   --report both
+```
+
+Use a custom llama.cpp URL:
+
+```bash
+llmeter --provider llama-cpp --base-url http://localhost:8081/v1 bench run \
+  --models all \
+  --benchmarks chat-generation,prompt-sizes,embeddings
 ```
 
 Custom output directory:
@@ -45,15 +53,13 @@ llmeter --output-dir ./ci-runs bench run --models all --benchmarks all
 
 ## CI integration
 
-Use `--start-server` to let LLMeter manage the Ollama server lifecycle in CI. The command exits with a non-zero code on fatal errors, making it suitable for CI pipelines.
+Start the provider server before invoking LLMeter. LLMeter exits with a non-zero code on fatal errors.
 
-Example GitHub Actions step (using prebuilt binary):
+Example:
 
 ```yaml
-- name: Download llmeter
-  run: curl -Lo llmeter https://github.com/.../releases/latest/download/llmeter-linux-x86_64 && chmod +x llmeter
-- name: Run benchmarks
-  run: ./llmeter bench run --models all --benchmarks all --start-server --export json --report md
+- name: Run local LLM benchmarks
+  run: ./llmeter --provider ollama bench run --models all --benchmarks all --export json --report md
 ```
 
 Last updated: 2026-06-12

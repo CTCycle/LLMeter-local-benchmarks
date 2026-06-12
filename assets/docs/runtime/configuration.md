@@ -4,31 +4,33 @@
 
 | Variable | Default | Description |
 |---|---|---|
-| `OLLAMA_HOST` | `http://localhost:11434` | Ollama server base URL. Not prefixed with `LLMETER` because it is an Ollama standard variable. |
+| `LLMETER_PROVIDER` | `ollama` | Provider preset: `ollama`, `lmstudio`, `llama-cpp`, or `openai-compatible`. |
+| `LLMETER_BASE_URL` | provider default | OpenAI-compatible `/v1` base URL override. |
+| `OLLAMA_HOST` | unset | Ollama host compatibility value, mapped to `<OLLAMA_HOST>/v1`. |
+| `LMSTUDIO_BASE_URL` | unset | LM Studio base URL override. |
+| `LLAMA_CPP_BASE_URL` | unset | llama.cpp base URL override. |
 | `LLMETER_TIMEOUT` | `120` | HTTP request timeout in seconds. |
 | `LLMETER_OUTPUT_DIR` | `benchmark_results` | Directory for result and report files. |
-| `LLMETER_STATE_DIR` | `~/.llmeter` | Directory for runtime state (PID file, server logs). |
-| `LLMETER_RUNS` | `3` | Default number of repeated runs per benchmark. |
-| `LLMETER_NUM_PREDICT` | `128` | Default `num_predict` option passed to Ollama. |
-| `LLMETER_TEMPERATURE` | `0.2` | Default temperature option passed to Ollama. |
+| `LLMETER_RUNS` | `3` | Default repeated runs per benchmark. |
+| `LLMETER_MAX_TOKENS` | `128` | Default generation output token cap. |
+| `LLMETER_TEMPERATURE` | `0.2` | Default sampling temperature. |
 
 ## AppConfig struct
 
-The `AppConfig` struct in `config.rs` reads these environment variables at instantiation time using `std::env::var()` with defaults. CLI flag values (parsed by `clap`) override the environment variables.
+`AppConfig` in `src/config.rs` reads environment variables at instantiation time. CLI flag values override environment variables.
 
 Fields:
 
-- `host` — `String`, Ollama host URL.
-- `timeout` — `f64`, HTTP timeout in seconds.
-- `output_dir` — `PathBuf`, output directory for results.
-- `state_dir` — `PathBuf`, state directory for PID and logs.
-- `default_runs` — `u32`, default repetitions.
-- `default_num_predict` — `u32`, default token cap.
-- `default_temperature` — `f64`, default temperature.
-- `api_base_url` — derived `String`, ensures a trailing `/api` path.
+- `provider` - selected provider preset.
+- `base_url` - normalized OpenAI-compatible `/v1` base URL.
+- `timeout` - HTTP timeout in seconds.
+- `output_dir` - directory for results and reports.
+- `default_runs` - default repetitions.
+- `default_max_tokens` - default output token cap.
+- `default_temperature` - default sampling temperature.
 
 ## CLI overrides
 
-Every config field can be overridden at runtime via CLI flags (`--host`, `--timeout`, `--output-dir`, `--runs`, `--num-predict`, `--temperature`). Flag values take precedence over environment variables.
+Use `--provider`, `--base-url`, `--timeout`, `--output-dir`, `--runs`, `--max-tokens`, and `--temperature`.
 
 Last updated: 2026-06-12

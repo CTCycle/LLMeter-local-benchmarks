@@ -3,16 +3,25 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 use crate::errors::LLMeterError;
+use crate::providers::ProviderKind;
 
 #[derive(Parser)]
 #[command(
     name = "llmeter",
-    about = "Benchmark local Ollama models from a modern interactive CLI.",
-    version = "0.2.0"
+    about = "Benchmark local OpenAI-compatible LLM providers from a modern CLI.",
+    version = "0.3.0",
+    disable_help_subcommand = true
 )]
 pub struct Cli {
-    #[arg(long, help = "Ollama host, default from OLLAMA_HOST or http://localhost:11434")]
-    pub host: Option<String>,
+    #[arg(
+        long,
+        value_enum,
+        help = "Provider preset: ollama, lmstudio, llama-cpp, or openai-compatible"
+    )]
+    pub provider: Option<ProviderKind>,
+
+    #[arg(long, help = "OpenAI-compatible /v1 base URL")]
+    pub base_url: Option<String>,
 
     #[arg(long, help = "HTTP request timeout in seconds")]
     pub timeout: Option<f64>,
@@ -26,25 +35,23 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    #[command(about = "Show Ollama installation and server status")]
+    #[command(about = "Show provider API status")]
     Status,
 
-    #[command(about = "Manage the local Ollama server")]
-    Server {
+    #[command(about = "List supported provider presets")]
+    Providers {
         #[command(subcommand)]
-        server_command: ServerCommands,
+        provider_command: ProviderCommands,
     },
 
-    #[command(about = "List installed local Ollama models")]
+    #[command(about = "List local models exposed by the selected provider")]
     Models {
         #[arg(long, help = "Print raw JSON")]
         json: bool,
     },
 
-    #[command(about = "Show model metadata from Ollama")]
-    Show {
-        model: String,
-    },
+    #[command(about = "Show model metadata from the selected provider")]
+    Show { model: String },
 
     #[command(about = "Benchmark menu and commands")]
     Bench {
@@ -58,23 +65,20 @@ pub enum Commands {
         report_command: ReportCommands,
     },
 
+    #[command(
+        about = "Show built-in help. Use a topic such as providers, bench, reports, or examples",
+        visible_alias = "/help"
+    )]
+    Help { topic: Option<String> },
+
     #[command(about = "Open the interactive main menu")]
     Menu,
 }
 
 #[derive(Subcommand)]
-pub enum ServerCommands {
-    #[command(about = "Show server status")]
-    Status,
-
-    #[command(about = "Start 'ollama serve' if not running")]
-    Start,
-
-    #[command(about = "Stop a server started by this CLI")]
-    Stop {
-        #[arg(long, help = "Force-stop ollama server processes, not only the tracked process")]
-        force: bool,
-    },
+pub enum ProviderCommands {
+    #[command(about = "List provider presets and default base URLs")]
+    List,
 }
 
 #[derive(Subcommand)]
@@ -93,10 +97,10 @@ pub enum BenchCommands {
         #[arg(long, help = "Repeated runs per benchmark")]
         runs: Option<u32>,
 
-        #[arg(long, help = "Ollama num_predict option")]
-        num_predict: Option<u32>,
+        #[arg(long, help = "Maximum output tokens for generation-style requests")]
+        max_tokens: Option<u32>,
 
-        #[arg(long, help = "Ollama temperature option")]
+        #[arg(long, help = "Sampling temperature")]
         temperature: Option<f64>,
 
         #[arg(long, default_value = "both", help = "Raw result export format")]
@@ -105,11 +109,8 @@ pub enum BenchCommands {
         #[arg(long, default_value = "both", help = "Formatted report export format")]
         report: String,
 
-        #[arg(long, help = "Start Ollama if the server is not running")]
-        start_server: bool,
-
-        #[arg(long = "option", action = clap::ArgAction::Append, help = "Extra Ollama option as key=value, repeatable")]
-        option: Vec<String>,
+        #[arg(long = "param", action = clap::ArgAction::Append, help = "Extra provider request parameter as key=value, repeatable")]
+        param: Vec<String>,
     },
 
     #[command(about = "Open the interactive benchmark menu")]
@@ -122,9 +123,7 @@ pub enum ReportCommands {
     List,
 
     #[command(about = "Render a saved JSON result as a terminal report")]
-    Show {
-        result: Option<String>,
-    },
+    Show { result: Option<String> },
 
     #[command(about = "Generate Markdown and/or HTML reports from a saved JSON result")]
     Generate {
@@ -138,16 +137,19 @@ pub enum ReportCommands {
 pub const EXPORT_CHOICES: &[&str] = &["json", "csv", "both", "none"];
 pub const REPORT_CHOICES: &[&str] = &["md", "html", "both", "none"];
 
-pub fn parse_options(values: &[String]) -> anyhow::Result<HashMap<String, Value>> {
+pub fn parse_params(values: &[String]) -> anyhow::Result<HashMap<String, Value>> {
     let mut parsed: HashMap<String, Value> = HashMap::new();
     for item in values {
         let eq_pos = item.find('=').ok_or_else(|| {
-            LLMeterError::InvalidOption(format!("Invalid --option '{item}'. Use key=value."))
+            LLMeterError::InvalidOption(format!("Invalid --param '{item}'. Use key=value."))
         })?;
         let key = item[..eq_pos].trim().to_string();
         let value_str = item[eq_pos + 1..].trim().to_string();
         if key.is_empty() {
-            return Err(LLMeterError::InvalidOption(format!("Invalid --option '{item}'. Empty key.")).into());
+            return Err(LLMeterError::InvalidOption(format!(
+                "Invalid --param '{item}'. Empty key."
+            ))
+            .into());
         }
         let value: Value = serde_json::from_str(&value_str).unwrap_or(Value::String(value_str));
         parsed.insert(key, value);

@@ -4,8 +4,8 @@ use serde_json::Value;
 
 use crate::benchmarks::base::{Benchmark, BenchmarkContext, BenchmarkResultRecord};
 use crate::benchmarks::metrics::{generation_metrics, preview};
-use crate::ollama::client::OllamaClient;
 use crate::prompts::prompts_by_size;
+use crate::providers::ProviderClient;
 
 pub struct PromptSizePerformanceBenchmark;
 
@@ -24,28 +24,31 @@ impl Benchmark for PromptSizePerformanceBenchmark {
 
     fn run(
         &self,
-        client: &OllamaClient,
+        client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
     ) -> Vec<BenchmarkResultRecord> {
         let mut records = Vec::new();
-        let options = context.generation_options(Some(0.0), None);
+        let options = context.request_options(Some(0.0), None);
         let prompts = prompts_by_size();
 
         for (prompt_name, prompt) in &prompts {
+            let messages = serde_json::json!([
+                {"role": "user", "content": prompt}
+            ]);
             for run_index in 1..=context.runs {
-                let record = match client.generate_stream(
+                let record = match client.chat_completion(
                     model,
-                    prompt,
+                    messages.clone(),
+                    context.max_tokens,
+                    0.0,
+                    true,
                     Some(&options),
-                    Some(&context.keep_alive),
                 ) {
                     Ok(result) => {
                         let mut metrics = generation_metrics(&result);
-                        metrics.insert(
-                            "prompt_chars".to_string(),
-                            Value::from(prompt.len() as u64),
-                        );
+                        metrics
+                            .insert("prompt_chars".to_string(), Value::from(prompt.len() as u64));
                         BenchmarkResultRecord {
                             benchmark_id: self.id().to_string(),
                             benchmark_name: self.name().to_string(),
@@ -53,7 +56,7 @@ impl Benchmark for PromptSizePerformanceBenchmark {
                             run_index: Some(run_index),
                             prompt_name: Some(prompt_name.to_string()),
                             metrics,
-                            response_preview: Some(preview(&result.response, 180)),
+                            response_preview: Some(preview(&result.response_text, 180)),
                             error: None,
                             metadata: Some({
                                 let mut m = HashMap::new();
