@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from ollama_bench.benchmarks.base import Benchmark
-from ollama_bench.benchmarks.consistency import ResponseConsistencyBenchmark
-from ollama_bench.benchmarks.generation import BasicGenerationLatencyBenchmark
-from ollama_bench.benchmarks.prompt_sizes import PromptSizePerformanceBenchmark
-from ollama_bench.errors import BenchmarkError
+from llmeter.benchmarks.base import Benchmark
+from llmeter.benchmarks.consistency import ResponseConsistencyBenchmark
+from llmeter.benchmarks.generation import BasicGenerationLatencyBenchmark
+from llmeter.benchmarks.prompt_sizes import PromptSizePerformanceBenchmark
+from llmeter.errors import BenchmarkError
 
 
 class BenchmarkRegistry:

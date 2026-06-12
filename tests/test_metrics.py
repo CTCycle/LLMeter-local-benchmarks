@@ -1,5 +1,5 @@
-from ollama_bench.benchmarks.metrics import pairwise_similarity
-from ollama_bench.ollama.client import GenerateResult
+from llmeter.benchmarks.metrics import pairwise_similarity
+from llmeter.ollama.client import GenerateResult
 
 
 def test_generate_result_tokens_per_second():

@@ -1,4 +1,4 @@
-# Ollama Local Bench
+# LLMeter
 
 A Python 3.14 interactive CLI for benchmarking locally installed Ollama models.
 
@@ -32,7 +32,7 @@ ollama pull llama3.2
 
 ```bash
 git clone <your-new-repo-url>
-cd ollama-local-bench
+cd llmeter
 python3.14 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -53,19 +53,19 @@ python -m pip install -e ".[dev]"
 Open the main menu:
 
 ```bash
-ollama-bench
+llmeter
 ```
 
 Open the benchmark workspace directly:
 
 ```bash
-ollama-bench bench menu
+llmeter bench menu
 ```
 
 Open the report workspace directly:
 
 ```bash
-ollama-bench report
+llmeter report
 ```
 
 ## Scriptable usage
@@ -73,43 +73,43 @@ ollama-bench report
 Check status:
 
 ```bash
-ollama-bench status
+llmeter status
 ```
 
 Start Ollama if needed:
 
 ```bash
-ollama-bench server start
+llmeter server start
 ```
 
 List installed models:
 
 ```bash
-ollama-bench models
+llmeter models
 ```
 
 Show model metadata:
 
 ```bash
-ollama-bench show llama3.2
+llmeter show llama3.2
 ```
 
 List benchmark tests:
 
 ```bash
-ollama-bench bench list
+llmeter bench list
 ```
 
 Run all benchmarks against all installed models and generate raw plus formatted outputs:
 
 ```bash
-ollama-bench bench run --models all --benchmarks all --start-server
+llmeter bench run --models all --benchmarks all --start-server
 ```
 
 Run selected benchmarks:
 
 ```bash
-ollama-bench bench run \
+llmeter bench run \
   --models llama3.2,mistral \
   --benchmarks generation-latency,prompt-sizes \
   --runs 3 \
@@ -122,13 +122,13 @@ ollama-bench bench run \
 Generate a report from the latest saved JSON result:
 
 ```bash
-ollama-bench report generate --format both
+llmeter report generate --format both
 ```
 
 Show the latest saved result as a terminal report:
 
 ```bash
-ollama-bench report show
+llmeter report show
 ```
 
 ## Benchmark tests included
@@ -159,13 +159,13 @@ Generated outputs can include:
 Change the output directory with:
 
 ```bash
-ollama-bench --output-dir ./runs bench run --models all --benchmarks all
+llmeter --output-dir ./runs bench run --models all --benchmarks all
 ```
 
 Or set:
 
 ```bash
-export OLLAMA_BENCH_OUTPUT_DIR=./runs
+export LLMETER_OUTPUT_DIR=./runs
 ```
 
 ## Configuration environment variables
@@ -173,17 +173,17 @@ export OLLAMA_BENCH_OUTPUT_DIR=./runs
 | Variable | Default |
 |---|---:|
 | `OLLAMA_HOST` | `http://localhost:11434` |
-| `OLLAMA_BENCH_TIMEOUT` | `120` |
-| `OLLAMA_BENCH_OUTPUT_DIR` | `benchmark_results` |
-| `OLLAMA_BENCH_STATE_DIR` | `~/.ollama-bench` |
-| `OLLAMA_BENCH_RUNS` | `3` |
-| `OLLAMA_BENCH_NUM_PREDICT` | `128` |
-| `OLLAMA_BENCH_TEMPERATURE` | `0.2` |
+| `LLMETER_TIMEOUT` | `120` |
+| `LLMETER_OUTPUT_DIR` | `benchmark_results` |
+| `LLMETER_STATE_DIR` | `~/.llmeter` |
+| `LLMETER_RUNS` | `3` |
+| `LLMETER_NUM_PREDICT` | `128` |
+| `LLMETER_TEMPERATURE` | `0.2` |
 
 ## Architecture
 
 ```text
-src/ollama_bench/
+src/llmeter/
   cli.py                 argparse entrypoint and interactive menu orchestration
   ui.py                  Rich tables, panels, prompts, and terminal report rendering
   reporting.py           Markdown and HTML report generation
@@ -207,8 +207,8 @@ src/ollama_bench/
 Create a class with the benchmark interface:
 
 ```python
-from ollama_bench.benchmarks.base import BenchmarkContext, BenchmarkResultRecord
-from ollama_bench.ollama.client import OllamaClient
+from llmeter.benchmarks.base import BenchmarkContext, BenchmarkResultRecord
+from llmeter.ollama.client import OllamaClient
 
 class MyBenchmark:
     id = "my-benchmark"
@@ -219,7 +219,7 @@ class MyBenchmark:
         ...
 ```
 
-Register it in `src/ollama_bench/benchmarks/registry.py`.
+Register it in `src/llmeter/benchmarks/registry.py`.
 
 ## Development
 
@@ -232,7 +232,7 @@ python -m pytest -q
 Run the CLI without installing:
 
 ```bash
-PYTHONPATH=src python -m ollama_bench
+PYTHONPATH=src python -m llmeter
 ```
 
 ## Current limitations

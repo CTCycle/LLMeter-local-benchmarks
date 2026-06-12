@@ -6,8 +6,8 @@ from typing import Any
 import csv
 import json
 
-from ollama_bench.benchmarks.base import BenchmarkResultRecord
-from ollama_bench.utils import ensure_dir, slugify, utc_now_iso
+from llmeter.benchmarks.base import BenchmarkResultRecord
+from llmeter.utils import ensure_dir, slugify, utc_now_iso
 
 
 @dataclass(slots=True)

@@ -3,11 +3,11 @@ from __future__ import annotations
 from statistics import mean
 import time
 
-from ollama_bench.benchmarks.base import BenchmarkContext, BenchmarkResultRecord
-from ollama_bench.benchmarks.metrics import generation_metrics, pairwise_similarity, preview
-from ollama_bench.ollama.client import OllamaClient
-from ollama_bench.prompts import CONSISTENCY_PROMPT
-from ollama_bench.utils import ns_to_ms
+from llmeter.benchmarks.base import BenchmarkContext, BenchmarkResultRecord
+from llmeter.benchmarks.metrics import generation_metrics, pairwise_similarity, preview
+from llmeter.ollama.client import OllamaClient
+from llmeter.prompts import CONSISTENCY_PROMPT
+from llmeter.utils import ns_to_ms
 
 
 class ResponseConsistencyBenchmark:

@@ -8,15 +8,15 @@ from typing import Any
 
 from rich.prompt import Prompt
 
-from ollama_bench.benchmarks.registry import default_registry
-from ollama_bench.config import AppConfig
-from ollama_bench.errors import OllamaBenchError, OllamaServerError
-from ollama_bench.ollama.client import OllamaClient
-from ollama_bench.ollama.server import OllamaServerManager
-from ollama_bench.reporting import save_html_report, save_markdown_report
-from ollama_bench.results import BenchmarkRun, ResultStore
-from ollama_bench.runner import installed_model_names, run_benchmarks
-from ollama_bench.ui import (
+from llmeter.benchmarks.registry import default_registry
+from llmeter.config import AppConfig
+from llmeter.errors import LLMeterError, OllamaServerError
+from llmeter.ollama.client import OllamaClient
+from llmeter.ollama.server import OllamaServerManager
+from llmeter.reporting import save_html_report, save_markdown_report
+from llmeter.results import BenchmarkRun, ResultStore
+from llmeter.runner import installed_model_names, run_benchmarks
+from llmeter.ui import (
     ask_choice,
     ask_yes_no,
     choose_from_menu,
@@ -41,7 +41,7 @@ REPORT_CHOICES = ["md", "html", "both", "none"]
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="ollama-bench",
+        prog="llmeter",
         description="Benchmark local Ollama models from a modern interactive CLI.",
     )
     parser.add_argument("--host", default=None, help="Ollama host, default from OLLAMA_HOST or http://localhost:11434")
@@ -104,12 +104,12 @@ def parse_options(values: list[str]) -> dict[str, Any]:
     parsed: dict[str, Any] = {}
     for item in values:
         if "=" not in item:
-            raise OllamaBenchError(f"Invalid --option '{item}'. Use key=value.")
+            raise LLMeterError(f"Invalid --option '{item}'. Use key=value.")
         key, value = item.split("=", 1)
         key = key.strip()
         value = value.strip()
         if not key:
-            raise OllamaBenchError(f"Invalid --option '{item}'. Empty key.")
+            raise LLMeterError(f"Invalid --option '{item}'. Empty key.")
         try:
             parsed[key] = json.loads(value)
         except json.JSONDecodeError:
@@ -140,7 +140,7 @@ def command_bench_run(args: argparse.Namespace, config: AppConfig, client: Ollam
 
     available_models = installed_model_names(client)
     if args.models is None:
-        raise OllamaBenchError("--models is required for non-interactive benchmark runs. Use 'all' or a comma-separated list.")
+        raise LLMeterError("--models is required for non-interactive benchmark runs. Use 'all' or a comma-separated list.")
     selected_models = available_models if args.models.strip().lower() == "all" else parse_csv(args.models) or []
 
     selected_benchmarks: list[str] | None
@@ -356,12 +356,12 @@ def choose_result_file(store: ResultStore) -> Path | None:
 def resolve_result_file(config: AppConfig, maybe_path: Path | None) -> Path:
     if maybe_path:
         if not maybe_path.exists():
-            raise OllamaBenchError(f"Result file does not exist: {maybe_path}")
+            raise LLMeterError(f"Result file does not exist: {maybe_path}")
         return maybe_path
     store = ResultStore(config.output_dir)
     latest = store.latest_json_files(limit=1)
     if not latest:
-        raise OllamaBenchError(f"No JSON result files found in {config.output_dir}")
+        raise LLMeterError(f"No JSON result files found in {config.output_dir}")
     return latest[0]
 
 
@@ -463,7 +463,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         print("\nCancelled.", file=sys.stderr)
         return 130
-    except OllamaBenchError as exc:
+    except LLMeterError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
 
