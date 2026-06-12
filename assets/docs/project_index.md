@@ -16,7 +16,7 @@ This is the entry point for the LLMeter document ontology.
 
 | File | Summary |
 |---|---|
-| `architecture/system_overview.md` | Design goals, technology stack, and module map. |
+| `architecture/system_overview.md` | Design goals, Rust technology stack, and module map. |
 | `architecture/cli_flow.md` | Main menu, benchmark workspace, and reports workspace flows. |
 | `architecture/ollama_integration.md` | Ollama REST API endpoints, server lifecycle, and PID tracking. |
 | `architecture/result_storage.md` | BenchmarkRun model, result records, and JSON/CSV/HTML/MD file formats. |
@@ -25,15 +25,15 @@ This is the entry point for the LLMeter document ontology.
 
 | File | Summary |
 |---|---|
-| `coding/python.md` | Python 3.14 conventions, type hints, and code style enforced by ruff. |
-| `coding/testing_and_quality.md` | pytest configuration, ruff rules, and CI quality gates. |
+| `coding/rust.md` | Rust edition, crate conventions, `cargo fmt`, `clippy`, and module structure. |
+| `coding/testing_and_quality.md` | `cargo test`, `cargo clippy`, and CI quality gates. |
 
 ### `runtime/`
 
 | File | Summary |
 |---|---|
-| `runtime/configuration.md` | Environment variables (`LLMETER_*`), `OLLAMA_HOST`, and the `AppConfig` dataclass. |
-| `runtime/deployment.md` | pip install, dependency resolution, versioning, and packaging targets. |
+| `runtime/configuration.md` | Environment variables (`LLMETER_*`), `OLLAMA_HOST`, and the `AppConfig` struct. |
+| `runtime/deployment.md` | `cargo install`, prebuilt binaries, musl targets, and versioning. |
 
 ### `user/`
 
@@ -42,7 +42,7 @@ This is the entry point for the LLMeter document ontology.
 | `user/getting_started.md` | Requirements, installation steps, and first-run walkthrough. |
 | `user/interactive_usage.md` | Main menu, guided benchmark runs, and interactive report flows. |
 | `user/scriptable_usage.md` | Subcommand reference, automation patterns, and CI integration. |
-| `user/benchmarks.md` | Available benchmark tests, the benchmark protocol, and how to add new ones. |
+| `user/benchmarks.md` | Available benchmark tests, the `Benchmark` trait, and how to add new ones. |
 | `user/troubleshooting.md` | Common issues, FAQ, and file locations. |
 
 ## Reading discipline

@@ -6,43 +6,40 @@
 |---|---|---|
 | `generation-latency` | Basic generation latency | Measures wall time, time to first token, Ollama duration fields, and output token throughput for a short prompt. |
 | `consistency` | Response consistency | Repeats the same prompt multiple times and reports exact-match ratio and pairwise text similarity. |
-| `prompt-sizes` | Prompt size performance | Runs short, medium, and long prompts to compare prompt processing time vs generation time. |
+| `prompt-sizes` | Performance across prompt sizes | Runs short, medium, and long prompts to compare prompt processing time vs generation time. |
 
-## Benchmark protocol
+## Benchmark trait
 
-Every benchmark is a class that follows this protocol:
+Every benchmark implements the `Benchmark` trait:
 
-```python
-class MyBenchmark:
-    id = "my-benchmark"          # unique string key
-    name = "My benchmark"        # human-readable name
-    description = "..."          # what it measures
-
-    def run(
-        self,
-        client: OllamaClient,
-        model: str,
-        context: BenchmarkContext,
-    ) -> list[BenchmarkResultRecord]:
-        ...
+```rust
+pub trait Benchmark: Send + Sync {
+    fn id(&self) -> &str;
+    fn name(&self) -> &str;
+    fn description(&self) -> &str;
+    fn run(
+        &self,
+        client: &OllamaClient,
+        model: &str,
+        context: &BenchmarkContext,
+    ) -> Vec<BenchmarkResultRecord>;
+}
 ```
 
 Key types:
 
-- `OllamaClient` — small REST client for the Ollama API.
-- `BenchmarkContext` — holds `runs`, `num_predict`, `temperature`, and any extra options.
-- `BenchmarkResultRecord` — dataclass with `benchmark_id`, `model`, `run_index`, `prompt_name`, `metrics` (dict), `response_preview`, and optional `error`.
+- `OllamaClient` — reqwest-based HTTP client for the Ollama API.
+- `BenchmarkContext` — holds `runs`, `num_predict`, `temperature`, and extra options.
+- `BenchmarkResultRecord` — struct with `benchmark_id`, `model`, `run_index`, `prompt_name`, `metrics` (HashMap), `response_preview`, and optional `error`.
 
 ## Adding a benchmark
 
-1. Create a new file in `src/llmeter/benchmarks/`.
-2. Implement the class following the protocol above.
-3. Import and register it in `src/llmeter/benchmarks/registry.py`:
+1. Create a new file in `src/benchmarks/`.
+2. Implement the `Benchmark` trait for your struct.
+3. Register it in `src/benchmarks/registry.rs`:
 
-```python
-from llmeter.benchmarks.my_benchmark import MyBenchmark
-
-default_registry().register(MyBenchmark())
+```rust
+registry.register(Box::new(MyBenchmark));
 ```
 
 The benchmark will automatically appear in the catalog and be selectable in both interactive and scriptable modes.

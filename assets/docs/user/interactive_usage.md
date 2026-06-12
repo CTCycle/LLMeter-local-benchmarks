@@ -6,7 +6,7 @@
 llmeter
 ```
 
-The default command opens a Rich-powered interactive menu with these options:
+The default command opens an interactive menu driven by `inquire` with these options:
 
 1. **Start Ollama server** — starts `ollama serve` if not running.
 2. **Stop Ollama server** — stops the tracked server process.
@@ -22,7 +22,7 @@ Opened via `llmeter` then selecting option 4, or directly with `llmeter bench me
 Options:
 1. **View available benchmark tests** — prints the benchmark catalog.
 2. **Run a guided benchmark** — walks through model selection, benchmark selection, configuration, execution, and output saving.
-3. **View latest result as terminal report** — renders the most recent JSON result.
+3. **View latest result as terminal report** — renders the most recent JSON result via `comrak`.
 4. **Generate report from saved result** — select a saved result and output Markdown/HTML.
 5. **Back** — returns to main menu.
 
@@ -32,7 +32,7 @@ Opened via `llmeter` then selecting option 5, or directly with `llmeter report`.
 
 Options:
 1. **List saved result and report files** — shows recent JSON results and generated reports.
-2. **View latest result as terminal report** — renders as formatted Rich output.
+2. **View latest result as terminal report** — renders as formatted terminal output.
 3. **Generate Markdown or HTML report** — select a result file and output format.
 4. **Back** — returns to main menu.
 

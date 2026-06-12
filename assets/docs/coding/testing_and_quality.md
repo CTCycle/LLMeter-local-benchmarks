@@ -2,47 +2,57 @@
 
 ## Test framework
 
-pytest is the test runner. Configuration in `pyproject.toml`:
-
-```toml
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
-```
+Rust's built-in `#[test]` attribute is the test framework. Integration tests live in `tests/` and import the library crate via `use llmeter::...`.
 
 Run all tests:
 
 ```bash
-python -m pytest -q
+cargo test
 ```
 
-## Ruff
+Run a specific test:
 
-Ruff runs as a linter only (no formatter). The selected rules are `E`, `F`, `I`, `UP`, `B`, `SIM` with `E501` ignored (line length handled by the 120-char limit setting).
+```bash
+cargo test test_name
+```
+
+## Clippy
+
+Clippy runs as a linter with `-D warnings` (deny mode) in CI.
 
 Check lint:
 
 ```bash
-ruff check .
+cargo clippy -- -D warnings
+```
+
+## Formatting
+
+`cargo fmt` ensures consistent code style.
+
+Check formatting:
+
+```bash
+cargo fmt --check
 ```
 
 ## CI
 
 GitHub Actions runs on push and pull request. Steps:
-1. Setup Python 3.14.
-2. Install project with `.[dev]`.
-3. Run `ruff check .`
-4. Run `python -m pytest -q`
+1. Install stable Rust toolchain with clippy.
+2. Run `cargo fmt --check`.
+3. Run `cargo clippy -- -D warnings`.
+4. Run `cargo test`.
 
 ## Test coverage
 
-Currently no coverage threshold enforced. Tests live in `tests/` and mirror the source module structure. Each test file tests one source module (e.g. `test_results.py` tests `llmeter.results`).
+Currently no coverage threshold enforced. Each test file in `tests/` mirrors a source module:
 
-Test files import from the installed package:
-
-```python
-from llmeter.benchmarks.base import BenchmarkResultRecord
-from llmeter.results import BenchmarkRun, ResultStore
-```
+| Test file | Module under test |
+|---|---|
+| `tests/test_metrics.rs` | `llmeter::benchmarks::metrics` |
+| `tests/test_results.rs` | `llmeter::results` |
+| `tests/test_registry.rs` | `llmeter::benchmarks::registry` |
+| `tests/test_reporting.rs` | `llmeter::reporting` |
 
 Last updated: 2026-06-12

@@ -26,6 +26,6 @@
 
 ## Entry point
 
-The `main()` function in `cli.py` parses arguments with `argparse` and dispatches to the appropriate command handler or interactive menu. The `llmeter` console script (registered in `pyproject.toml`) calls this entry point.
+The `main()` function in `src/main.rs` parses arguments with `clap` and dispatches to the appropriate command handler or interactive menu via `llmeter::ui::main_menu()`.
 
 Last updated: 2026-06-12

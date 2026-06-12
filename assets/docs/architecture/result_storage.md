@@ -2,31 +2,35 @@
 
 ## BenchmarkRun model
 
-Each benchmark run becomes one `BenchmarkRun` object:
+Each benchmark run becomes one `BenchmarkRun` struct (defined in `results.rs`):
 
 ```text
-run_id
-created_at
-models
-benchmark_ids
-config
-results[]
+BenchmarkRun {
+    run_id: String,
+    created_at: String,
+    models: Vec<String>,
+    benchmark_ids: Vec<String>,
+    config: HashMap<String, Value>,
+    results: Vec<BenchmarkResultRecord>,
+}
 ```
 
 ## Result records
 
-Each result record contains:
+Each `BenchmarkResultRecord` contains:
 
 ```text
-benchmark_id
-benchmark_name
-model
-run_index
-prompt_name
-metrics
-response_preview
-error
-metadata
+BenchmarkResultRecord {
+    benchmark_id: String,
+    benchmark_name: String,
+    model: String,
+    run_index: Option<u32>,
+    prompt_name: Option<String>,
+    metrics: HashMap<String, Value>,
+    response_preview: Option<String>,
+    error: Option<String>,
+    metadata: Option<HashMap<String, Value>>,
+}
 ```
 
 ## File formats
@@ -35,7 +39,7 @@ Raw files are saved as JSON and CSV. Formatted reports are generated as Markdown
 
 | Format | Extension | Content |
 |---|---|---|
-| JSON | `.json` | Full `BenchmarkRun` serialized. |
+| JSON | `.json` | Full `BenchmarkRun` serialized via `serde`. |
 | CSV | `.csv` | Flattened result records for spreadsheet analysis. |
 | Markdown | `.report.md` | Human-readable summary with aggregated tables and interpretation notes. |
 | HTML | `.report.html` | Self-contained browser report with summary cards, sortable tables, and dark mode support. |
