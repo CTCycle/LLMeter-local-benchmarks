@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::benchmarks::base::{Benchmark, BenchmarkContext, BenchmarkResultRecord};
+use crate::benchmarks::base::{
+    Benchmark, BenchmarkContext, BenchmarkProgressSink, BenchmarkResultRecord, BenchmarkStepStatus,
+    BenchmarkStepUpdate,
+};
 use crate::benchmarks::metrics::{generation_metrics, preview};
 use crate::prompts::SHORT_PROMPT;
 use crate::providers::ProviderClient;
@@ -20,19 +23,33 @@ impl Benchmark for BasicGenerationLatencyBenchmark {
         "Measures wall time, time to first token, usage fields, and output token throughput."
     }
 
+    fn planned_steps(&self, context: &BenchmarkContext) -> u32 {
+        context.runs
+    }
+
     fn run(
         &self,
         client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
+        progress: &mut dyn BenchmarkProgressSink,
     ) -> Vec<BenchmarkResultRecord> {
         let mut records = Vec::new();
         let options = context.request_options(Some(0.0), None);
         let messages = serde_json::json!([
             {"role": "user", "content": SHORT_PROMPT}
         ]);
+        let total_steps = self.planned_steps(context);
 
         for run_index in 1..=context.runs {
+            progress.on_step(BenchmarkStepUpdate {
+                status: BenchmarkStepStatus::Started,
+                step_index: run_index,
+                total_steps,
+                run_index: Some(run_index),
+                prompt_name: Some("short".to_string()),
+                message: "Issuing chat completion request".to_string(),
+            });
             let record = match client.chat_completion(
                 model,
                 messages.clone(),
@@ -73,6 +90,14 @@ impl Benchmark for BasicGenerationLatencyBenchmark {
                 },
             };
             records.push(record);
+            progress.on_step(BenchmarkStepUpdate {
+                status: BenchmarkStepStatus::Completed,
+                step_index: run_index,
+                total_steps,
+                run_index: Some(run_index),
+                prompt_name: Some("short".to_string()),
+                message: "Completed chat completion request".to_string(),
+            });
         }
         records
     }

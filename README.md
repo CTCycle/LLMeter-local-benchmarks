@@ -1,46 +1,98 @@
 # LLMeter
 
-LLMeter is a self-contained Rust CLI for benchmarking local OpenAI-compatible LLM providers.
+[![Rust](https://img.shields.io/badge/rust-2021-orange?logo=rust&logoColor=white)](./Cargo.toml) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](./LICENSE)
 
-It works with provider servers that expose `/v1` APIs, including Ollama, LM Studio, llama.cpp, and custom OpenAI-compatible local endpoints.
+## 1. Project Overview
+LLMeter is a self-contained Rust CLI for benchmarking local OpenAI-compatible LLM providers. It targets local `/v1` endpoints such as Ollama, LM Studio, llama.cpp, and custom OpenAI-compatible servers, and it combines guided terminal flows with scriptable commands for repeatable benchmark runs.
 
-## Highlights
+Key capabilities:
+- interactive menu and scriptable subcommands
+- built-in benchmark suite for generation, responses, consistency, prompt sizes, structured output, tool calling, and embeddings
+- live benchmark progress with current phase, current step, and completion percentage
+- JSON and CSV raw exports plus Markdown and HTML reports
 
-- Provider presets for `ollama`, `lmstudio`, `llama-cpp`, and `openai-compatible`.
-- Interactive terminal menu plus scriptable subcommands.
-- Built-in benchmarks for chat generation, responses, prompt sizes, consistency, structured JSON output, tool/function calling, and embeddings.
-- Raw JSON/CSV exports plus Markdown/HTML reports.
-- Built-in `help` and `/help` command alias.
-- No Python, Node.js, virtualenv, or runtime service dependency.
+LLMeter does not start or stop provider servers. Start the local provider first, then point LLMeter at its `/v1` base URL.
 
-LLMeter does not start or stop provider servers. Start Ollama, LM Studio, llama.cpp, or your custom local server separately, then point LLMeter at its `/v1` base URL.
+## 2. Quick Start
 
-## Quick Start
-
+### 2.1 Build
 ```bash
-llmeter providers list
-llmeter --provider ollama status
-llmeter --provider ollama models
-llmeter --provider ollama bench run --models all --benchmarks all
+cargo build --release
 ```
 
-Open the interactive menu:
+### 2.2 Check Provider Status
+```bash
+llmeter --provider ollama status
+llmeter --provider ollama models
+```
 
+### 2.3 Run Benchmarks
+Scripted run:
+```bash
+llmeter --provider ollama bench run --models all --benchmarks all --export both --report both
+```
+
+Interactive run:
 ```bash
 llmeter
 ```
 
-## Documentation
+During benchmark execution, LLMeter shows live progress for validation, planning, benchmark steps, raw result saving, and report generation.
 
-- [User Manual](USER_MANUAL.md) - installation, provider setup, command reference, benchmark usage, reports, and troubleshooting.
-- [Project Docs](assets/docs/project_index.md) - architecture, runtime configuration, coding standards, and user docs used by maintainers.
+## 3. Using the CLI
+Typical workflow:
+1. Select or configure the provider and base URL.
+2. Verify the provider is reachable and exposes models.
+3. Run either the guided benchmark flow or `bench run`.
+4. Review the terminal summary.
+5. Open saved JSON, CSV, Markdown, or HTML outputs from the configured output directory.
 
-## Development
+Common commands:
+```bash
+llmeter providers list
+llmeter bench list
+llmeter report list
+llmeter report show
+llmeter help bench
+```
 
+## 4. Benchmark Progress and Outputs
+Benchmark runs now report:
+- current lifecycle phase
+- current model and benchmark
+- current run or prompt step where applicable
+- completion percentage based on planned benchmark work units
+
+Saved outputs can include:
+- `.json` raw benchmark run data
+- `.csv` flattened result exports
+- `.md` Markdown reports
+- `.html` formatted reports
+
+Default output location:
+- `benchmark_results`
+
+## 5. Development
+Run:
 ```bash
 cargo fmt --check
 cargo clippy -- -D warnings
 cargo test
 ```
 
-Last updated: 2026-06-12
+The codebase is organized under:
+- `src`: CLI, provider client, benchmark implementations, runner, reporting, and UI
+- `tests`: integration tests for metrics, registry, reporting, and results
+- `assets/docs`: maintainers' documentation tree
+
+## 6. Documentation Map
+- [USER_MANUAL.md](USER_MANUAL.md): end-user installation, commands, provider setup, reports, and troubleshooting.
+- [assets/docs/project_index.md](assets/docs/project_index.md): entry point for the internal documentation tree.
+- [assets/docs/architecture/cli_flow.md](assets/docs/architecture/cli_flow.md): menu structure and execution flow.
+- [assets/docs/user/interactive_usage.md](assets/docs/user/interactive_usage.md): guided menu behavior.
+- [assets/docs/user/scriptable_usage.md](assets/docs/user/scriptable_usage.md): non-interactive command usage.
+
+## 7. License
+Distributed under the MIT License. See [LICENSE](LICENSE).
+
+Last updated: 2026-06-15

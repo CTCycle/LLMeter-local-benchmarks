@@ -27,6 +27,33 @@ impl BenchmarkContext {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BenchmarkStepStatus {
+    Started,
+    Completed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BenchmarkStepUpdate {
+    pub status: BenchmarkStepStatus,
+    pub step_index: u32,
+    pub total_steps: u32,
+    pub run_index: Option<u32>,
+    pub prompt_name: Option<String>,
+    pub message: String,
+}
+
+pub trait BenchmarkProgressSink {
+    fn on_step(&mut self, update: BenchmarkStepUpdate);
+}
+
+#[derive(Debug, Default)]
+pub struct NullBenchmarkProgressSink;
+
+impl BenchmarkProgressSink for NullBenchmarkProgressSink {
+    fn on_step(&mut self, _update: BenchmarkStepUpdate) {}
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchmarkResultRecord {
     pub benchmark_id: String,
@@ -47,10 +74,12 @@ pub trait Benchmark: Send + Sync {
     fn id(&self) -> &str;
     fn name(&self) -> &str;
     fn description(&self) -> &str;
+    fn planned_steps(&self, context: &BenchmarkContext) -> u32;
     fn run(
         &self,
         client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
+        progress: &mut dyn BenchmarkProgressSink,
     ) -> Vec<BenchmarkResultRecord>;
 }

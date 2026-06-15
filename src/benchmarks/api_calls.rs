@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-use crate::benchmarks::base::{Benchmark, BenchmarkContext, BenchmarkResultRecord};
+use crate::benchmarks::base::{
+    Benchmark, BenchmarkContext, BenchmarkProgressSink, BenchmarkResultRecord, BenchmarkStepStatus,
+    BenchmarkStepUpdate,
+};
 use crate::benchmarks::metrics::{generation_metrics, preview};
 use crate::prompts::{
     EMBEDDINGS_INPUT, RESPONSES_PROMPT, STRUCTURED_OUTPUT_PROMPT, TOOL_CALL_PROMPT,
@@ -27,15 +30,29 @@ impl Benchmark for ResponsesGenerationBenchmark {
         "Measures generation through /v1/responses when the provider supports it."
     }
 
+    fn planned_steps(&self, context: &BenchmarkContext) -> u32 {
+        context.runs
+    }
+
     fn run(
         &self,
         client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
+        progress: &mut dyn BenchmarkProgressSink,
     ) -> Vec<BenchmarkResultRecord> {
         let options = serde_json::json!(context.options);
+        let total_steps = self.planned_steps(context);
         (1..=context.runs)
             .map(|run_index| {
+                progress.on_step(BenchmarkStepUpdate {
+                    status: BenchmarkStepStatus::Started,
+                    step_index: run_index,
+                    total_steps,
+                    run_index: Some(run_index),
+                    prompt_name: Some("responses".to_string()),
+                    message: "Issuing responses API request".to_string(),
+                });
                 match client.responses(
                     model,
                     Value::String(RESPONSES_PROMPT.to_string()),
@@ -61,6 +78,16 @@ impl Benchmark for ResponsesGenerationBenchmark {
                         options.clone(),
                     ),
                 }
+                .tap(|_| {
+                    progress.on_step(BenchmarkStepUpdate {
+                        status: BenchmarkStepStatus::Completed,
+                        step_index: run_index,
+                        total_steps,
+                        run_index: Some(run_index),
+                        prompt_name: Some("responses".to_string()),
+                        message: "Completed responses API request".to_string(),
+                    });
+                })
             })
             .collect()
     }
@@ -79,11 +106,16 @@ impl Benchmark for StructuredOutputBenchmark {
         "Requests schema-constrained JSON and validates the returned object shape."
     }
 
+    fn planned_steps(&self, context: &BenchmarkContext) -> u32 {
+        context.runs
+    }
+
     fn run(
         &self,
         client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
+        progress: &mut dyn BenchmarkProgressSink,
     ) -> Vec<BenchmarkResultRecord> {
         let schema = serde_json::json!({
             "type": "object",
@@ -108,9 +140,18 @@ impl Benchmark for StructuredOutputBenchmark {
         let messages = serde_json::json!([
             {"role": "user", "content": STRUCTURED_OUTPUT_PROMPT}
         ]);
+        let total_steps = self.planned_steps(context);
 
         (1..=context.runs)
             .map(|run_index| {
+                progress.on_step(BenchmarkStepUpdate {
+                    status: BenchmarkStepStatus::Started,
+                    step_index: run_index,
+                    total_steps,
+                    run_index: Some(run_index),
+                    prompt_name: Some("structured-json".to_string()),
+                    message: "Issuing structured output request".to_string(),
+                });
                 match client.chat_completion(
                     model,
                     messages.clone(),
@@ -150,6 +191,16 @@ impl Benchmark for StructuredOutputBenchmark {
                         options.clone(),
                     ),
                 }
+                .tap(|_| {
+                    progress.on_step(BenchmarkStepUpdate {
+                        status: BenchmarkStepStatus::Completed,
+                        step_index: run_index,
+                        total_steps,
+                        run_index: Some(run_index),
+                        prompt_name: Some("structured-json".to_string()),
+                        message: "Completed structured output request".to_string(),
+                    });
+                })
             })
             .collect()
     }
@@ -168,11 +219,16 @@ impl Benchmark for ToolCallingBenchmark {
         "Requests a tool call and validates the selected function and arguments."
     }
 
+    fn planned_steps(&self, context: &BenchmarkContext) -> u32 {
+        context.runs
+    }
+
     fn run(
         &self,
         client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
+        progress: &mut dyn BenchmarkProgressSink,
     ) -> Vec<BenchmarkResultRecord> {
         let options = serde_json::json!({
             "tools": [{
@@ -200,9 +256,18 @@ impl Benchmark for ToolCallingBenchmark {
         let messages = serde_json::json!([
             {"role": "user", "content": TOOL_CALL_PROMPT}
         ]);
+        let total_steps = self.planned_steps(context);
 
         (1..=context.runs)
             .map(|run_index| {
+                progress.on_step(BenchmarkStepUpdate {
+                    status: BenchmarkStepStatus::Started,
+                    step_index: run_index,
+                    total_steps,
+                    run_index: Some(run_index),
+                    prompt_name: Some("tool-call".to_string()),
+                    message: "Issuing tool-calling request".to_string(),
+                });
                 match client.chat_completion(
                     model,
                     messages.clone(),
@@ -239,6 +304,16 @@ impl Benchmark for ToolCallingBenchmark {
                         options.clone(),
                     ),
                 }
+                .tap(|_| {
+                    progress.on_step(BenchmarkStepUpdate {
+                        status: BenchmarkStepStatus::Completed,
+                        step_index: run_index,
+                        total_steps,
+                        run_index: Some(run_index),
+                        prompt_name: Some("tool-call".to_string()),
+                        message: "Completed tool-calling request".to_string(),
+                    });
+                })
             })
             .collect()
     }
@@ -257,14 +332,28 @@ impl Benchmark for EmbeddingsBenchmark {
         "Measures /v1/embeddings latency and returned vector dimensions."
     }
 
+    fn planned_steps(&self, context: &BenchmarkContext) -> u32 {
+        context.runs
+    }
+
     fn run(
         &self,
         client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
+        progress: &mut dyn BenchmarkProgressSink,
     ) -> Vec<BenchmarkResultRecord> {
+        let total_steps = self.planned_steps(context);
         (1..=context.runs)
             .map(|run_index| {
+                progress.on_step(BenchmarkStepUpdate {
+                    status: BenchmarkStepStatus::Started,
+                    step_index: run_index,
+                    total_steps,
+                    run_index: Some(run_index),
+                    prompt_name: Some("embedding".to_string()),
+                    message: "Issuing embeddings request".to_string(),
+                });
                 match client.embeddings(model, Value::String(EMBEDDINGS_INPUT.to_string())) {
                     Ok(result) => {
                         let mut metrics = generation_metrics(&result);
@@ -308,10 +397,29 @@ impl Benchmark for EmbeddingsBenchmark {
                         serde_json::json!({"input_chars": EMBEDDINGS_INPUT.len()}),
                     ),
                 }
+                .tap(|_| {
+                    progress.on_step(BenchmarkStepUpdate {
+                        status: BenchmarkStepStatus::Completed,
+                        step_index: run_index,
+                        total_steps,
+                        run_index: Some(run_index),
+                        prompt_name: Some("embedding".to_string()),
+                        message: "Completed embeddings request".to_string(),
+                    });
+                })
             })
             .collect()
     }
 }
+
+trait Tap: Sized {
+    fn tap(self, f: impl FnOnce(&Self)) -> Self {
+        f(&self);
+        self
+    }
+}
+
+impl<T> Tap for T {}
 
 fn ok_record<B: Benchmark + ?Sized>(
     benchmark: &B,

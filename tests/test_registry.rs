@@ -1,4 +1,15 @@
+use llmeter::benchmarks::base::BenchmarkContext;
 use llmeter::benchmarks::registry::default_registry;
+
+fn context(runs: u32) -> BenchmarkContext {
+    BenchmarkContext {
+        runs,
+        max_tokens: 128,
+        temperature: 0.5,
+        timeout: 30.0,
+        options: std::collections::HashMap::new(),
+    }
+}
 
 #[test]
 fn test_default_registry_contains_initial_benchmarks() {
@@ -50,4 +61,19 @@ fn test_get_benchmark_by_id() {
 fn test_get_nonexistent_benchmark() {
     let registry = default_registry();
     assert!(registry.get("nope").is_none());
+}
+
+#[test]
+fn test_prompt_sizes_planned_steps_match_prompt_count_times_runs() {
+    let registry = default_registry();
+    let benchmark = registry.get("prompt-sizes").unwrap();
+    assert_eq!(benchmark.planned_steps(&context(2)), 6);
+}
+
+#[test]
+fn test_consistency_planned_steps_has_minimum_of_two() {
+    let registry = default_registry();
+    let benchmark = registry.get("consistency").unwrap();
+    assert_eq!(benchmark.planned_steps(&context(1)), 2);
+    assert_eq!(benchmark.planned_steps(&context(4)), 4);
 }
