@@ -6,7 +6,22 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::benchmarks::base::BenchmarkResultRecord;
+use crate::performance::config::PerformancePlan;
+use crate::performance::resource::EnvironmentSnapshot;
+use crate::quality::manifest::QualityPlan;
 use crate::utils;
+
+fn default_schema_version() -> String {
+    "2.0".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum BenchmarkRunKind {
+    Benchmark,
+    Performance,
+    QualityPlan,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchmarkRun {
@@ -16,6 +31,16 @@ pub struct BenchmarkRun {
     pub benchmark_ids: Vec<String>,
     pub config: HashMap<String, Value>,
     pub results: Vec<BenchmarkResultRecord>,
+    #[serde(default = "default_schema_version")]
+    pub schema_version: String,
+    #[serde(default)]
+    pub run_kind: Option<BenchmarkRunKind>,
+    #[serde(default)]
+    pub environment: Option<EnvironmentSnapshot>,
+    #[serde(default)]
+    pub performance_plan: Option<PerformancePlan>,
+    #[serde(default)]
+    pub quality_plan: Option<QualityPlan>,
 }
 
 pub struct ResultStore {

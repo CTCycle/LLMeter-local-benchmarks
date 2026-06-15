@@ -1,6 +1,11 @@
 use llmeter::benchmarks::base::BenchmarkResultRecord;
+use llmeter::performance::config::{
+    ConcurrencySpec, OutputSizeSpec, PerformancePlan, PerformanceProfile, PromptSizeSpec,
+    WarmupConfig,
+};
+use llmeter::providers::ProviderKind;
 use llmeter::reporting::{build_summary_rows, render_html_report, render_markdown_report};
-use llmeter::results::BenchmarkRun;
+use llmeter::results::{BenchmarkRun, BenchmarkRunKind};
 use serde_json::json;
 
 fn sample_run() -> BenchmarkRun {
@@ -45,6 +50,11 @@ fn sample_run() -> BenchmarkRun {
                 metadata: None,
             },
         ],
+        schema_version: "2.0".to_string(),
+        run_kind: Some(BenchmarkRunKind::Benchmark),
+        environment: None,
+        performance_plan: None,
+        quality_plan: None,
     }
 }
 
@@ -103,4 +113,58 @@ fn test_error_records_section_appears_in_markdown() {
     assert!(report.contains("## Errors"));
     assert!(report.contains("connection refused"));
     assert!(report.contains("1"));
+}
+
+#[test]
+fn test_performance_report_sections_appear_when_plan_is_present() {
+    let mut run = sample_run();
+    run.performance_plan = Some(PerformancePlan {
+        provider: ProviderKind::Ollama,
+        models: vec!["llama3".to_string()],
+        profile: PerformanceProfile::Smoke,
+        prompt_sizes: PromptSizeSpec {
+            estimated_tokens: vec![128],
+        },
+        output_sizes: OutputSizeSpec {
+            estimated_tokens: vec![64],
+        },
+        concurrency: ConcurrencySpec { levels: vec![1] },
+        warmup: WarmupConfig { requests: 1 },
+        runs: 3,
+        stream: true,
+        workload_jsonl: None,
+        extra_params: std::collections::HashMap::new(),
+    });
+    run.results[0]
+        .metrics
+        .insert("concurrency".to_string(), json!(1));
+    run.results[0]
+        .metrics
+        .insert("wall_time_ms_p50".to_string(), json!(150.0));
+    run.results[0]
+        .metrics
+        .insert("wall_time_ms_p95".to_string(), json!(165.0));
+    run.results[0]
+        .metrics
+        .insert("wall_time_ms_p99".to_string(), json!(170.0));
+    run.results[0]
+        .metrics
+        .insert("ttft_ms_p50".to_string(), json!(40.0));
+    run.results[0]
+        .metrics
+        .insert("output_tokens_per_second".to_string(), json!(45.2));
+    run.results[0]
+        .metrics
+        .insert("requests_per_second".to_string(), json!(4.0));
+    run.results[0]
+        .metrics
+        .insert("error_count".to_string(), json!(0));
+    run.results[0].benchmark_id = "performance-scenario".to_string();
+
+    let markdown = render_markdown_report(&run);
+    let html = render_html_report(&run);
+
+    assert!(markdown.contains("## Performance Summary"));
+    assert!(markdown.contains("## Environment Snapshot"));
+    assert!(html.contains("Performance Summary"));
 }

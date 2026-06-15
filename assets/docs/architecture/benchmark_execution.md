@@ -5,9 +5,10 @@
 Benchmark runs originate from two surfaces:
 
 - `llmeter bench run ...` in scriptable mode.
+- `llmeter bench perf ...` in scriptable mode for native performance scenarios.
 - `llmeter` or `llmeter bench menu` in interactive mode.
 
-Both flows converge in `src/runner.rs` so selection, validation, progress, persistence, and report generation use the same execution path.
+Serial benchmark runs converge in `src/runner.rs`. Native performance scenarios use `src/performance/runner.rs`. Both paths persist the same `BenchmarkRun` shape and reuse the same save/report flow.
 
 ## Run request
 
@@ -42,6 +43,19 @@ The plan tracks:
 
 Planned steps come from each benchmark's `planned_steps()` implementation, which allows progress to reflect repeated runs and prompt variants before execution starts.
 
+`bench perf` first normalizes a `PerformancePlan` from CLI input:
+
+- profile: `smoke`, `latency`, `throughput`, or `sweep`
+- prompt token sizes
+- output token sizes
+- concurrency levels
+- warmup request count
+- measured run count
+- optional JSONL workload path
+- repeated provider request parameters
+
+The plan rejects zero runs, zero concurrency, and oversized prompt/output token requests unless `--param unsafe_large_prompt=true` is present.
+
 ## Progress lifecycle
 
 The terminal progress renderer receives a consistent lifecycle:
@@ -73,6 +87,37 @@ For each selected model:
 4. Append returned `BenchmarkResultRecord` values to the current `BenchmarkRun`.
 
 There is no concurrent benchmark scheduling. This keeps timing simpler and makes local-machine comparisons more interpretable.
+
+`bench perf` keeps the legacy benchmark path unchanged and uses a separate isolated Tokio runtime for request concurrency. The runtime issues warmups first, then measured requests for each scenario matrix cell:
+
+- model
+- prompt workload or synthetic prompt size
+- requested output token size
+- concurrency level
+
+Each scenario emits one summary record plus serialized request traces inside record metadata.
+
+## Performance scenarios
+
+The built-in performance profiles are:
+
+- `smoke` - conservative verification with concurrency `1`, prompt sizes `128` and `512`, `1` warmup, and `3` measured runs
+- `latency` - concurrency `1` with multiple prompt sizes and percentile-focused summaries
+- `throughput` - fixed prompt/output sizes with a concurrency sweep
+- `sweep` - prompt size, output size, and concurrency matrix exploration
+
+Prompt text generation is deterministic and provider-agnostic. The recorded `estimated_prompt_tokens` field is an approximation, while provider-reported usage remains the source of truth when available.
+
+## Quality planning boundary
+
+`llmeter quality ...` does not execute benchmark frameworks inside Rust in this phase. It emits catalog information and dry-run command previews for:
+
+- `lighteval`
+- `inspect-ai`
+- `lm-eval-harness`
+- `swe-bench`
+
+This keeps the binary focused on native performance work while preserving a stable planning/report schema for external quality tooling.
 
 ## Error behavior
 

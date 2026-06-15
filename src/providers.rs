@@ -86,6 +86,8 @@ pub struct ApiResult {
     pub raw: Value,
     pub wall_time_ns: u128,
     pub time_to_first_token_ns: Option<u128>,
+    pub token_timings_ns: Vec<u128>,
+    pub http_status: Option<u16>,
 }
 
 impl ApiResult {
@@ -316,6 +318,8 @@ impl ProviderClient {
             raw: payload,
             wall_time_ns: ended.duration_since(started).as_nanos(),
             time_to_first_token_ns: None,
+            token_timings_ns: Vec::new(),
+            http_status: Some(200),
         })
     }
 
@@ -325,6 +329,7 @@ impl ProviderClient {
         body: &Value,
         kind: StreamKind,
     ) -> anyhow::Result<ApiResult> {
+        let started = Instant::now();
         let response = self
             .client
             .post(self.url(path))
@@ -336,9 +341,9 @@ impl ProviderClient {
             return Err(LLMeterError::Provider(Self::decode_error(response)).into());
         }
 
-        let started = Instant::now();
         let mut first_token_at: Option<Instant> = None;
         let mut chunks = Vec::new();
+        let mut token_timings_ns = Vec::new();
         let mut final_payload = serde_json::json!({});
         let reader = BufReader::new(response);
 
@@ -362,6 +367,7 @@ impl ProviderClient {
                     if first_token_at.is_none() {
                         first_token_at = Some(Instant::now());
                     }
+                    token_timings_ns.push(Instant::now().duration_since(started).as_nanos());
                     chunks.push(token);
                 }
             }
@@ -385,6 +391,8 @@ impl ProviderClient {
             raw: final_payload,
             wall_time_ns: ended.duration_since(started).as_nanos(),
             time_to_first_token_ns: first_token_at.map(|t| t.duration_since(started).as_nanos()),
+            token_timings_ns,
+            http_status: Some(200),
         })
     }
 }
@@ -392,6 +400,12 @@ impl ProviderClient {
 #[derive(Debug, Clone, Copy)]
 enum StreamKind {
     Chat,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum StreamEvent {
+    Done,
+    Json(Value),
 }
 
 fn merge_object(body: &mut Value, extra: Option<&Value>) {
@@ -447,9 +461,27 @@ fn extract_stream_delta(chunk: &Value, _kind: StreamKind) -> Option<String> {
         .map(|s| s.to_string())
 }
 
+pub fn parse_openai_stream_line(line: &str) -> Option<StreamEvent> {
+    let mut line = line.trim();
+    if line.is_empty() {
+        return None;
+    }
+    if let Some(data) = line.strip_prefix("data:") {
+        line = data.trim();
+    }
+    if line == "[DONE]" {
+        return Some(StreamEvent::Done);
+    }
+    serde_json::from_str::<Value>(line)
+        .ok()
+        .map(StreamEvent::Json)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{ProviderClient, ProviderKind};
+    use serde_json::json;
+
+    use super::{parse_openai_stream_line, ProviderClient, ProviderKind, StreamEvent};
 
     #[test]
     fn list_models_returns_friendly_provider_error() {
@@ -457,5 +489,20 @@ mod tests {
         let error = client.list_models().unwrap_err().to_string();
         assert!(error.contains("Failed to list models from Ollama"));
         assert!(error.contains("http://127.0.0.1:1/v1"));
+    }
+
+    #[test]
+    fn parse_openai_stream_line_handles_done_and_json() {
+        assert_eq!(
+            parse_openai_stream_line("data: [DONE]"),
+            Some(StreamEvent::Done)
+        );
+        assert_eq!(
+            parse_openai_stream_line(r#"data: {"choices":[{"delta":{"content":"hi"}}]}"#),
+            Some(StreamEvent::Json(
+                json!({"choices":[{"delta":{"content":"hi"}}]})
+            ))
+        );
+        assert_eq!(parse_openai_stream_line(""), None);
     }
 }

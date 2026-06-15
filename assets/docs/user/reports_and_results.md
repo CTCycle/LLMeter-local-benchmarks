@@ -57,6 +57,29 @@ Reports summarize:
 - detailed per-record entries
 - explicit error rows when some capabilities fail
 
+Performance runs add dedicated sections for:
+
+- performance summary
+- scenario matrix
+- latency percentiles
+- throughput
+- token timing
+- environment snapshot
+- provider parameters
+
+## Performance metric definitions
+
+- `wall_time_ms_*` - end-to-end request wall-clock latency percentiles measured by the CLI
+- `ttft_ms_*` - time to first streamed token percentiles when streaming is enabled and the provider emits token chunks
+- `tpot_ms_*` - average time per output token derived from token arrival deltas
+- `itl_ms_*` - average inter-token latency derived from token arrival deltas
+- `output_tokens_per_second` - aggregate output token throughput across the scenario
+- `input_tokens_per_second` - aggregate input token throughput across the scenario
+- `requests_per_second` - aggregate scenario request throughput
+- `error_rate` - failed request count divided by total request count
+
+Environment snapshots record the host OS, CPU count, memory values, provider endpoint, LLMeter version, and optional `nvidia-smi` output or probe error.
+
 ## Reading results correctly
 
 - Compare runs from the same machine under similar load.

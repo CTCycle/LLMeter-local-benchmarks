@@ -14,6 +14,7 @@ use crate::cli::{EXPORT_CHOICES, REPORT_CHOICES};
 use crate::config::AppConfig;
 use crate::progress::TerminalProgressRenderer;
 use crate::providers::{ProviderClient, ProviderKind, ProviderStatus};
+use crate::quality::catalog::default_catalog;
 use crate::reporting::{build_summary_rows, render_markdown_report};
 use crate::results::BenchmarkRun;
 use crate::runner;
@@ -143,6 +144,37 @@ pub fn print_benchmark_catalog(suite: Option<BenchmarkSuite>) {
         .map(|selected_suite| format!("{} benchmark catalog", selected_suite.label()))
         .unwrap_or_else(|| "Benchmark catalog".to_string());
     table.with(Panel::header(title));
+    table.with(Style::rounded());
+    println!("{table}");
+}
+
+pub fn print_quality_catalog() {
+    let catalog = default_catalog();
+    let mut builder = Builder::new();
+    builder.push_record(vec![
+        "ID",
+        "Name",
+        "Family",
+        "Framework",
+        "Metric",
+        "Code exec",
+    ]);
+    for entry in catalog {
+        builder.push_record(vec![
+            entry.id,
+            entry.display_name,
+            format!("{:?}", entry.family),
+            entry.framework_hint.label().to_string(),
+            entry.default_metric,
+            if entry.requires_code_execution {
+                "yes".to_string()
+            } else {
+                "no".to_string()
+            },
+        ]);
+    }
+    let mut table = builder.build();
+    table.with(Panel::header("Quality benchmark catalog"));
     table.with(Style::rounded());
     println!("{table}");
 }
@@ -642,6 +674,7 @@ pub fn print_help_topic(topic: Option<&str>) {
                 "  llmeter --provider lmstudio bench run --suite llm --models all --benchmarks all"
             );
             println!("  llmeter bench run --provider ollama --suite embeddings --models all --benchmarks all");
+            println!("  llmeter bench perf --models all --profile smoke --export json --report md");
         }
         "reports" => {
             println!("Reports:");
@@ -656,6 +689,8 @@ pub fn print_help_topic(topic: Option<&str>) {
             println!("  llmeter providers set ollama");
             println!("  llmeter models");
             println!("  llmeter bench run --suite llm --models all --benchmarks all --runs 3 --max-tokens 128");
+            println!("  llmeter quality list");
+            println!("  llmeter quality plan --framework lighteval --task leaderboard|mmlu|5 --model llama3.1");
         }
         _ => {
             println!("LLMeter help topics: providers, bench, reports, examples");

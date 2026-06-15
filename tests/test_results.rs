@@ -1,5 +1,5 @@
 use llmeter::benchmarks::base::BenchmarkResultRecord;
-use llmeter::results::{BenchmarkRun, ResultStore};
+use llmeter::results::{BenchmarkRun, BenchmarkRunKind, ResultStore};
 use serde_json::json;
 
 fn sample_run() -> BenchmarkRun {
@@ -29,6 +29,11 @@ fn sample_run() -> BenchmarkRun {
             error: None,
             metadata: None,
         }],
+        schema_version: "2.0".to_string(),
+        run_kind: Some(BenchmarkRunKind::Benchmark),
+        environment: None,
+        performance_plan: None,
+        quality_plan: None,
     }
 }
 

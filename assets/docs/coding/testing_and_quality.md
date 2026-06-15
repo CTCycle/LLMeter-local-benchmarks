@@ -54,5 +54,16 @@ Currently no coverage threshold enforced. Each test file in `tests/` mirrors a s
 | `tests/test_results.rs` | `llmeter::results` |
 | `tests/test_registry.rs` | `llmeter::benchmarks::registry` |
 | `tests/test_reporting.rs` | `llmeter::reporting` |
+| `tests/performance_cli_tests.rs` | `llmeter::performance::config` and CLI parsing |
+| `tests/performance_metrics_tests.rs` | `llmeter::performance::metrics` |
+| `tests/quality_cli_tests.rs` | `llmeter::quality::*` planning surfaces |
+| `tests/result_schema_tests.rs` | backward-compatible run serialization |
 
-Last updated: 2026-06-12
+## Expectations for new benchmark surfaces
+
+- Native performance math must include direct tests for percentile behavior, rates, and aggregate counts.
+- CLI changes must include parse coverage for new subcommands and key validation paths.
+- Quality adapters must remain dry-run by default and test command preview generation without installing tools or downloading datasets.
+- Result schema changes must preserve old JSON readability when fields are absent.
+
+Last updated: 2026-06-15
