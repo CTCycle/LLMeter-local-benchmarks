@@ -3,7 +3,10 @@ use std::time::Instant;
 
 use serde_json::Value;
 
-use crate::benchmarks::base::{Benchmark, BenchmarkContext, BenchmarkResultRecord};
+use crate::benchmarks::base::{
+    Benchmark, BenchmarkContext, BenchmarkProgressSink, BenchmarkResultRecord, BenchmarkStepStatus,
+    BenchmarkStepUpdate,
+};
 use crate::benchmarks::metrics::{generation_metrics, pairwise_similarity, preview};
 use crate::prompts::CONSISTENCY_PROMPT;
 use crate::providers::ProviderClient;
@@ -24,11 +27,16 @@ impl Benchmark for ResponseConsistencyBenchmark {
         "Repeats the same prompt and reports exact-match and pairwise text similarity."
     }
 
+    fn planned_steps(&self, context: &BenchmarkContext) -> u32 {
+        context.runs.max(2)
+    }
+
     fn run(
         &self,
         client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
+        progress: &mut dyn BenchmarkProgressSink,
     ) -> Vec<BenchmarkResultRecord> {
         let runs = context.runs.max(2);
         let options = context.request_options(Some(context.temperature), None);
@@ -40,7 +48,15 @@ impl Benchmark for ResponseConsistencyBenchmark {
         let mut errors: Vec<String> = Vec::new();
         let started = Instant::now();
 
-        for _ in 0..runs {
+        for run_index in 1..=runs {
+            progress.on_step(BenchmarkStepUpdate {
+                status: BenchmarkStepStatus::Started,
+                step_index: run_index,
+                total_steps: runs,
+                run_index: Some(run_index),
+                prompt_name: Some("consistency".to_string()),
+                message: "Issuing consistency request".to_string(),
+            });
             match client.chat_completion(
                 model,
                 messages.clone(),
@@ -57,6 +73,14 @@ impl Benchmark for ResponseConsistencyBenchmark {
                     errors.push(e.to_string());
                 }
             }
+            progress.on_step(BenchmarkStepUpdate {
+                status: BenchmarkStepStatus::Completed,
+                step_index: run_index,
+                total_steps: runs,
+                run_index: Some(run_index),
+                prompt_name: Some("consistency".to_string()),
+                message: "Completed consistency request".to_string(),
+            });
         }
 
         let ended = Instant::now();

@@ -9,7 +9,7 @@
 | `llmeter models` | List models exposed by the selected provider. |
 | `llmeter show <model>` | Show model metadata from `/v1/models`. |
 | `llmeter bench list` | List available benchmarks. |
-| `llmeter bench run [options]` | Run benchmarks non-interactively. |
+| `llmeter bench run [options]` | Run benchmarks non-interactively with live progress output. |
 | `llmeter report list` | List saved result and report files. |
 | `llmeter report show [result]` | Render a saved JSON result as a terminal report. |
 | `llmeter report generate [result]` | Generate Markdown and/or HTML reports. |
@@ -23,6 +23,8 @@ Run everything against all models exposed by Ollama:
 ```bash
 llmeter --provider ollama bench run --models all --benchmarks all --export both --report both
 ```
+
+`bench run` now reports validation, planning, current benchmark step, and completion percentage while the run is in progress.
 
 Run selected capability benchmarks against LM Studio:
 
@@ -62,4 +64,4 @@ Example:
   run: ./llmeter --provider ollama bench run --models all --benchmarks all --export json --report md
 ```
 
-Last updated: 2026-06-12
+Last updated: 2026-06-15

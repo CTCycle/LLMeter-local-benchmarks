@@ -12,6 +12,7 @@ use tabled::{
 use crate::benchmarks::registry::default_registry;
 use crate::cli::{EXPORT_CHOICES, REPORT_CHOICES};
 use crate::config::AppConfig;
+use crate::progress::TerminalProgressRenderer;
 use crate::providers::{ProviderClient, ProviderKind, ProviderStatus};
 use crate::reporting::{build_summary_rows, render_markdown_report};
 use crate::results::BenchmarkRun;
@@ -461,6 +462,7 @@ fn guided_benchmark_run(config: &AppConfig, client: &ProviderClient) -> Result<(
     };
 
     let extra_options = std::collections::HashMap::new();
+    let mut progress = TerminalProgressRenderer::new();
     let run = runner::run_benchmarks(
         client,
         config,
@@ -473,10 +475,12 @@ fn guided_benchmark_run(config: &AppConfig, client: &ProviderClient) -> Result<(
             temperature,
             extra_options: &extra_options,
         },
+        2,
+        Some(&mut progress),
     )?;
 
+    let saved = runner::save_outputs(config, &run, &export, &report, Some(&mut progress))?;
     summarize_run(&run);
-    let saved = runner::save_outputs(config, &run, &export, &report)?;
     print_saved_paths(&saved);
     pause();
     Ok(())
@@ -544,7 +548,7 @@ fn generate_report_interactive(config: &AppConfig) -> Result<()> {
     }
 
     let run = store.load_json(&path)?;
-    let saved = runner::save_outputs(config, &run, "none", &report_format)?;
+    let saved = runner::save_outputs(config, &run, "none", &report_format, None)?;
     print_saved_paths(&saved);
     Ok(())
 }

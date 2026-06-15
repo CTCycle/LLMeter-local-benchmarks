@@ -6,6 +6,7 @@ use colored::Colorize;
 use llmeter::cli::{self, Cli};
 use llmeter::config::AppConfig;
 use llmeter::errors::LLMeterError;
+use llmeter::progress::TerminalProgressRenderer;
 use llmeter::providers::ProviderClient;
 
 fn main() {
@@ -99,6 +100,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     };
 
                     let extra_params = cli::parse_params(param)?;
+                    let mut progress = TerminalProgressRenderer::new();
                     let run = llmeter::runner::run_benchmarks(
                         &client,
                         &config,
@@ -111,10 +113,18 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                             temperature: temperature.unwrap_or(config.default_temperature),
                             extra_options: &extra_params,
                         },
+                        2,
+                        Some(&mut progress),
                     )?;
 
+                    let saved = llmeter::runner::save_outputs(
+                        &config,
+                        &run,
+                        export,
+                        report,
+                        Some(&mut progress),
+                    )?;
                     llmeter::ui::summarize_run(&run);
-                    let saved = llmeter::runner::save_outputs(&config, &run, export, report)?;
                     llmeter::ui::print_saved_paths(&saved);
                 }
             }

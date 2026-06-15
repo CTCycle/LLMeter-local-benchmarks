@@ -12,7 +12,7 @@
 ## Benchmark workspace
 
 1. View available benchmark tests.
-2. Run a guided benchmark.
+2. Run a guided benchmark with live progress updates across validation, planning, execution, saving, and report generation.
 3. View latest result as terminal report.
 4. Generate report from saved result.
 5. Back.
@@ -28,4 +28,6 @@
 
 `src/main.rs` parses arguments with `clap`, builds `AppConfig`, creates a `ProviderClient`, and dispatches to provider, model, benchmark, report, menu, or built-in help commands.
 
-Last updated: 2026-06-12
+`src/runner.rs` owns benchmark orchestration, work-unit planning, and shared progress reporting so interactive and non-interactive benchmark runs use the same terminal progress lifecycle.
+
+Last updated: 2026-06-15

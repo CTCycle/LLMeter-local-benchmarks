@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-use crate::benchmarks::base::{Benchmark, BenchmarkContext, BenchmarkResultRecord};
+use crate::benchmarks::base::{
+    Benchmark, BenchmarkContext, BenchmarkProgressSink, BenchmarkResultRecord, BenchmarkStepStatus,
+    BenchmarkStepUpdate,
+};
 use crate::benchmarks::metrics::{generation_metrics, preview};
 use crate::prompts::prompts_by_size;
 use crate::providers::ProviderClient;
@@ -22,21 +25,37 @@ impl Benchmark for PromptSizePerformanceBenchmark {
         "Runs short, medium, and long prompts to compare prompt processing and generation timing."
     }
 
+    fn planned_steps(&self, context: &BenchmarkContext) -> u32 {
+        (prompts_by_size().len() as u32) * context.runs
+    }
+
     fn run(
         &self,
         client: &ProviderClient,
         model: &str,
         context: &BenchmarkContext,
+        progress: &mut dyn BenchmarkProgressSink,
     ) -> Vec<BenchmarkResultRecord> {
         let mut records = Vec::new();
         let options = context.request_options(Some(0.0), None);
         let prompts = prompts_by_size();
+        let total_steps = self.planned_steps(context);
+        let mut step_index = 0;
 
         for (prompt_name, prompt) in &prompts {
             let messages = serde_json::json!([
                 {"role": "user", "content": prompt}
             ]);
             for run_index in 1..=context.runs {
+                step_index += 1;
+                progress.on_step(BenchmarkStepUpdate {
+                    status: BenchmarkStepStatus::Started,
+                    step_index,
+                    total_steps,
+                    run_index: Some(run_index),
+                    prompt_name: Some(prompt_name.to_string()),
+                    message: format!("Issuing prompt-size request for {prompt_name} prompt"),
+                });
                 let record = match client.chat_completion(
                     model,
                     messages.clone(),
@@ -83,6 +102,14 @@ impl Benchmark for PromptSizePerformanceBenchmark {
                     },
                 };
                 records.push(record);
+                progress.on_step(BenchmarkStepUpdate {
+                    status: BenchmarkStepStatus::Completed,
+                    step_index,
+                    total_steps,
+                    run_index: Some(run_index),
+                    prompt_name: Some(prompt_name.to_string()),
+                    message: format!("Completed prompt-size request for {prompt_name} prompt"),
+                });
             }
         }
         records

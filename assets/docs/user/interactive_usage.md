@@ -24,10 +24,17 @@ Opened via `llmeter` then selecting option 3, or directly with `llmeter bench me
 Options:
 
 1. **View available benchmark tests** - prints the benchmark catalog.
-2. **Run a guided benchmark** - walks through model selection, benchmark selection, run count, token cap, temperature, and output saving.
+2. **Run a guided benchmark** - walks through model selection, benchmark selection, run count, token cap, temperature, and output saving, then shows live progress with current model, benchmark, run context, and completion percentage.
 3. **View latest result as terminal report** - renders a saved JSON result.
 4. **Generate report from saved result** - outputs Markdown and/or HTML.
 5. **Back** - returns to main menu.
+
+During execution, LLMeter shows a terminal progress bar for these phases:
+- validation
+- run planning
+- benchmark step execution
+- raw result saving
+- report generation
 
 ## Reports workspace
 
@@ -40,4 +47,4 @@ Options:
 3. **Generate Markdown or HTML report**.
 4. **Back**.
 
-Last updated: 2026-06-12
+Last updated: 2026-06-15
