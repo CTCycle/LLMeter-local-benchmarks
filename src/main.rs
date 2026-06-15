@@ -151,11 +151,89 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     llmeter::ui::summarize_run(&run);
                     llmeter::ui::print_saved_paths(&saved);
                 }
+                cli::BenchCommands::Perf {
+                    provider,
+                    ref models,
+                    profile,
+                    ref prompt_tokens,
+                    ref output_tokens,
+                    ref concurrency,
+                    warmup,
+                    runs,
+                    stream,
+                    no_stream,
+                    ref jsonl,
+                    ref export,
+                    ref report,
+                    ref param,
+                } => {
+                    let run_config = provider
+                        .map(|selected| config.with_provider(selected))
+                        .unwrap_or_else(|| config.clone());
+                    let client = ProviderClient::new(
+                        run_config.provider,
+                        &run_config.base_url,
+                        run_config.timeout,
+                    );
+                    let available_models = llmeter::runner::installed_model_names(&client)?;
+                    let selected_models: Vec<String> = match models.as_deref() {
+                        None => return Err(anyhow::anyhow!("--models is required for performance runs. Use 'all' or a comma-separated list.")),
+                        Some(m) if m.trim().to_lowercase() == "all" => available_models,
+                        Some(m) => m.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect(),
+                    };
+                    let extra_params = cli::parse_params(param)?;
+                    let plan = llmeter::performance::config::PerformancePlan::from_cli(
+                        run_config.provider,
+                        selected_models,
+                        *profile,
+                        prompt_tokens.as_deref(),
+                        output_tokens.as_deref(),
+                        concurrency.as_deref(),
+                        *warmup,
+                        *runs,
+                        !no_stream || *stream,
+                        jsonl.clone(),
+                        extra_params,
+                    )?;
+                    let mut progress = TerminalProgressRenderer::new();
+                    let run = llmeter::performance::runner::run_performance_plan(
+                        &run_config,
+                        &client,
+                        plan,
+                        Some(&mut progress),
+                    )?;
+                    let saved = llmeter::runner::save_outputs(
+                        &run_config,
+                        &run,
+                        export,
+                        report,
+                        Some(&mut progress),
+                    )?;
+                    llmeter::ui::summarize_run(&run);
+                    llmeter::ui::print_saved_paths(&saved);
+                }
             }
             Ok(0)
         }
         Some(cli::Commands::Report { ref report_command }) => {
             llmeter::runner::command_report(&config, report_command)?;
+            Ok(0)
+        }
+        Some(cli::Commands::Quality {
+            ref quality_command,
+        }) => {
+            match quality_command {
+                cli::QualityCommands::List => llmeter::ui::print_quality_catalog(),
+                cli::QualityCommands::Plan {
+                    framework,
+                    task,
+                    model,
+                } => {
+                    let plan =
+                        llmeter::quality::adapter::build_quality_plan(*framework, task, model);
+                    println!("{}", serde_json::to_string_pretty(&plan)?);
+                }
+            }
             Ok(0)
         }
         Some(cli::Commands::Help { ref topic }) => {

@@ -5,7 +5,9 @@ use std::collections::HashMap;
 
 use crate::benchmarks::registry::BenchmarkSuite;
 use crate::errors::LLMeterError;
+use crate::performance::config::PerformanceProfile;
 use crate::providers::ProviderKind;
+use crate::quality::catalog::QualityFramework;
 
 #[derive(Parser)]
 #[command(
@@ -65,6 +67,12 @@ pub enum Commands {
     Report {
         #[command(subcommand)]
         report_command: ReportCommands,
+    },
+
+    #[command(about = "Prepare quality benchmark plans and external tool adapters")]
+    Quality {
+        #[command(subcommand)]
+        quality_command: QualityCommands,
     },
 
     #[command(
@@ -146,6 +154,68 @@ pub enum BenchCommands {
         param: Vec<String>,
     },
 
+    #[command(about = "Run native performance benchmark scenarios")]
+    Perf {
+        #[arg(
+            long,
+            value_enum,
+            help = "Provider preset override for this performance run"
+        )]
+        provider: Option<ProviderKind>,
+
+        #[arg(long, help = "Comma-separated model names, or 'all'")]
+        models: Option<String>,
+
+        #[arg(
+            long,
+            help = "Performance profile: smoke, latency, throughput, or sweep"
+        )]
+        profile: PerformanceProfile,
+
+        #[arg(long, help = "Comma-separated estimated prompt token sizes")]
+        prompt_tokens: Option<String>,
+
+        #[arg(long, help = "Comma-separated estimated output token sizes")]
+        output_tokens: Option<String>,
+
+        #[arg(long, help = "Comma-separated concurrency levels")]
+        concurrency: Option<String>,
+
+        #[arg(long, help = "Warmup request count")]
+        warmup: Option<u32>,
+
+        #[arg(long, help = "Measured request count per scenario")]
+        runs: Option<u32>,
+
+        #[arg(long, default_value_t = true, action = clap::ArgAction::SetTrue, help = "Enable streaming requests")]
+        stream: bool,
+
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Disable streaming requests")]
+        no_stream: bool,
+
+        #[arg(long, help = "Optional JSONL workload path")]
+        jsonl: Option<String>,
+
+        #[arg(
+            long,
+            default_value = "both",
+            value_parser = PossibleValuesParser::new(EXPORT_CHOICES),
+            help = "Raw result export format"
+        )]
+        export: String,
+
+        #[arg(
+            long,
+            default_value = "both",
+            value_parser = PossibleValuesParser::new(REPORT_CHOICES),
+            help = "Formatted report export format"
+        )]
+        report: String,
+
+        #[arg(long = "param", action = clap::ArgAction::Append, help = "Extra provider request parameter as key=value, repeatable")]
+        param: Vec<String>,
+    },
+
     #[command(about = "Open the interactive benchmark menu")]
     Menu,
 }
@@ -169,6 +239,25 @@ pub enum ReportCommands {
             help = "Report format"
         )]
         format: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum QualityCommands {
+    #[command(about = "List built-in quality benchmark catalog entries")]
+    List,
+
+    #[command(about = "Build a dry-run external quality benchmark plan")]
+    Plan {
+        #[arg(
+            long,
+            help = "Framework: lighteval, inspect-ai, lm-eval-harness, swe-bench"
+        )]
+        framework: QualityFramework,
+        #[arg(long, help = "Catalog task id or framework-specific task expression")]
+        task: String,
+        #[arg(long, help = "Target model name")]
+        model: String,
     },
 }
 
@@ -199,9 +288,11 @@ pub fn parse_params(values: &[String]) -> anyhow::Result<HashMap<String, Value>>
 mod tests {
     use clap::Parser;
 
-    use super::{BenchCommands, Cli, Commands, ProviderCommands};
+    use super::{BenchCommands, Cli, Commands, ProviderCommands, QualityCommands};
     use crate::benchmarks::registry::BenchmarkSuite;
+    use crate::performance::config::PerformanceProfile;
     use crate::providers::ProviderKind;
+    use crate::quality::catalog::QualityFramework;
 
     #[test]
     fn parses_provider_set_command() {
@@ -265,5 +356,72 @@ mod tests {
         let error = result.err().expect("expected clap validation error");
         assert!(error.to_string().contains("pdf"));
         assert!(error.to_string().contains("possible values"));
+    }
+
+    #[test]
+    fn parses_bench_perf_command() {
+        let cli = Cli::parse_from([
+            "llmeter",
+            "bench",
+            "perf",
+            "--models",
+            "llama3.1",
+            "--profile",
+            "sweep",
+            "--prompt-tokens",
+            "128,512",
+            "--concurrency",
+            "1,2,4",
+        ]);
+
+        match cli.command {
+            Some(Commands::Bench {
+                bench_command:
+                    BenchCommands::Perf {
+                        models,
+                        profile,
+                        prompt_tokens,
+                        concurrency,
+                        ..
+                    },
+            }) => {
+                assert_eq!(models.as_deref(), Some("llama3.1"));
+                assert_eq!(profile, PerformanceProfile::Sweep);
+                assert_eq!(prompt_tokens.as_deref(), Some("128,512"));
+                assert_eq!(concurrency.as_deref(), Some("1,2,4"));
+            }
+            _ => panic!("expected bench perf command"),
+        }
+    }
+
+    #[test]
+    fn parses_quality_plan_command() {
+        let cli = Cli::parse_from([
+            "llmeter",
+            "quality",
+            "plan",
+            "--framework",
+            "lighteval",
+            "--task",
+            "leaderboard|mmlu|5",
+            "--model",
+            "llama3.1",
+        ]);
+
+        match cli.command {
+            Some(Commands::Quality {
+                quality_command:
+                    QualityCommands::Plan {
+                        framework,
+                        task,
+                        model,
+                    },
+            }) => {
+                assert_eq!(framework, QualityFramework::LightEval);
+                assert_eq!(task, "leaderboard|mmlu|5");
+                assert_eq!(model, "llama3.1");
+            }
+            _ => panic!("expected quality plan command"),
+        }
     }
 }

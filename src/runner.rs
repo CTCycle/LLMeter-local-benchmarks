@@ -12,7 +12,7 @@ use crate::errors::LLMeterError;
 use crate::progress::{ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate};
 use crate::providers::ProviderClient;
 use crate::reporting::{save_html_report, save_markdown_report};
-use crate::results::{BenchmarkRun, ResultStore};
+use crate::results::{BenchmarkRun, BenchmarkRunKind, ResultStore};
 use crate::utils::utc_now_iso;
 
 pub struct BenchmarkRunRequest<'a> {
@@ -267,6 +267,11 @@ fn execute_benchmark_plan(
             c
         },
         results: Vec::new(),
+        schema_version: "2.0".to_string(),
+        run_kind: Some(BenchmarkRunKind::Benchmark),
+        environment: None,
+        performance_plan: None,
+        quality_plan: None,
     };
 
     let mut completed_units = 0u32;
@@ -504,7 +509,7 @@ mod tests {
     use crate::config::AppConfig;
     use crate::progress::{ProgressEventKind, ProgressSink, ProgressUpdate};
     use crate::providers::{ProviderClient, ProviderKind};
-    use crate::results::BenchmarkRun;
+    use crate::results::{BenchmarkRun, BenchmarkRunKind};
 
     struct StubBenchmark {
         id: &'static str,
@@ -790,6 +795,11 @@ mod tests {
             benchmark_ids: vec!["chat-generation".to_string()],
             config: HashMap::new(),
             results: Vec::new(),
+            schema_version: "2.0".to_string(),
+            run_kind: Some(BenchmarkRunKind::Benchmark),
+            environment: None,
+            performance_plan: None,
+            quality_plan: None,
         };
 
         let error = super::save_outputs(&config, &run, "raw", "none", None)
@@ -809,6 +819,11 @@ mod tests {
             benchmark_ids: vec!["chat-generation".to_string()],
             config: HashMap::new(),
             results: Vec::new(),
+            schema_version: "2.0".to_string(),
+            run_kind: Some(BenchmarkRunKind::Benchmark),
+            environment: None,
+            performance_plan: None,
+            quality_plan: None,
         };
 
         let error = super::save_outputs(&config, &run, "none", "pdf", None)

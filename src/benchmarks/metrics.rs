@@ -70,6 +70,18 @@ pub fn pairwise_similarity(values: &[String]) -> Vec<f64> {
     scores.into_iter().map(|s| s as f64).collect()
 }
 
+pub fn percentile(values: &[f64], p: f64) -> Option<f64> {
+    crate::performance::metrics::percentile(values, p)
+}
+
+pub fn rate_per_second(units: f64, wall_time_ms: f64) -> Option<f64> {
+    if wall_time_ms <= 0.0 {
+        None
+    } else {
+        Some(units / (wall_time_ms / 1000.0))
+    }
+}
+
 fn insert_f64(map: &mut HashMap<String, Value>, key: &str, value: Option<f64>) {
     if let Some(v) = value {
         map.insert(key.to_string(), Value::from(v));

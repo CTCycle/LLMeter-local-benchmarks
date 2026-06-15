@@ -54,10 +54,13 @@ pub fn build_summary_rows(run: &BenchmarkRun) -> Vec<SummaryRow> {
             prompt_name,
             records: records.len(),
             errors: error_count,
-            avg_wall_time_ms: metric_mean(&records, "wall_time_ms"),
-            avg_time_to_first_token_ms: metric_mean(&records, "time_to_first_token_ms"),
+            avg_wall_time_ms: metric_mean(&records, "wall_time_ms")
+                .or_else(|| metric_mean(&records, "wall_time_ms_p50")),
+            avg_time_to_first_token_ms: metric_mean(&records, "time_to_first_token_ms")
+                .or_else(|| metric_mean(&records, "ttft_ms_p50")),
             avg_tokens_per_second: metric_mean(&records, "tokens_per_second")
-                .or_else(|| metric_mean(&records, "mean_tokens_per_second")),
+                .or_else(|| metric_mean(&records, "mean_tokens_per_second"))
+                .or_else(|| metric_mean(&records, "output_tokens_per_second")),
             avg_input_tokens: metric_mean(&records, "input_tokens"),
             avg_output_tokens: metric_mean(&records, "output_tokens"),
             avg_embedding_dimensions: metric_mean(&records, "embedding_dimensions"),
@@ -219,6 +222,85 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
         ));
     }
     lines.push(String::new());
+
+    if run.performance_plan.is_some() {
+        lines.push("## Performance Summary".to_string());
+        lines.push(String::new());
+        lines.push("| Model | Scenario | Concurrency | P50 wall ms | P95 wall ms | P99 wall ms | TTFT p50 | Output tok/s | Req/s | Errors |".to_string());
+        lines.push("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|".to_string());
+        for record in run
+            .results
+            .iter()
+            .filter(|record| record.benchmark_id == "performance-scenario")
+        {
+            let metrics = &record.metrics;
+            lines.push(format!(
+                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
+                md(&record.model),
+                md(record.prompt_name.as_deref().unwrap_or("")),
+                metric_display(metrics, "concurrency"),
+                metric_display(metrics, "wall_time_ms_p50"),
+                metric_display(metrics, "wall_time_ms_p95"),
+                metric_display(metrics, "wall_time_ms_p99"),
+                metric_display(metrics, "ttft_ms_p50"),
+                metric_display(metrics, "output_tokens_per_second"),
+                metric_display(metrics, "requests_per_second"),
+                metric_display(metrics, "error_count"),
+            ));
+        }
+        lines.push(String::new());
+        lines.push("## Scenario Matrix".to_string());
+        lines.push(String::new());
+        lines.push("Recorded scenario summaries include prompt size, requested output size, concurrency, aggregate latency percentiles, throughput, and serialized request traces in the raw JSON output.".to_string());
+        lines.push(String::new());
+        lines.push("## Latency Percentiles".to_string());
+        lines.push(String::new());
+        lines.push("P50/P95/P99 wall time and TTFT appear in the performance summary table and raw records.".to_string());
+        lines.push(String::new());
+        lines.push("## Throughput".to_string());
+        lines.push(String::new());
+        lines.push(
+            "Requests per second plus input/output token throughput are recorded per scenario."
+                .to_string(),
+        );
+        lines.push(String::new());
+        lines.push("## Token Timing".to_string());
+        lines.push(String::new());
+        lines.push("Per-request token timing samples are stored under each performance record metadata payload.".to_string());
+        lines.push(String::new());
+        lines.push("## Environment Snapshot".to_string());
+        lines.push(String::new());
+        if let Some(environment) = &run.environment {
+            lines.push(format!(
+                "- OS: {} | CPUs: {} | Total memory: {} | Available memory: {}",
+                environment.os,
+                environment.cpu_count,
+                environment.total_memory,
+                environment.available_memory
+            ));
+            lines.push(format!(
+                "- Provider: {} at {} | Version: {}",
+                environment.provider_kind,
+                environment.provider_base_url,
+                environment.llmeter_version
+            ));
+            if let Some(error) = &environment.gpu_probe_error {
+                lines.push(format!("- GPU probe error: {}", md(error)));
+            }
+        }
+        lines.push(String::new());
+        lines.push("## Provider Parameters".to_string());
+        lines.push(String::new());
+        if let Some(plan) = &run.performance_plan {
+            for (key, value) in &plan.extra_params {
+                lines.push(format!("- `{key}` = `{value}`"));
+            }
+            if plan.extra_params.is_empty() {
+                lines.push("- none".to_string());
+            }
+        }
+        lines.push(String::new());
+    }
 
     lines.push("## Detailed records".to_string());
     lines.push(String::new());
@@ -431,6 +513,44 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
         )
     };
 
+    let performance_section = if run.performance_plan.is_some() {
+        let rows = run
+            .results
+            .iter()
+            .filter(|record| record.benchmark_id == "performance-scenario")
+            .map(|record| {
+                format!(
+                    "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    escape(&record.model),
+                    escape(record.prompt_name.as_deref().unwrap_or("")),
+                    metric_display(&record.metrics, "concurrency"),
+                    metric_display(&record.metrics, "wall_time_ms_p50"),
+                    metric_display(&record.metrics, "wall_time_ms_p95"),
+                    metric_display(&record.metrics, "wall_time_ms_p99"),
+                    metric_display(&record.metrics, "ttft_ms_p50"),
+                    metric_display(&record.metrics, "output_tokens_per_second"),
+                    metric_display(&record.metrics, "requests_per_second"),
+                    metric_display(&record.metrics, "error_count"),
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("");
+        format!(
+            r#"<section>
+  <h2>Performance Summary</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Model</th><th>Scenario</th><th>Concurrency</th><th>P50 wall ms</th><th>P95 wall ms</th><th>P99 wall ms</th><th>TTFT p50</th><th>Output tok/s</th><th>Req/s</th><th>Errors</th></tr></thead>
+      <tbody>{rows}</tbody>
+    </table>
+  </div>
+</section>
+"#
+        )
+    } else {
+        String::new()
+    };
+
     format!(
         r#"<!doctype html>
 <html lang="en">
@@ -487,6 +607,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
     </table>
   </div>
 </section>
+{performance_section}
 <section>
   <h2>Detailed records</h2>
   <div class="table-wrap">
@@ -526,6 +647,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
         summary_cards = summary_cards,
         config_rows = config_rows,
         aggregate_rows = aggregate_rows,
+        performance_section = performance_section,
         detail_rows = detail_rows,
         error_section = error_section,
     )
@@ -595,4 +717,16 @@ fn md(value: &str) -> String {
         .replace('\n', " ")
         .trim()
         .to_string()
+}
+
+fn metric_display(metrics: &HashMap<String, Value>, key: &str) -> String {
+    metrics
+        .get(key)
+        .map(|value| match value {
+            Value::String(value) => value.clone(),
+            Value::Number(value) => value.to_string(),
+            Value::Bool(value) => value.to_string(),
+            _ => value.to_string(),
+        })
+        .unwrap_or_default()
 }
