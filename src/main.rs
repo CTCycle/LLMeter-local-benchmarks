@@ -4,7 +4,7 @@ use clap::Parser;
 use colored::Colorize;
 
 use llmeter::cli::{self, Cli};
-use llmeter::config::AppConfig;
+use llmeter::config::{self, AppConfig};
 use llmeter::errors::LLMeterError;
 use llmeter::progress::TerminalProgressRenderer;
 use llmeter::providers::ProviderClient;
@@ -28,14 +28,15 @@ fn main() {
 
 fn run(cli: Cli) -> anyhow::Result<i32> {
     let config = AppConfig::from_env(&cli);
-    let client = ProviderClient::new(config.provider, &config.base_url, config.timeout);
 
     match cli.command {
         None | Some(cli::Commands::Menu) => {
+            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout);
             llmeter::ui::main_menu(&config, &client)?;
             Ok(0)
         }
         Some(cli::Commands::Status) => {
+            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout);
             llmeter::ui::print_status_panel(&client.status());
             Ok(0)
         }
@@ -44,10 +45,19 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
         }) => {
             match provider_command {
                 cli::ProviderCommands::List => llmeter::ui::print_provider_catalog(),
+                cli::ProviderCommands::Set { provider } => {
+                    let path = config::save_global_provider(*provider)?;
+                    println!(
+                        "Saved default provider '{}' to {}",
+                        provider,
+                        path.display()
+                    );
+                }
             }
             Ok(0)
         }
         Some(cli::Commands::Models { json }) => {
+            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout);
             let models = client.list_models()?;
             if json {
                 println!("{}", serde_json::to_string_pretty(&models)?);
@@ -57,6 +67,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             Ok(0)
         }
         Some(cli::Commands::Show { ref model }) => {
+            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout);
             let info = client.show_model(model)?;
             println!("{}", serde_json::to_string_pretty(&info)?);
             Ok(0)
@@ -64,12 +75,16 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
         Some(cli::Commands::Bench { ref bench_command }) => {
             match bench_command {
                 cli::BenchCommands::Menu => {
+                    let client =
+                        ProviderClient::new(config.provider, &config.base_url, config.timeout);
                     llmeter::ui::benchmark_menu(&config, &client)?;
                 }
-                cli::BenchCommands::List => {
-                    llmeter::ui::print_benchmark_catalog();
+                cli::BenchCommands::List { suite } => {
+                    llmeter::ui::print_benchmark_catalog(*suite);
                 }
                 cli::BenchCommands::Run {
+                    provider,
+                    suite,
                     ref models,
                     ref benchmarks,
                     runs,
@@ -79,6 +94,14 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     ref report,
                     ref param,
                 } => {
+                    let run_config = provider
+                        .map(|selected| config.with_provider(selected))
+                        .unwrap_or_else(|| config.clone());
+                    let client = ProviderClient::new(
+                        run_config.provider,
+                        &run_config.base_url,
+                        run_config.timeout,
+                    );
                     let available_models = llmeter::runner::installed_model_names(&client)?;
                     let selected_models: Vec<String> = match models.as_deref() {
                         None => return Err(anyhow::anyhow!("--models is required for non-interactive benchmark runs. Use 'all' or a comma-separated list.")),
@@ -103,14 +126,15 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     let mut progress = TerminalProgressRenderer::new();
                     let run = llmeter::runner::run_benchmarks(
                         &client,
-                        &config,
+                        &run_config,
                         llmeter::runner::BenchmarkRunRequest {
+                            suite: *suite,
                             model_names: &selected_models,
                             benchmark_ids: selected_benchmarks.as_deref(),
                             all_benchmarks,
-                            runs: runs.unwrap_or(config.default_runs),
-                            max_tokens: max_tokens.unwrap_or(config.default_max_tokens),
-                            temperature: temperature.unwrap_or(config.default_temperature),
+                            runs: runs.unwrap_or(run_config.default_runs),
+                            max_tokens: max_tokens.unwrap_or(run_config.default_max_tokens),
+                            temperature: temperature.unwrap_or(run_config.default_temperature),
                             extra_options: &extra_params,
                         },
                         2,
@@ -118,7 +142,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     )?;
 
                     let saved = llmeter::runner::save_outputs(
-                        &config,
+                        &run_config,
                         &run,
                         export,
                         report,

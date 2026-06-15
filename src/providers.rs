@@ -145,6 +145,16 @@ impl ProviderClient {
         format!("HTTP {}: {}", status.as_u16(), body)
     }
 
+    fn provider_failure(&self, action: &str, detail: impl fmt::Display) -> anyhow::Error {
+        LLMeterError::Provider(format!(
+            "Failed to {action} from {} at {}: {}",
+            self.provider.display_name(),
+            self.base_url,
+            detail
+        ))
+        .into()
+    }
+
     pub fn get_json(&self, path: &str) -> anyhow::Result<Value> {
         let response = self
             .client
@@ -198,11 +208,13 @@ impl ProviderClient {
     }
 
     pub fn is_running(&self) -> bool {
-        self.list_models().is_ok()
+        self.status().running
     }
 
     pub fn list_models(&self) -> anyhow::Result<Vec<Value>> {
-        let payload = self.get_json("models")?;
+        let payload = self
+            .get_json("models")
+            .map_err(|error| self.provider_failure("list models", error))?;
         Ok(payload
             .get("data")
             .and_then(|v| v.as_array())
@@ -433,4 +445,17 @@ fn extract_stream_delta(chunk: &Value, _kind: StreamKind) -> Option<String> {
         .and_then(|v| v.as_str())
         .or_else(|| chunk.pointer("/choices/0/text").and_then(|v| v.as_str()))
         .map(|s| s.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ProviderClient, ProviderKind};
+
+    #[test]
+    fn list_models_returns_friendly_provider_error() {
+        let client = ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1);
+        let error = client.list_models().unwrap_err().to_string();
+        assert!(error.contains("Failed to list models from Ollama"));
+        assert!(error.contains("http://127.0.0.1:1/v1"));
+    }
 }

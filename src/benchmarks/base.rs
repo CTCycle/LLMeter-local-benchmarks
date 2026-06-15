@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::benchmarks::registry::BenchmarkSuite;
 use crate::providers::ProviderClient;
 
 #[derive(Debug, Clone)]
@@ -74,6 +75,7 @@ pub trait Benchmark: Send + Sync {
     fn id(&self) -> &str;
     fn name(&self) -> &str;
     fn description(&self) -> &str;
+    fn suite(&self) -> BenchmarkSuite;
     fn planned_steps(&self, context: &BenchmarkContext) -> u32;
     fn run(
         &self,

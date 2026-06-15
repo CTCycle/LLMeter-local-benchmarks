@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use serde_json::Value;
 use std::collections::HashMap;
 
+use crate::benchmarks::registry::BenchmarkSuite;
 use crate::errors::LLMeterError;
 use crate::providers::ProviderKind;
 
@@ -79,15 +80,36 @@ pub enum Commands {
 pub enum ProviderCommands {
     #[command(about = "List provider presets and default base URLs")]
     List,
+
+    #[command(about = "Persist the default provider for future runs")]
+    Set { provider: ProviderKind },
 }
 
 #[derive(Subcommand)]
 pub enum BenchCommands {
     #[command(about = "List available benchmarks")]
-    List,
+    List {
+        #[arg(long, value_enum, help = "Filter benchmarks by suite")]
+        suite: Option<BenchmarkSuite>,
+    },
 
     #[command(about = "Run benchmarks")]
     Run {
+        #[arg(
+            long,
+            value_enum,
+            help = "Provider preset override for this benchmark run"
+        )]
+        provider: Option<ProviderKind>,
+
+        #[arg(
+            long,
+            value_enum,
+            default_value_t = BenchmarkSuite::Llm,
+            help = "Benchmark suite to run"
+        )]
+        suite: BenchmarkSuite,
+
         #[arg(long, help = "Comma-separated model names, or 'all'")]
         models: Option<String>,
 
@@ -155,4 +177,57 @@ pub fn parse_params(values: &[String]) -> anyhow::Result<HashMap<String, Value>>
         parsed.insert(key, value);
     }
     Ok(parsed)
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::{BenchCommands, Cli, Commands, ProviderCommands};
+    use crate::benchmarks::registry::BenchmarkSuite;
+    use crate::providers::ProviderKind;
+
+    #[test]
+    fn parses_provider_set_command() {
+        let cli = Cli::parse_from(["llmeter", "providers", "set", "lmstudio"]);
+        match cli.command {
+            Some(Commands::Providers {
+                provider_command: ProviderCommands::Set { provider },
+            }) => {
+                assert_eq!(provider, ProviderKind::Lmstudio);
+            }
+            _ => panic!("expected providers set command"),
+        }
+    }
+
+    #[test]
+    fn parses_bench_run_provider_and_suite() {
+        let cli = Cli::parse_from([
+            "llmeter",
+            "bench",
+            "run",
+            "--provider",
+            "ollama",
+            "--suite",
+            "embeddings",
+            "--models",
+            "all",
+        ]);
+        match cli.command {
+            Some(Commands::Bench {
+                bench_command:
+                    BenchCommands::Run {
+                        provider,
+                        suite,
+                        models,
+                        ..
+                    },
+            }) => {
+                assert_eq!(provider, Some(ProviderKind::Ollama));
+                assert_eq!(suite, BenchmarkSuite::Embeddings);
+                assert_eq!(models.as_deref(), Some("all"));
+            }
+            _ => panic!("expected bench run command"),
+        }
+    }
 }

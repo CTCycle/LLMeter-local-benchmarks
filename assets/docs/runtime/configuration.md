@@ -17,7 +17,15 @@
 
 ## AppConfig struct
 
-`AppConfig` in `src/config.rs` reads environment variables at instantiation time. CLI flag values override environment variables.
+`AppConfig` in `src/config.rs` resolves the effective provider in this order:
+
+1. command-specific CLI provider override such as `bench run --provider`
+2. top-level `--provider`
+3. `LLMETER_PROVIDER`
+4. persisted user config from the OS config directory
+5. built-in default `ollama`
+
+Base URL resolution stays aligned to the resolved provider unless `--base-url` is explicitly set.
 
 Fields:
 
@@ -33,4 +41,10 @@ Fields:
 
 Use `--provider`, `--base-url`, `--timeout`, `--output-dir`, `--runs`, `--max-tokens`, and `--temperature`.
 
-Last updated: 2026-06-12
+Persist a global default provider with:
+
+```bash
+llmeter providers set ollama
+```
+
+Last updated: 2026-06-15

@@ -1,5 +1,5 @@
 use llmeter::benchmarks::base::BenchmarkContext;
-use llmeter::benchmarks::registry::default_registry;
+use llmeter::benchmarks::registry::{default_registry, BenchmarkSuite};
 
 fn context(runs: u32) -> BenchmarkContext {
     BenchmarkContext {
@@ -23,13 +23,22 @@ fn test_default_registry_contains_initial_benchmarks() {
     assert_eq!(ids[4], "structured-output");
     assert_eq!(ids[5], "tool-calling");
     assert_eq!(ids[6], "embeddings");
+    assert_eq!(registry.ids_for_suite(BenchmarkSuite::Llm).len(), 6);
+    assert_eq!(
+        registry.ids_for_suite(BenchmarkSuite::Embeddings),
+        vec!["embeddings"]
+    );
 }
 
 #[test]
 fn test_select_specific_benchmark() {
     let registry = default_registry();
     let selected = registry
-        .select(Some(&["consistency".to_string()]), false)
+        .select(
+            Some(&["consistency".to_string()]),
+            false,
+            BenchmarkSuite::Llm,
+        )
         .unwrap();
     assert_eq!(selected.len(), 1);
     assert_eq!(selected[0].id(), "consistency");
@@ -38,14 +47,29 @@ fn test_select_specific_benchmark() {
 #[test]
 fn test_select_all_benchmarks() {
     let registry = default_registry();
-    let all = registry.select(None, true).unwrap();
-    assert_eq!(all.len(), 7);
+    let all = registry.select(None, true, BenchmarkSuite::Llm).unwrap();
+    assert_eq!(all.len(), 6);
 }
 
 #[test]
 fn test_select_nonexistent_benchmark_returns_error() {
     let registry = default_registry();
-    let result = registry.select(Some(&["nonexistent".to_string()]), false);
+    let result = registry.select(
+        Some(&["nonexistent".to_string()]),
+        false,
+        BenchmarkSuite::Llm,
+    );
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_selecting_benchmark_from_other_suite_returns_error() {
+    let registry = default_registry();
+    let result = registry.select(
+        Some(&["embeddings".to_string()]),
+        false,
+        BenchmarkSuite::Llm,
+    );
     assert!(result.is_err());
 }
 

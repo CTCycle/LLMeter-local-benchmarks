@@ -2,6 +2,11 @@
 
 ## Available tests
 
+LLMeter exposes two suites:
+
+- `llm` - the standard benchmark suite for generation, responses, consistency, prompt sizes, structured output, and tool calling
+- `embeddings` - the separate embeddings-only suite
+
 | ID | Name | Description |
 |---|---|---|
 | `chat-generation` | Basic generation latency | Streams `/v1/chat/completions` and measures wall time, TTFT, usage, and throughput. |
@@ -40,8 +45,8 @@ Key types:
 
 1. Create or extend a file in `src/benchmarks/`.
 2. Implement `Benchmark`.
-3. Register it in `src/benchmarks/registry.rs`.
+3. Register it in `src/benchmarks/registry.rs` and assign it to the correct suite.
 
 The benchmark appears in both interactive and scriptable flows.
 
-Last updated: 2026-06-12
+Last updated: 2026-06-15

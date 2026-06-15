@@ -7,7 +7,8 @@ LLMeter is a self-contained Rust CLI for benchmarking local OpenAI-compatible LL
 
 Key capabilities:
 - interactive menu and scriptable subcommands
-- built-in benchmark suite for generation, responses, consistency, prompt sizes, structured output, tool calling, and embeddings
+- persisted default provider selection plus run-specific provider overrides
+- split benchmark suites for standard `llm` runs and separate `embeddings` runs
 - live benchmark progress with current phase, current step, and completion percentage
 - JSON and CSV raw exports plus Markdown and HTML reports
 
@@ -29,7 +30,7 @@ llmeter --provider ollama models
 ### 2.3 Run Benchmarks
 Scripted run:
 ```bash
-llmeter --provider ollama bench run --models all --benchmarks all --export both --report both
+llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export both --report both
 ```
 
 Interactive run:
@@ -50,7 +51,8 @@ Typical workflow:
 Common commands:
 ```bash
 llmeter providers list
-llmeter bench list
+llmeter providers set ollama
+llmeter bench list --suite llm
 llmeter report list
 llmeter report show
 llmeter help bench

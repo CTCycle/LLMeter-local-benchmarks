@@ -1,67 +1,92 @@
 # Project index
+Last updated: 2026-06-15
 
-This is the entry point for the LLMeter document ontology.
+## Purpose
+This file is the root index for `assets/docs`. Read it first, then open the smallest topic file that matches the task.
 
-## Navigation
+## How To Navigate
+1. Start with this file only.
+2. Choose the topic branch that matches the task.
+3. Open the narrowest leaf document that answers the question.
+4. Expand to sibling files only when the task clearly crosses topic boundaries.
+5. Keep documentation updates aligned with implementation changes.
 
-1. Start here.
-2. Pick a topic branch below.
-3. Open the narrowest leaf file that matches what you need.
-4. Expand into additional leaf files only when the answer requires crossing branches.
-5. Return here to jump to a different topic.
+## Naming Rules
+- All files and folders under `assets/docs` use lower-case names.
+- Topic folders group related leaf documents by subject.
+- Root-level files are reserved for entry-point documents only.
 
-## File catalog
+## Documentation Ontology
+### Root
+- `project_index.md`
+  - Entry point and master index for the full documentation tree.
 
-### `architecture/`
+### Architecture
+- `architecture/system_overview.md`
+  - Product goals, crate stack, and maintained module structure.
+- `architecture/cli_flow.md`
+  - Main menu, benchmark workspace, reports workspace, and top-level command dispatch.
+- `architecture/provider_integration.md`
+  - Provider presets, OpenAI-compatible endpoint usage, and provider lifecycle boundaries.
+- `architecture/benchmark_execution.md`
+  - Benchmark selection, execution planning, progress phases, and serial run orchestration.
+- `architecture/result_storage.md`
+  - `BenchmarkRun`, result-record schema, run IDs, and persisted raw/report file shapes.
+- `architecture/report_generation.md`
+  - Markdown and HTML report aggregation, summary metrics, and saved report generation flow.
 
-| File | Summary |
-|---|---|
-| `architecture/system_overview.md` | Design goals, Rust technology stack, and module map. |
-| `architecture/cli_flow.md` | Main menu, benchmark workspace, and reports workspace flows. |
-| `architecture/provider_integration.md` | Provider presets, OpenAI-compatible API endpoints, and lifecycle policy. |
-| `architecture/result_storage.md` | BenchmarkRun model, result records, and JSON/CSV/HTML/MD file formats. |
+### Coding
+- `coding/shared_rules.md`
+  - Cross-module rules for scope, ownership, serialization, and CLI-facing behavior.
+- `coding/rust.md`
+  - Rust edition, crate conventions, data-shape rules, and module layout.
+- `coding/testing_and_quality.md`
+  - Test expectations, `cargo fmt`, `clippy`, and CI quality gates.
+- `coding/error_handling.md`
+  - `LLMeterError`, `anyhow`, provider-failure handling, and recoverable benchmark error rules.
 
-### `coding/`
+### Runtime
+- `runtime/modes.md`
+  - Interactive menu mode, scriptable command mode, and report-only workflows.
+- `runtime/startup.md`
+  - Build, launch, provider prechecks, and the expected startup sequence for local benchmarking.
+- `runtime/configuration.md`
+  - Environment variables, CLI overrides, base-URL normalization, and `AppConfig`.
+- `runtime/deployment.md`
+  - Source builds, `cargo install`, prebuilt binaries, platforms, and versioning.
+- `runtime/troubleshooting.md`
+  - Startup failures, provider connectivity, empty model catalogs, and output-path recovery.
 
-| File | Summary |
-|---|---|
-| `coding/rust.md` | Rust edition, crate conventions, `cargo fmt`, `clippy`, and module structure. |
-| `coding/testing_and_quality.md` | `cargo test`, `cargo clippy`, and CI quality gates. |
+### User
+- `user/getting_started.md`
+  - Prerequisites, installation, first-run flow, and initial verification steps.
+- `user/provider_setup.md`
+  - Provider preset selection, local server expectations, base URLs, and model exposure checks.
+- `user/interactive_usage.md`
+  - Main menu behavior, guided benchmark execution, and interactive report flows.
+- `user/scriptable_usage.md`
+  - Non-interactive subcommands, automation patterns, and CI-oriented execution.
+- `user/benchmarks.md`
+  - Available benchmarks, the benchmark trait model, and extension workflow.
+- `user/reports_and_results.md`
+  - Output files, report generation, terminal summaries, and how to inspect saved runs.
+- `user/troubleshooting.md`
+  - User-facing troubleshooting for providers, benchmark failures, and saved output review.
 
-### `runtime/`
+## Reading Order
+1. Read this root index.
+2. Open the smallest leaf file that covers the current question.
+3. Expand to adjacent files only when the task crosses topic boundaries.
+4. Return here when switching branches.
 
-| File | Summary |
-|---|---|
-| `runtime/configuration.md` | Environment variables (`LLMETER_*`), `OLLAMA_HOST`, and the `AppConfig` struct. |
-| `runtime/deployment.md` | `cargo install`, prebuilt binaries, musl targets, and versioning. |
+## Context Rules
+- Read documentation files only when required by the active task.
+- Defer reading until the task proves the file is needed.
+- Keep all affected documents updated whenever behavior, architecture, runtime, or UX changes.
+- Always include a `Last updated: YYYY-MM-DD` line when modifying a document.
+- Pre-select files to read by folder structure and task intent before opening them.
 
-### `user/`
-
-| File | Summary |
-|---|---|
-| `user/getting_started.md` | Requirements, installation steps, and first-run walkthrough. |
-| `user/interactive_usage.md` | Main menu, guided benchmark runs, and interactive report flows. |
-| `user/scriptable_usage.md` | Subcommand reference, automation patterns, and CI integration. |
-| `user/benchmarks.md` | Available benchmark tests, the `Benchmark` trait, and how to add new ones. |
-| `user/troubleshooting.md` | Common issues, FAQ, and file locations. |
-
-## Reading discipline
-
-- Read this index first.
-- Read one leaf file at a time and expand only when crossing branches.
-- Keep the index updated when files are added, renamed, moved, or deleted.
-
-## Context rules
-
-- Only read ontology docs when the task requires them.
-- Prefer leaf files over this index once you know the branch.
-- Keep ontology documents in sync with implementation changes.
-- Every file carries a `Last updated` date — use it to gauge freshness.
-
-## Environment
-
-- Default development OS: Windows.
-- Documentation covers both PowerShell and CMD variants where applicable.
-- Align with the launcher scripts in the project root.
-
-Last updated: 2026-06-12
+## Environment Rules
+- Windows is the default operating environment for this repository.
+- Support both PowerShell and CMD guidance where commands differ.
+- Keep runtime guidance aligned with `cargo` workflows and `run_llmeter.ps1`.

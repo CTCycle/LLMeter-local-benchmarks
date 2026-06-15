@@ -7,6 +7,7 @@ use crate::benchmarks::base::{
     BenchmarkStepUpdate,
 };
 use crate::benchmarks::metrics::{generation_metrics, preview};
+use crate::benchmarks::registry::BenchmarkSuite;
 use crate::prompts::{
     EMBEDDINGS_INPUT, RESPONSES_PROMPT, STRUCTURED_OUTPUT_PROMPT, TOOL_CALL_PROMPT,
 };
@@ -28,6 +29,10 @@ impl Benchmark for ResponsesGenerationBenchmark {
 
     fn description(&self) -> &str {
         "Measures generation through /v1/responses when the provider supports it."
+    }
+
+    fn suite(&self) -> BenchmarkSuite {
+        BenchmarkSuite::Llm
     }
 
     fn planned_steps(&self, context: &BenchmarkContext) -> u32 {
@@ -104,6 +109,10 @@ impl Benchmark for StructuredOutputBenchmark {
 
     fn description(&self) -> &str {
         "Requests schema-constrained JSON and validates the returned object shape."
+    }
+
+    fn suite(&self) -> BenchmarkSuite {
+        BenchmarkSuite::Llm
     }
 
     fn planned_steps(&self, context: &BenchmarkContext) -> u32 {
@@ -219,6 +228,10 @@ impl Benchmark for ToolCallingBenchmark {
         "Requests a tool call and validates the selected function and arguments."
     }
 
+    fn suite(&self) -> BenchmarkSuite {
+        BenchmarkSuite::Llm
+    }
+
     fn planned_steps(&self, context: &BenchmarkContext) -> u32 {
         context.runs
     }
@@ -330,6 +343,10 @@ impl Benchmark for EmbeddingsBenchmark {
 
     fn description(&self) -> &str {
         "Measures /v1/embeddings latency and returned vector dimensions."
+    }
+
+    fn suite(&self) -> BenchmarkSuite {
+        BenchmarkSuite::Embeddings
     }
 
     fn planned_steps(&self, context: &BenchmarkContext) -> u32 {

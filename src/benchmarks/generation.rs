@@ -5,6 +5,7 @@ use crate::benchmarks::base::{
     BenchmarkStepUpdate,
 };
 use crate::benchmarks::metrics::{generation_metrics, preview};
+use crate::benchmarks::registry::BenchmarkSuite;
 use crate::prompts::SHORT_PROMPT;
 use crate::providers::ProviderClient;
 
@@ -21,6 +22,10 @@ impl Benchmark for BasicGenerationLatencyBenchmark {
 
     fn description(&self) -> &str {
         "Measures wall time, time to first token, usage fields, and output token throughput."
+    }
+
+    fn suite(&self) -> BenchmarkSuite {
+        BenchmarkSuite::Llm
     }
 
     fn planned_steps(&self, context: &BenchmarkContext) -> u32 {
