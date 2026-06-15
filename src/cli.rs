@@ -1,3 +1,4 @@
+use clap::builder::PossibleValuesParser;
 use clap::{Parser, Subcommand};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -125,10 +126,20 @@ pub enum BenchCommands {
         #[arg(long, help = "Sampling temperature")]
         temperature: Option<f64>,
 
-        #[arg(long, default_value = "both", help = "Raw result export format")]
+        #[arg(
+            long,
+            default_value = "both",
+            value_parser = PossibleValuesParser::new(EXPORT_CHOICES),
+            help = "Raw result export format"
+        )]
         export: String,
 
-        #[arg(long, default_value = "both", help = "Formatted report export format")]
+        #[arg(
+            long,
+            default_value = "both",
+            value_parser = PossibleValuesParser::new(REPORT_CHOICES),
+            help = "Formatted report export format"
+        )]
         report: String,
 
         #[arg(long = "param", action = clap::ArgAction::Append, help = "Extra provider request parameter as key=value, repeatable")]
@@ -151,7 +162,12 @@ pub enum ReportCommands {
     Generate {
         result: Option<String>,
 
-        #[arg(long, default_value = "both", help = "Report format")]
+        #[arg(
+            long,
+            default_value = "both",
+            value_parser = PossibleValuesParser::new(REPORT_CHOICES),
+            help = "Report format"
+        )]
         format: String,
     },
 }
@@ -229,5 +245,25 @@ mod tests {
             }
             _ => panic!("expected bench run command"),
         }
+    }
+
+    #[test]
+    fn rejects_invalid_export_choice() {
+        let result = Cli::try_parse_from([
+            "llmeter", "bench", "run", "--models", "all", "--export", "raw",
+        ]);
+
+        let error = result.err().expect("expected clap validation error");
+        assert!(error.to_string().contains("raw"));
+        assert!(error.to_string().contains("possible values"));
+    }
+
+    #[test]
+    fn rejects_invalid_report_choice() {
+        let result = Cli::try_parse_from(["llmeter", "report", "generate", "--format", "pdf"]);
+
+        let error = result.err().expect("expected clap validation error");
+        assert!(error.to_string().contains("pdf"));
+        assert!(error.to_string().contains("possible values"));
     }
 }
