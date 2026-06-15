@@ -232,6 +232,7 @@ pub fn run_benchmarks(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute_benchmark_plan(
     client: &ProviderClient,
     config: &AppConfig,
@@ -299,6 +300,9 @@ pub fn save_outputs(
     report: &str,
     progress: Option<&mut dyn ProgressSink>,
 ) -> anyhow::Result<Vec<PathBuf>> {
+    validate_output_choice(export, &["json", "csv", "both", "none"], "--export")?;
+    validate_output_choice(report, &["md", "html", "both", "none"], "--report")?;
+
     let mut null_sink = crate::progress::NullProgressSink;
     let sink = match progress {
         Some(sink) => sink,
@@ -384,6 +388,18 @@ pub fn save_outputs(
         prompt_name: None,
     });
     Ok(saved)
+}
+
+fn validate_output_choice(value: &str, allowed: &[&str], flag: &str) -> anyhow::Result<()> {
+    if allowed.contains(&value) {
+        return Ok(());
+    }
+
+    Err(LLMeterError::InvalidOption(format!(
+        "Invalid {flag} '{value}'. Use one of: {}.",
+        allowed.join(", ")
+    ))
+    .into())
 }
 
 pub fn command_report(config: &AppConfig, report_cmd: &ReportCommands) -> anyhow::Result<()> {
@@ -488,6 +504,7 @@ mod tests {
     use crate::config::AppConfig;
     use crate::progress::{ProgressEventKind, ProgressSink, ProgressUpdate};
     use crate::providers::{ProviderClient, ProviderKind};
+    use crate::results::BenchmarkRun;
 
     struct StubBenchmark {
         id: &'static str,
@@ -761,5 +778,43 @@ mod tests {
             run.config.get("suite").and_then(|value| value.as_str()),
             Some("embeddings")
         );
+    }
+
+    #[test]
+    fn save_outputs_rejects_invalid_export_choice() {
+        let config = test_config();
+        let run = BenchmarkRun {
+            run_id: "test-run".to_string(),
+            created_at: "2026-06-15T13:00:00Z".to_string(),
+            models: vec!["qwen3.5:2b".to_string()],
+            benchmark_ids: vec!["chat-generation".to_string()],
+            config: HashMap::new(),
+            results: Vec::new(),
+        };
+
+        let error = super::save_outputs(&config, &run, "raw", "none", None)
+            .expect_err("expected invalid export choice to fail");
+        assert!(error
+            .to_string()
+            .contains("Invalid --export 'raw'. Use one of: json, csv, both, none."));
+    }
+
+    #[test]
+    fn save_outputs_rejects_invalid_report_choice() {
+        let config = test_config();
+        let run = BenchmarkRun {
+            run_id: "test-run".to_string(),
+            created_at: "2026-06-15T13:00:00Z".to_string(),
+            models: vec!["qwen3.5:2b".to_string()],
+            benchmark_ids: vec!["chat-generation".to_string()],
+            config: HashMap::new(),
+            results: Vec::new(),
+        };
+
+        let error = super::save_outputs(&config, &run, "none", "pdf", None)
+            .expect_err("expected invalid report choice to fail");
+        assert!(error
+            .to_string()
+            .contains("Invalid --report 'pdf'. Use one of: md, html, both, none."));
     }
 }
