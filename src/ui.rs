@@ -9,7 +9,7 @@ use tabled::{
     settings::{Panel, Style},
 };
 
-use crate::benchmarks::registry::default_registry;
+use crate::benchmarks::registry::{default_registry, BenchmarkSuite};
 use crate::cli::{EXPORT_CHOICES, REPORT_CHOICES};
 use crate::config::AppConfig;
 use crate::progress::TerminalProgressRenderer;
@@ -114,14 +114,24 @@ pub fn print_models(models: &[Value], provider: ProviderKind) {
     println!("{table}");
 }
 
-pub fn print_benchmark_catalog() {
+pub fn print_benchmark_catalog(suite: Option<BenchmarkSuite>) {
     let registry = default_registry();
     let mut builder = Builder::new();
-    builder.push_record(vec!["#", "ID", "Name", "Description"]);
+    builder.push_record(vec!["#", "Suite", "ID", "Name", "Description"]);
 
-    for (index, benchmark) in registry.all().iter().enumerate() {
+    let benchmarks: Vec<_> = match suite {
+        Some(selected_suite) => registry.all_in_suite(selected_suite),
+        None => registry
+            .all()
+            .iter()
+            .map(|benchmark| benchmark.as_ref())
+            .collect(),
+    };
+
+    for (index, benchmark) in benchmarks.iter().enumerate() {
         builder.push_record(vec![
             (index + 1).to_string(),
+            benchmark.suite().label().to_string(),
             benchmark.id().to_string(),
             benchmark.name().to_string(),
             benchmark.description().to_string(),
@@ -129,7 +139,10 @@ pub fn print_benchmark_catalog() {
     }
 
     let mut table = builder.build();
-    table.with(Panel::header("Benchmark catalog"));
+    let title = suite
+        .map(|selected_suite| format!("{} benchmark catalog", selected_suite.label()))
+        .unwrap_or_else(|| "Benchmark catalog".to_string());
+    table.with(Panel::header(title));
     table.with(Style::rounded());
     println!("{table}");
 }
@@ -392,7 +405,7 @@ pub fn benchmark_menu(config: &AppConfig, client: &ProviderClient) -> Result<()>
 
         match choice {
             1 => {
-                print_benchmark_catalog();
+                print_benchmark_catalog(None);
                 pause();
             }
             2 => guided_benchmark_run(config, client)?,
@@ -407,18 +420,38 @@ pub fn benchmark_menu(config: &AppConfig, client: &ProviderClient) -> Result<()>
     }
 }
 
-fn guided_benchmark_run(config: &AppConfig, client: &ProviderClient) -> Result<()> {
-    if !client.is_running() {
-        println!(
-            "{} {} is not reachable at {}. Start the provider server and retry.",
-            "Error:".red(),
-            config.provider.display_name(),
-            config.base_url
-        );
-        return Ok(());
-    }
+fn guided_benchmark_run(config: &AppConfig, _client: &ProviderClient) -> Result<()> {
+    let provider_choice = ask_choice(
+        "Provider for this benchmark run",
+        &["ollama", "lmstudio", "llama-cpp", "openai-compatible"],
+        config.provider.label(),
+    )?;
+    let provider = provider_choice.parse().unwrap_or(config.provider);
+    let run_config = config.with_provider(provider);
+    let run_client = ProviderClient::new(
+        run_config.provider,
+        &run_config.base_url,
+        run_config.timeout,
+    );
 
-    let models = runner::installed_model_names(client)?;
+    let suite_choice = ask_choice(
+        "Benchmark suite",
+        &["llm", "embeddings"],
+        BenchmarkSuite::Llm.label(),
+    )?;
+    let suite = if suite_choice == "embeddings" {
+        BenchmarkSuite::Embeddings
+    } else {
+        BenchmarkSuite::Llm
+    };
+
+    let models = match runner::installed_model_names(&run_client) {
+        Ok(models) => models,
+        Err(error) => {
+            println!("{} {error}", "Error:".red());
+            return Ok(());
+        }
+    };
     let selected_models = choose_from_menu("Choose model or models", &models, true, true)?;
     if selected_models.is_empty() {
         println!("{} No models selected.", "Warning:".yellow());
@@ -426,7 +459,11 @@ fn guided_benchmark_run(config: &AppConfig, client: &ProviderClient) -> Result<(
     }
 
     let registry = default_registry();
-    let benchmark_ids: Vec<String> = registry.ids().iter().map(|s| s.to_string()).collect();
+    let benchmark_ids: Vec<String> = registry
+        .ids_for_suite(suite)
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     let selected_benchmark_ids =
         choose_from_menu("Choose benchmark or benchmarks", &benchmark_ids, true, true)?;
     if selected_benchmark_ids.is_empty() {
@@ -464,9 +501,10 @@ fn guided_benchmark_run(config: &AppConfig, client: &ProviderClient) -> Result<(
     let extra_options = std::collections::HashMap::new();
     let mut progress = TerminalProgressRenderer::new();
     let run = runner::run_benchmarks(
-        client,
-        config,
+        &run_client,
+        &run_config,
         runner::BenchmarkRunRequest {
+            suite,
             model_names: &selected_models,
             benchmark_ids: selected_ids.as_deref(),
             all_benchmarks,
@@ -479,7 +517,7 @@ fn guided_benchmark_run(config: &AppConfig, client: &ProviderClient) -> Result<(
         Some(&mut progress),
     )?;
 
-    let saved = runner::save_outputs(config, &run, &export, &report, Some(&mut progress))?;
+    let saved = runner::save_outputs(&run_config, &run, &export, &report, Some(&mut progress))?;
     summarize_run(&run);
     print_saved_paths(&saved);
     pause();
@@ -599,9 +637,11 @@ pub fn print_help_topic(topic: Option<&str>) {
         }
         "bench" | "benchmarks" => {
             println!("Benchmark examples:");
-            println!("  llmeter bench list");
-            println!("  llmeter --provider lmstudio bench run --models all --benchmarks all");
-            println!("  llmeter --provider llama-cpp --base-url http://localhost:8080/v1 bench run --models model --benchmarks chat-generation,structured-output");
+            println!("  llmeter bench list --suite llm");
+            println!(
+                "  llmeter --provider lmstudio bench run --suite llm --models all --benchmarks all"
+            );
+            println!("  llmeter bench run --provider ollama --suite embeddings --models all --benchmarks all");
         }
         "reports" => {
             println!("Reports:");
@@ -613,8 +653,9 @@ pub fn print_help_topic(topic: Option<&str>) {
             println!("Examples:");
             println!("  llmeter status");
             println!("  llmeter providers list");
+            println!("  llmeter providers set ollama");
             println!("  llmeter models");
-            println!("  llmeter bench run --models all --benchmarks all --runs 3 --max-tokens 128");
+            println!("  llmeter bench run --suite llm --models all --benchmarks all --runs 3 --max-tokens 128");
         }
         _ => {
             println!("LLMeter help topics: providers, bench, reports, examples");

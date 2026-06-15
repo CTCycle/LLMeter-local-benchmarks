@@ -6,9 +6,10 @@
 |---|---|
 | `llmeter status` | Show selected provider status. |
 | `llmeter providers list` | List provider presets and default base URLs. |
+| `llmeter providers set <provider>` | Persist the default provider for future runs. |
 | `llmeter models` | List models exposed by the selected provider. |
 | `llmeter show <model>` | Show model metadata from `/v1/models`. |
-| `llmeter bench list` | List available benchmarks. |
+| `llmeter bench list [--suite <suite>]` | List available benchmarks, optionally filtered by suite. |
 | `llmeter bench run [options]` | Run benchmarks non-interactively with live progress output. |
 | `llmeter report list` | List saved result and report files. |
 | `llmeter report show [result]` | Render a saved JSON result as a terminal report. |
@@ -21,7 +22,7 @@
 Run everything against all models exposed by Ollama:
 
 ```bash
-llmeter --provider ollama bench run --models all --benchmarks all --export both --report both
+llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export both --report both
 ```
 
 `bench run` now reports validation, planning, current benchmark step, and completion percentage while the run is in progress.
@@ -30,6 +31,7 @@ Run selected capability benchmarks against LM Studio:
 
 ```bash
 llmeter --provider lmstudio bench run \
+  --suite llm \
   --models all \
   --benchmarks chat-generation,structured-output,tool-calling \
   --runs 5 \
@@ -43,8 +45,9 @@ Use a custom llama.cpp URL:
 
 ```bash
 llmeter --provider llama-cpp --base-url http://localhost:8081/v1 bench run \
+  --suite embeddings \
   --models all \
-  --benchmarks chat-generation,prompt-sizes,embeddings
+  --benchmarks all
 ```
 
 Custom output directory:
@@ -61,7 +64,7 @@ Example:
 
 ```yaml
 - name: Run local LLM benchmarks
-  run: ./llmeter --provider ollama bench run --models all --benchmarks all --export json --report md
+  run: ./llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export json --report md
 ```
 
 Last updated: 2026-06-15

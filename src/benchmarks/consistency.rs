@@ -8,6 +8,7 @@ use crate::benchmarks::base::{
     BenchmarkStepUpdate,
 };
 use crate::benchmarks::metrics::{generation_metrics, pairwise_similarity, preview};
+use crate::benchmarks::registry::BenchmarkSuite;
 use crate::prompts::CONSISTENCY_PROMPT;
 use crate::providers::ProviderClient;
 use crate::utils::ns_to_ms;
@@ -25,6 +26,10 @@ impl Benchmark for ResponseConsistencyBenchmark {
 
     fn description(&self) -> &str {
         "Repeats the same prompt and reports exact-match and pairwise text similarity."
+    }
+
+    fn suite(&self) -> BenchmarkSuite {
+        BenchmarkSuite::Llm
     }
 
     fn planned_steps(&self, context: &BenchmarkContext) -> u32 {

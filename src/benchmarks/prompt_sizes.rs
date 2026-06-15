@@ -7,6 +7,7 @@ use crate::benchmarks::base::{
     BenchmarkStepUpdate,
 };
 use crate::benchmarks::metrics::{generation_metrics, preview};
+use crate::benchmarks::registry::BenchmarkSuite;
 use crate::prompts::prompts_by_size;
 use crate::providers::ProviderClient;
 
@@ -23,6 +24,10 @@ impl Benchmark for PromptSizePerformanceBenchmark {
 
     fn description(&self) -> &str {
         "Runs short, medium, and long prompts to compare prompt processing and generation timing."
+    }
+
+    fn suite(&self) -> BenchmarkSuite {
+        BenchmarkSuite::Llm
     }
 
     fn planned_steps(&self, context: &BenchmarkContext) -> u32 {

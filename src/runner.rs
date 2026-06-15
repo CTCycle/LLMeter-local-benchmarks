@@ -5,7 +5,7 @@ use serde_json::Value;
 use crate::benchmarks::base::{
     Benchmark, BenchmarkContext, BenchmarkProgressSink, BenchmarkStepStatus, BenchmarkStepUpdate,
 };
-use crate::benchmarks::registry::default_registry;
+use crate::benchmarks::registry::{default_registry, BenchmarkSuite};
 use crate::cli::ReportCommands;
 use crate::config::AppConfig;
 use crate::errors::LLMeterError;
@@ -16,6 +16,7 @@ use crate::results::{BenchmarkRun, ResultStore};
 use crate::utils::utc_now_iso;
 
 pub struct BenchmarkRunRequest<'a> {
+    pub suite: BenchmarkSuite,
     pub model_names: &'a [String],
     pub benchmark_ids: Option<&'a [String]>,
     pub all_benchmarks: bool,
@@ -184,7 +185,8 @@ pub fn run_benchmarks(
 
     let models = validate_models(client, request.model_names)?;
     let registry = default_registry();
-    let benchmarks = registry.select(request.benchmark_ids, request.all_benchmarks)?;
+    let benchmarks =
+        registry.select(request.benchmark_ids, request.all_benchmarks, request.suite)?;
 
     let context = BenchmarkContext {
         runs: request.runs,
@@ -223,6 +225,7 @@ pub fn run_benchmarks(
         config,
         &models,
         &benchmarks,
+        request.suite,
         context,
         tail_progress_units,
         sink,
@@ -234,6 +237,7 @@ fn execute_benchmark_plan(
     config: &AppConfig,
     models: &[String],
     benchmarks: &[&dyn Benchmark],
+    suite: BenchmarkSuite,
     context: BenchmarkContext,
     tail_progress_units: u32,
     sink: &mut dyn ProgressSink,
@@ -258,6 +262,7 @@ fn execute_benchmark_plan(
             c.insert("max_tokens".to_string(), Value::from(context.max_tokens));
             c.insert("temperature".to_string(), Value::from(context.temperature));
             c.insert("timeout".to_string(), Value::from(config.timeout));
+            c.insert("suite".to_string(), Value::from(suite.label()));
             c
         },
         results: Vec::new(),
@@ -479,6 +484,7 @@ mod tests {
         Benchmark, BenchmarkContext, BenchmarkProgressSink, BenchmarkResultRecord,
         BenchmarkStepStatus, BenchmarkStepUpdate,
     };
+    use crate::benchmarks::registry::BenchmarkSuite;
     use crate::config::AppConfig;
     use crate::progress::{ProgressEventKind, ProgressSink, ProgressUpdate};
     use crate::providers::{ProviderClient, ProviderKind};
@@ -501,6 +507,10 @@ mod tests {
 
         fn description(&self) -> &str {
             "stub"
+        }
+
+        fn suite(&self) -> BenchmarkSuite {
+            BenchmarkSuite::Llm
         }
 
         fn planned_steps(&self, _context: &BenchmarkContext) -> u32 {
@@ -575,6 +585,7 @@ mod tests {
             default_runs: 1,
             default_max_tokens: 128,
             default_temperature: 0.0,
+            explicit_base_url: false,
         }
     }
 
@@ -639,6 +650,7 @@ mod tests {
             &config,
             &models,
             &benchmarks,
+            BenchmarkSuite::Llm,
             context,
             0,
             &mut sink,
@@ -685,6 +697,7 @@ mod tests {
             &config,
             &models,
             &benchmarks,
+            BenchmarkSuite::Llm,
             context,
             0,
             &mut sink,
@@ -708,6 +721,45 @@ mod tests {
         assert_eq!(
             completed.last().map(|update| update.percent_complete()),
             Some(100)
+        );
+    }
+
+    #[test]
+    fn execute_benchmark_plan_records_suite_in_metadata() {
+        let client = ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1);
+        let config = test_config();
+        let context = BenchmarkContext {
+            runs: 1,
+            max_tokens: 128,
+            temperature: 0.0,
+            timeout: 30.0,
+            options: HashMap::new(),
+        };
+        let benchmark = StubBenchmark {
+            id: "embedding-stub",
+            name: "Embedding Stub",
+            total_steps: 1,
+            fail_on_step: None,
+        };
+        let benchmarks: Vec<&dyn Benchmark> = vec![&benchmark];
+        let models = vec!["model-a".to_string()];
+        let mut sink = RecordingProgressSink::default();
+
+        let run = execute_benchmark_plan(
+            &client,
+            &config,
+            &models,
+            &benchmarks,
+            BenchmarkSuite::Embeddings,
+            context,
+            0,
+            &mut sink,
+        )
+        .unwrap();
+
+        assert_eq!(
+            run.config.get("suite").and_then(|value| value.as_str()),
+            Some("embeddings")
         );
     }
 }

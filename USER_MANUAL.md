@@ -73,10 +73,11 @@ llmeter /help examples
 | `llmeter` | Open the interactive menu. |
 | `llmeter status` | Check selected provider reachability and model count. |
 | `llmeter providers list` | Show provider presets and default URLs. |
+| `llmeter providers set <provider>` | Persist the default provider for future runs. |
 | `llmeter models` | List models exposed by the selected provider. |
 | `llmeter show <model>` | Show model metadata from `/v1/models`. |
-| `llmeter bench list` | List benchmark IDs and descriptions. |
-| `llmeter bench run --models all --benchmarks all` | Run benchmarks non-interactively. |
+| `llmeter bench list [--suite <suite>]` | List benchmark IDs and descriptions. |
+| `llmeter bench run --suite llm --models all --benchmarks all` | Run benchmarks non-interactively. |
 | `llmeter report list` | List saved raw results and generated reports. |
 | `llmeter report show [result]` | Render a saved JSON result in the terminal. |
 | `llmeter report generate [result] --format both` | Generate Markdown and/or HTML reports. |
@@ -88,13 +89,14 @@ llmeter /help examples
 Run every benchmark against every exposed model:
 
 ```bash
-llmeter --provider ollama bench run --models all --benchmarks all
+llmeter --provider ollama bench run --suite llm --models all --benchmarks all
 ```
 
 Run selected benchmarks against LM Studio:
 
 ```bash
 llmeter --provider lmstudio bench run \
+  --suite llm \
   --models all \
   --benchmarks chat-generation,structured-output,tool-calling \
   --runs 3 \
@@ -108,8 +110,9 @@ Run llama.cpp on a custom port:
 
 ```bash
 llmeter --provider llama-cpp --base-url http://localhost:8081/v1 bench run \
+  --suite embeddings \
   --models all \
-  --benchmarks chat-generation,prompt-sizes,embeddings
+  --benchmarks all
 ```
 
 Add extra provider request parameters:
@@ -120,6 +123,8 @@ llmeter bench run --models all --benchmarks chat-generation --param top_p=0.9
 
 ## Built-In Benchmarks
 
+Standard `llm` suite:
+
 | ID | Purpose |
 |---|---|
 | `chat-generation` | Streaming chat completion latency, TTFT, token usage, and throughput. |
@@ -128,6 +133,11 @@ llmeter bench run --models all --benchmarks chat-generation --param top_p=0.9
 | `prompt-sizes` | Short, medium, and long prompt performance comparison. |
 | `structured-output` | JSON schema output request and validation. |
 | `tool-calling` | Tool/function call request and argument validation. |
+
+Separate `embeddings` suite:
+
+| ID | Purpose |
+|---|---|
 | `embeddings` | Embeddings latency, vector count, and vector dimensions. |
 
 Some providers or models may not support every endpoint or capability. Unsupported calls are recorded as error records in the result and report rather than stopping the entire run.
@@ -176,6 +186,12 @@ llmeter --output-dir ./benchmark-runs bench run --models all --benchmarks all
 
 CLI flags override environment variables.
 
+Persist the default provider in the user config directory:
+
+```bash
+llmeter providers set ollama
+```
+
 ## Troubleshooting
 
 ### Provider is not reachable
@@ -203,4 +219,4 @@ For LM Studio, load a model and start the local server. For llama.cpp, start `ll
 
 Not every provider/model supports every OpenAI-compatible capability. `responses-generation`, `structured-output`, `tool-calling`, and `embeddings` may fail independently. These failures are saved as error records in JSON/CSV and shown in reports.
 
-Last updated: 2026-06-12
+Last updated: 2026-06-15
