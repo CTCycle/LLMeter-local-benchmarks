@@ -363,11 +363,7 @@ pub fn print_file_list(paths: &[PathBuf], title: &str) {
             .metadata()
             .ok()
             .and_then(|m| m.modified().ok())
-            .map(|t| {
-                use std::time::SystemTime;
-                let duration = t.duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default();
-                duration.as_secs().to_string()
-            })
+            .map(crate::utils::format_system_time_utc)
             .unwrap_or_default();
         builder.push_record(vec![
             (index + 1).to_string(),

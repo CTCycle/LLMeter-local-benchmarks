@@ -55,22 +55,7 @@ impl ResultStore {
     }
 
     pub fn new_run_id(&self, models: &[String]) -> String {
-        let stamp = utils::utc_now_iso()
-            .replace(':', "")
-            .replace("+0000", "Z")
-            .replace("+00:00", "Z");
-        let model_part = if models.is_empty() {
-            "models".to_string()
-        } else {
-            let joined = models.iter().take(2).cloned().collect::<Vec<_>>().join("-");
-            let slug = utils::slugify(&joined);
-            if slug.len() > 60 {
-                slug[..60].to_string()
-            } else {
-                slug
-            }
-        };
-        format!("{stamp}-{model_part}")
+        build_run_id(&utils::utc_now_run_id_stamp(), std::process::id(), models)
     }
 
     pub fn save_json(&self, run: &BenchmarkRun) -> anyhow::Result<PathBuf> {
@@ -238,5 +223,36 @@ impl ResultStore {
         let run: BenchmarkRun = serde_json::from_str(&content)
             .with_context(|| format!("Invalid JSON in {}", path.display()))?;
         Ok(run)
+    }
+}
+
+fn build_run_id(stamp: &str, pid: u32, models: &[String]) -> String {
+    let model_part = if models.is_empty() {
+        "models".to_string()
+    } else {
+        let joined = models.iter().take(2).cloned().collect::<Vec<_>>().join("-");
+        let slug = utils::slugify(&joined);
+        if slug.len() > 60 {
+            slug[..60].to_string()
+        } else {
+            slug
+        }
+    };
+    format!("{stamp}-p{pid}-{model_part}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_run_id;
+
+    #[test]
+    fn build_run_id_varies_by_process_for_same_timestamp_and_models() {
+        let models = vec!["qwen3.5:2b".to_string()];
+        let first = build_run_id("2026-06-16T135142123456Z", 100, &models);
+        let second = build_run_id("2026-06-16T135142123456Z", 101, &models);
+
+        assert_ne!(first, second);
+        assert!(first.contains("-p100-"));
+        assert!(second.contains("-p101-"));
     }
 }

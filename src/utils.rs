@@ -1,9 +1,19 @@
 use std::path::Path;
+use std::time::SystemTime;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 pub fn utc_now_iso() -> String {
     Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string()
+}
+
+pub fn utc_now_run_id_stamp() -> String {
+    Utc::now().format("%Y-%m-%dT%H%M%S%.6fZ").to_string()
+}
+
+pub fn format_system_time_utc(value: SystemTime) -> String {
+    let timestamp: DateTime<Utc> = value.into();
+    timestamp.format("%Y-%m-%d %H:%M:%S UTC").to_string()
 }
 
 pub fn ns_to_ms(value: Option<u128>) -> Option<f64> {
@@ -70,11 +80,21 @@ pub fn error_chain(error: &dyn std::error::Error) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::time::{Duration, SystemTime};
+
     #[test]
     fn error_chain_includes_context_and_root_cause() {
         let error = anyhow::anyhow!("root cause").context("outer context");
         let formatted = super::error_chain(&*error);
 
         assert_eq!(formatted, "outer context: root cause");
+    }
+
+    #[test]
+    fn format_system_time_utc_is_readable() {
+        let value = SystemTime::UNIX_EPOCH + Duration::from_secs(1_781_534_859);
+        let formatted = super::format_system_time_utc(value);
+
+        assert_eq!(formatted, "2026-06-15 14:47:39 UTC");
     }
 }
