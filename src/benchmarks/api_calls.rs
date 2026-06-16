@@ -12,6 +12,7 @@ use crate::prompts::{
     EMBEDDINGS_INPUT, RESPONSES_PROMPT, STRUCTURED_OUTPUT_PROMPT, TOOL_CALL_PROMPT,
 };
 use crate::providers::ProviderClient;
+use crate::utils::error_chain;
 
 pub struct ResponsesGenerationBenchmark;
 pub struct StructuredOutputBenchmark;
@@ -79,7 +80,7 @@ impl Benchmark for ResponsesGenerationBenchmark {
                         model,
                         Some(run_index),
                         "responses",
-                        error.to_string(),
+                        error_chain(&*error),
                         options.clone(),
                     ),
                 }
@@ -196,7 +197,7 @@ impl Benchmark for StructuredOutputBenchmark {
                         model,
                         Some(run_index),
                         "structured-json",
-                        error.to_string(),
+                        error_chain(&*error),
                         options.clone(),
                     ),
                 }
@@ -313,7 +314,7 @@ impl Benchmark for ToolCallingBenchmark {
                         model,
                         Some(run_index),
                         "tool-call",
-                        error.to_string(),
+                        error_chain(&*error),
                         options.clone(),
                     ),
                 }
@@ -410,7 +411,7 @@ impl Benchmark for EmbeddingsBenchmark {
                         model,
                         Some(run_index),
                         "embedding",
-                        error.to_string(),
+                        error_chain(&*error),
                         serde_json::json!({"input_chars": EMBEDDINGS_INPUT.len()}),
                     ),
                 }

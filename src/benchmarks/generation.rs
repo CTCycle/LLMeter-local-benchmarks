@@ -8,6 +8,7 @@ use crate::benchmarks::metrics::{generation_metrics, preview};
 use crate::benchmarks::registry::BenchmarkSuite;
 use crate::prompts::SHORT_PROMPT;
 use crate::providers::ProviderClient;
+use crate::utils::error_chain;
 
 pub struct BasicGenerationLatencyBenchmark;
 
@@ -86,7 +87,7 @@ impl Benchmark for BasicGenerationLatencyBenchmark {
                     prompt_name: Some("short".to_string()),
                     metrics: HashMap::new(),
                     response_preview: None,
-                    error: Some(e.to_string()),
+                    error: Some(error_chain(&*e)),
                     metadata: Some({
                         let mut m = HashMap::new();
                         m.insert("options".to_string(), options.clone());

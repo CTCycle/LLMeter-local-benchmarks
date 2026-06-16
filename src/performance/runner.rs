@@ -21,7 +21,7 @@ use crate::performance::workload::{
 use crate::progress::{ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate};
 use crate::providers::ProviderClient;
 use crate::results::{BenchmarkRun, BenchmarkRunKind, ResultStore};
-use crate::utils::{ns_to_ms, utc_now_iso};
+use crate::utils::{error_chain, ns_to_ms, utc_now_iso};
 
 pub fn run_performance_plan(
     config: &AppConfig,
@@ -223,7 +223,7 @@ fn run_measured_requests(
                 .clone()
                 .acquire_owned()
                 .await
-                .map_err(|error| anyhow::anyhow!(error.to_string()))?;
+                .map_err(|error| anyhow::anyhow!(error_chain(&error)))?;
             let client = client.clone();
             let prompt = prompt.clone();
             let params = plan.clone();
@@ -244,7 +244,7 @@ fn run_measured_requests(
 
         let mut traces = Vec::new();
         while let Some(result) = futures.next().await {
-            traces.push(result.map_err(|error| anyhow::anyhow!(error.to_string()))??);
+            traces.push(result.map_err(|error| anyhow::anyhow!(error_chain(&error)))??);
         }
         Ok::<Vec<RequestTrace>, anyhow::Error>(traces)
     })?;
@@ -337,7 +337,7 @@ fn execute_request(
             run_index,
             stream: plan.stream,
             success: false,
-            error: Some(error.to_string()),
+            error: Some(error_chain(&*error)),
             endpoint: "/v1/chat/completions".to_string(),
             http_status: None,
             input_tokens: None,

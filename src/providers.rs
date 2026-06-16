@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::errors::LLMeterError;
+use crate::utils::error_chain;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
 #[serde(rename_all = "kebab-case")]
@@ -204,7 +205,7 @@ impl ProviderClient {
                 base_url: self.base_url.clone(),
                 running: false,
                 models: 0,
-                error: Some(error.to_string()),
+                error: Some(error_chain(&*error)),
             },
         }
     }
