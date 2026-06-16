@@ -52,3 +52,29 @@ pub fn preview(text: &str, limit: usize) -> String {
         s
     }
 }
+
+pub fn error_chain(error: &dyn std::error::Error) -> String {
+    let mut parts = Vec::new();
+    let mut current = Some(error);
+
+    while let Some(err) = current {
+        let message = err.to_string();
+        if !message.is_empty() && parts.last() != Some(&message) {
+            parts.push(message);
+        }
+        current = err.source();
+    }
+
+    parts.join(": ")
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn error_chain_includes_context_and_root_cause() {
+        let error = anyhow::anyhow!("root cause").context("outer context");
+        let formatted = super::error_chain(&*error);
+
+        assert_eq!(formatted, "outer context: root cause");
+    }
+}

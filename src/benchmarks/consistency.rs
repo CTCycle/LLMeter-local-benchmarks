@@ -11,7 +11,7 @@ use crate::benchmarks::metrics::{generation_metrics, pairwise_similarity, previe
 use crate::benchmarks::registry::BenchmarkSuite;
 use crate::prompts::CONSISTENCY_PROMPT;
 use crate::providers::ProviderClient;
-use crate::utils::ns_to_ms;
+use crate::utils::{error_chain, ns_to_ms};
 
 pub struct ResponseConsistencyBenchmark;
 
@@ -75,7 +75,7 @@ impl Benchmark for ResponseConsistencyBenchmark {
                     per_run_metrics_list.push(generation_metrics(&result));
                 }
                 Err(e) => {
-                    errors.push(e.to_string());
+                    errors.push(error_chain(&*e));
                 }
             }
             progress.on_step(BenchmarkStepUpdate {

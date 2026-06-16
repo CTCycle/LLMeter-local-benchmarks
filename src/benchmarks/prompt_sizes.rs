@@ -10,6 +10,7 @@ use crate::benchmarks::metrics::{generation_metrics, preview};
 use crate::benchmarks::registry::BenchmarkSuite;
 use crate::prompts::prompts_by_size;
 use crate::providers::ProviderClient;
+use crate::utils::error_chain;
 
 pub struct PromptSizePerformanceBenchmark;
 
@@ -97,7 +98,7 @@ impl Benchmark for PromptSizePerformanceBenchmark {
                         prompt_name: Some(prompt_name.to_string()),
                         metrics: HashMap::new(),
                         response_preview: None,
-                        error: Some(e.to_string()),
+                        error: Some(error_chain(&*e)),
                         metadata: Some({
                             let mut m = HashMap::new();
                             m.insert("options".to_string(), options.clone());

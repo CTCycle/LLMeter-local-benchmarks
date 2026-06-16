@@ -5,6 +5,7 @@ use sysinfo::{ProcessesToUpdate, System};
 
 use crate::config::AppConfig;
 use crate::providers::ProviderKind;
+use crate::utils::error_chain;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnvironmentSnapshot {
@@ -47,7 +48,7 @@ pub fn capture_environment_snapshot(
             None,
             Some(String::from_utf8_lossy(&output.stderr).trim().to_string()),
         ),
-        Err(error) => (None, Some(error.to_string())),
+        Err(error) => (None, Some(error_chain(&error))),
     };
 
     EnvironmentSnapshot {
