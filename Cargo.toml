@@ -19,7 +19,6 @@ anyhow = "1"
 thiserror = "2"
 inquire = "0.7"
 tabled = "0.17"
-comrak = "0.33"
 colored = "2"
 sysinfo = "0.33"
 similar = "2"
@@ -29,3 +28,10 @@ futures-util = "0.3"
 
 [dev-dependencies]
 tempfile = "3"
+
+[profile.release]
+strip = "symbols"
+lto = true
+codegen-units = 1
+panic = "abort"
+opt-level = "s"
