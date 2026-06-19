@@ -272,6 +272,10 @@ fn execute_benchmark_plan(
         environment: None,
         performance_plan: None,
         quality_plan: None,
+        provider_capabilities: None,
+        model_load_measurements: None,
+        model_inventory_measurements: None,
+        telemetry_summary: None,
     };
 
     let mut completed_units = 0u32;
@@ -800,6 +804,10 @@ mod tests {
             environment: None,
             performance_plan: None,
             quality_plan: None,
+            provider_capabilities: None,
+            model_load_measurements: None,
+            model_inventory_measurements: None,
+            telemetry_summary: None,
         };
 
         let error = super::save_outputs(&config, &run, "raw", "none", None)
@@ -824,6 +832,10 @@ mod tests {
             environment: None,
             performance_plan: None,
             quality_plan: None,
+            provider_capabilities: None,
+            model_load_measurements: None,
+            model_inventory_measurements: None,
+            telemetry_summary: None,
         };
 
         let error = super::save_outputs(&config, &run, "none", "pdf", None)

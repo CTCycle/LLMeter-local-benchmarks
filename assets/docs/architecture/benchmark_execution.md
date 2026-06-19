@@ -5,7 +5,7 @@
 Benchmark runs originate from two surfaces:
 
 - `llmeter bench run ...` in scriptable mode.
-- `llmeter bench perf ...` in scriptable mode for native performance scenarios.
+- `llmeter bench perf ...` or `llmeter bench performance ...` in scriptable mode for native performance scenarios.
 - `llmeter` or `llmeter bench menu` in interactive mode.
 
 Serial benchmark runs converge in `src/runner.rs`. Native performance scenarios use `src/performance/runner.rs`. Both paths persist the same `BenchmarkRun` shape and reuse the same save/report flow.
@@ -53,8 +53,12 @@ Planned steps come from each benchmark's `planned_steps()` implementation, which
 - measured run count
 - optional JSONL workload path
 - repeated provider request parameters
+- load overhead measurement mode and probe count
+- capability probe flags
+- telemetry level and sample interval
+- optional provider process hint and model cache scan path
 
-The plan rejects zero runs, zero concurrency, and oversized prompt/output token requests unless `--param unsafe_large_prompt=true` is present.
+The plan rejects zero runs, zero concurrency, invalid load probe counts, telemetry sampling below 100 ms, and oversized prompt/output token requests unless `--param unsafe_large_prompt=true` is present.
 
 ## Progress lifecycle
 
@@ -97,6 +101,8 @@ There is no concurrent benchmark scheduling. This keeps timing simpler and makes
 
 Each scenario emits one summary record plus serialized request traces inside record metadata.
 
+Before scenarios, performance runs can optionally capture a provider capability matrix and load overhead estimate. Load overhead is a client-side first-probe minus warm-probe estimate, not true model-load telemetry. Detailed and full telemetry levels sample system state during scenario execution and summarize the collected samples at run finalization.
+
 ## Performance scenarios
 
 The built-in performance profiles are:
@@ -131,4 +137,4 @@ Fatal failures stop the command when they happen before or outside benchmark exe
 
 Benchmark-level capability failures do not abort the whole run. Instead, individual benchmarks return result records with `error` populated so the run can continue and reports still include the partial outcome.
 
-Last updated: 2026-06-15
+Last updated: 2026-06-18

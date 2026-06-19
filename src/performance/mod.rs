@@ -1,5 +1,10 @@
 pub mod config;
+pub mod load;
 pub mod metrics;
+pub mod model_inventory;
+pub mod process;
+pub mod provider_probe;
 pub mod resource;
 pub mod runner;
+pub mod telemetry;
 pub mod workload;

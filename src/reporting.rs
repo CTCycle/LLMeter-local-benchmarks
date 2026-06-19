@@ -224,6 +224,58 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
     lines.push(String::new());
 
     if run.performance_plan.is_some() {
+        lines.push("## Benchmark timing model".to_string());
+        lines.push(String::new());
+        lines.push(
+            "- Provider status latency is the measured `GET /v1/models` duration.".to_string(),
+        );
+        lines.push("- Load overhead is an estimate from first-probe minus warm-probe timing, clamped at zero.".to_string());
+        lines.push("- TTFT is client-side streaming time to first token and includes provider scheduling and prompt processing.".to_string());
+        lines.push(
+            "- Generation wall time is wall time minus TTFT when streaming timing exists."
+                .to_string(),
+        );
+        lines.push(String::new());
+
+        if let Some(report) = &run.provider_capabilities {
+            lines.push("## Provider capability matrix".to_string());
+            lines.push(String::new());
+            lines.push("| Endpoint | Method | Path | Supported | Latency ms | Error |".to_string());
+            lines.push("|---|---|---|---:|---:|---|".to_string());
+            for endpoint in &report.endpoints {
+                lines.push(format!(
+                    "| {} | {} | {} | {} | {} | {} |",
+                    md(&endpoint.name),
+                    endpoint.method,
+                    endpoint.path,
+                    endpoint.supported,
+                    fmt(endpoint.latency_ms),
+                    md(endpoint.error.as_deref().unwrap_or(""))
+                ));
+            }
+            lines.push(String::new());
+        }
+
+        if let Some(loads) = &run.model_load_measurements {
+            lines.push("## Model load overhead".to_string());
+            lines.push(String::new());
+            lines.push("| Model | Mode | Status ms | First probe ms | Warm probe mean ms | Est. overhead ms | Confidence |".to_string());
+            lines.push("|---|---|---:|---:|---:|---:|---|".to_string());
+            for load in loads {
+                lines.push(format!(
+                    "| {} | {:?} | {} | {} | {} | {} | {:?} |",
+                    md(&load.model),
+                    load.mode,
+                    fmt(load.provider_status_latency_ms),
+                    fmt(load.first_probe_wall_ms),
+                    fmt(load.warm_probe_wall_ms_mean),
+                    fmt(load.estimated_load_overhead_ms),
+                    load.confidence
+                ));
+            }
+            lines.push(String::new());
+        }
+
         lines.push("## Performance Summary".to_string());
         lines.push(String::new());
         lines.push("| Model | Scenario | Concurrency | P50 wall ms | P95 wall ms | P99 wall ms | TTFT p50 | Output tok/s | Req/s | Errors |".to_string());
@@ -279,6 +331,13 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
                 environment.available_memory
             ));
             lines.push(format!(
+                "- Memory used ratio: {:.3} | Swap used ratio: {:.3} | Disks: {} | Disk available bytes: {}",
+                environment.memory_used_ratio,
+                environment.swap_used_ratio,
+                environment.disk_count,
+                environment.disk_available_bytes
+            ));
+            lines.push(format!(
                 "- Provider: {} at {} | Version: {}",
                 environment.provider_kind,
                 environment.provider_base_url,
@@ -287,8 +346,54 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
             if let Some(error) = &environment.gpu_probe_error {
                 lines.push(format!("- GPU probe error: {}", md(error)));
             }
+            if !environment.provider_processes.is_empty() {
+                lines.push(format!(
+                    "- Provider process candidates: {}",
+                    environment.provider_processes.len()
+                ));
+            }
         }
         lines.push(String::new());
+        if let Some(telemetry) = &run.telemetry_summary {
+            lines.push("## Swap and memory pressure".to_string());
+            lines.push(String::new());
+            lines.push(format!(
+                "- Samples: {} | Max memory used ratio: {} | Max swap used ratio: {} | Max process memory bytes: {}",
+                telemetry.sample_count,
+                fmt(telemetry.max_memory_used_ratio),
+                fmt(telemetry.max_swap_used_ratio),
+                telemetry
+                    .max_process_memory_bytes
+                    .map(|value| value.to_string())
+                    .unwrap_or_default()
+            ));
+            for warning in &telemetry.warnings {
+                lines.push(format!("- Warning: {}", md(warning)));
+            }
+            lines.push(String::new());
+        }
+        if let Some(inventory) = &run.model_inventory_measurements {
+            lines.push("## Model cache and metadata".to_string());
+            lines.push(String::new());
+            lines
+                .push("| Model | Metadata ms | Metadata bytes | Cache bytes | Notes |".to_string());
+            lines.push("|---|---:|---:|---:|---|".to_string());
+            for item in inventory {
+                lines.push(format!(
+                    "| {} | {} | {} | {} | {} |",
+                    md(&item.model),
+                    fmt(item.metadata_latency_ms),
+                    item.metadata_payload_bytes
+                        .map(|value| value.to_string())
+                        .unwrap_or_default(),
+                    item.cache_bytes
+                        .map(|value| value.to_string())
+                        .unwrap_or_default(),
+                    md(&item.notes.join("; "))
+                ));
+            }
+            lines.push(String::new());
+        }
         lines.push("## Provider Parameters".to_string());
         lines.push(String::new());
         if let Some(plan) = &run.performance_plan {
@@ -312,9 +417,15 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
     for record in &run.results {
         let metrics = &record.metrics;
         let wall = metric_value_as_f64(metrics.get("wall_time_ms"));
-        let ttft = metric_value_as_f64(metrics.get("time_to_first_token_ms"));
+        let wall = wall.or_else(|| metric_value_as_f64(metrics.get("wall_time_ms_p50")));
+        let ttft = metric_value_as_f64(metrics.get("time_to_first_token_ms"))
+            .or_else(|| metric_value_as_f64(metrics.get("ttft_ms_p50")));
         let tps = metric_value_as_f64(metrics.get("tokens_per_second"))
-            .or_else(|| metric_value_as_f64(metrics.get("mean_tokens_per_second")));
+            .or_else(|| metric_value_as_f64(metrics.get("mean_tokens_per_second")))
+            .or_else(|| metric_value_as_f64(metrics.get("output_tokens_per_second")))
+            .or_else(|| {
+                metric_value_as_f64(metrics.get("output_tokens_per_second_including_ttft"))
+            });
         lines.push(format!(
             "| {} | {} | {} | {} | {} | {} | {} | {} | {} |",
             md(&record.model),
@@ -460,10 +571,16 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
         .iter()
         .map(|record| {
             let metrics = &record.metrics;
-            let wall = metric_value_as_f64(metrics.get("wall_time_ms"));
-            let ttft = metric_value_as_f64(metrics.get("time_to_first_token_ms"));
+            let wall = metric_value_as_f64(metrics.get("wall_time_ms"))
+                .or_else(|| metric_value_as_f64(metrics.get("wall_time_ms_p50")));
+            let ttft = metric_value_as_f64(metrics.get("time_to_first_token_ms"))
+                .or_else(|| metric_value_as_f64(metrics.get("ttft_ms_p50")));
             let tps = metric_value_as_f64(metrics.get("tokens_per_second"))
-                .or_else(|| metric_value_as_f64(metrics.get("mean_tokens_per_second")));
+                .or_else(|| metric_value_as_f64(metrics.get("mean_tokens_per_second")))
+                .or_else(|| metric_value_as_f64(metrics.get("output_tokens_per_second")))
+                .or_else(|| {
+                    metric_value_as_f64(metrics.get("output_tokens_per_second_including_ttft"))
+                });
             let status = if record.error.is_some() {
                 "ERROR"
             } else {

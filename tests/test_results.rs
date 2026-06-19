@@ -34,6 +34,10 @@ fn sample_run() -> BenchmarkRun {
         environment: None,
         performance_plan: None,
         quality_plan: None,
+        provider_capabilities: None,
+        model_load_measurements: None,
+        model_inventory_measurements: None,
+        telemetry_summary: None,
     }
 }
 

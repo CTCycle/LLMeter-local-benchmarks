@@ -10,11 +10,15 @@ use tokio::sync::Semaphore;
 use crate::benchmarks::base::BenchmarkResultRecord;
 use crate::config::AppConfig;
 use crate::errors::LLMeterError;
-use crate::performance::config::PerformancePlan;
+use crate::performance::config::{PerformancePlan, TelemetryLevel};
+use crate::performance::load::measure_model_load;
 use crate::performance::metrics::{
     summarize_traces, PerformanceSummary, RequestTiming, RequestTrace, TokenTiming,
 };
+use crate::performance::model_inventory::measure_model_inventory;
+use crate::performance::provider_probe::probe_provider_capabilities;
 use crate::performance::resource::capture_environment_snapshot;
+use crate::performance::telemetry::{summarize_samples, TelemetrySampler};
 use crate::performance::workload::{
     load_jsonl_workload, synthetic_prompt_for_tokens, PerformancePrompt,
 };
@@ -73,6 +77,14 @@ pub fn run_performance_plan(
     let mut results = Vec::new();
     let mut completed_units = 0u32;
     let process_memory_before = current_process_memory();
+    let provider_capabilities = if plan.probe_capabilities || plan.probe_all_endpoints {
+        Some(probe_provider_capabilities(client, &plan))
+    } else {
+        None
+    };
+    let model_load_measurements = measure_model_load(client, &available, &plan);
+    let model_inventory_measurements = measure_model_inventory(client, &available, &plan);
+    let mut telemetry_samples = Vec::new();
 
     for (model_index, model) in available.iter().enumerate() {
         for prompt in &prompts {
@@ -102,6 +114,12 @@ pub fn run_performance_plan(
                     });
 
                     run_warmup_requests(client, model, prompt, output_tokens, &plan)?;
+                    let sampler = match plan.telemetry {
+                        TelemetryLevel::Standard => None,
+                        TelemetryLevel::Detailed | TelemetryLevel::Full => {
+                            Some(TelemetrySampler::start(plan.sample_interval_ms))
+                        }
+                    };
                     let traces = run_measured_requests(
                         client,
                         model,
@@ -110,6 +128,9 @@ pub fn run_performance_plan(
                         concurrency,
                         &plan,
                     )?;
+                    if let Some(sampler) = sampler {
+                        telemetry_samples.extend(sampler.stop());
+                    }
                     let summary = summarize_traces(&traces);
                     results.push(summary_record(
                         model,
@@ -145,8 +166,17 @@ pub fn run_performance_plan(
         }
     }
 
-    let environment =
-        capture_environment_snapshot(config, process_memory_before, current_process_memory());
+    let environment = capture_environment_snapshot(
+        config,
+        process_memory_before,
+        current_process_memory(),
+        plan.provider_process.as_deref(),
+    );
+    let telemetry_summary = if telemetry_samples.is_empty() {
+        None
+    } else {
+        Some(summarize_samples(&telemetry_samples))
+    };
 
     Ok(BenchmarkRun {
         run_id,
@@ -162,11 +192,19 @@ pub fn run_performance_plan(
             config_map
         },
         results,
-        schema_version: "2.0".to_string(),
+        schema_version: "2.1".to_string(),
         run_kind: Some(BenchmarkRunKind::Performance),
         environment: Some(environment),
         performance_plan: Some(plan),
         quality_plan: None,
+        provider_capabilities,
+        model_load_measurements: if model_load_measurements.is_empty() {
+            None
+        } else {
+            Some(model_load_measurements)
+        },
+        model_inventory_measurements: Some(model_inventory_measurements),
+        telemetry_summary,
     })
 }
 
@@ -297,6 +335,14 @@ fn execute_request(
                 })
                 .collect::<Vec<_>>();
 
+            let wall_time_ms = ns_to_ms(Some(result.wall_time_ns)).unwrap_or_default();
+            let ttft_ms = ns_to_ms(result.time_to_first_token_ns);
+            let actual_output_tokens = result.output_tokens();
+            let generation_wall_ms = ttft_ms.map(|ttft| (wall_time_ms - ttft).max(0.0));
+            let including_ttft = actual_output_tokens.and_then(|tokens| rate(tokens, wall_time_ms));
+            let excluding_ttft = actual_output_tokens
+                .and_then(|tokens| generation_wall_ms.and_then(|wall| rate(tokens, wall)));
+
             Ok(RequestTrace {
                 request_id,
                 model: model.to_string(),
@@ -316,13 +362,21 @@ fn execute_request(
                     .pointer("/usage/prompt_tokens")
                     .or_else(|| result.raw.pointer("/usage/input_tokens"))
                     .and_then(|value| value.as_u64()),
-                output_tokens: result.output_tokens(),
+                output_tokens: actual_output_tokens,
                 token_timings,
                 timing: RequestTiming {
-                    wall_time_ms: ns_to_ms(Some(result.wall_time_ns)).unwrap_or_default(),
-                    ttft_ms: ns_to_ms(result.time_to_first_token_ns),
+                    wall_time_ms,
+                    ttft_ms,
                     tpot_ms: average_delta_ms(&result.token_timings_ns),
                     itl_ms: average_delta_ms(&result.token_timings_ns),
+                    generation_wall_ms,
+                    output_tokens_per_second_including_ttft: including_ttft,
+                    output_tokens_per_second_excluding_ttft: excluding_ttft,
+                    ttlt_ms: if plan.stream {
+                        Some(wall_time_ms)
+                    } else {
+                        None
+                    },
                 },
             })
         }
@@ -348,6 +402,10 @@ fn execute_request(
                 ttft_ms: None,
                 tpot_ms: None,
                 itl_ms: None,
+                generation_wall_ms: None,
+                output_tokens_per_second_including_ttft: None,
+                output_tokens_per_second_excluding_ttft: None,
+                ttlt_ms: None,
             },
         }),
     }
@@ -394,6 +452,21 @@ fn summary_record(
     );
     insert_opt(
         &mut metrics,
+        "wall_time_ms_mean",
+        summary.latency.wall_time_ms_mean,
+    );
+    insert_opt(
+        &mut metrics,
+        "wall_time_ms_max",
+        summary.latency.wall_time_ms_max,
+    );
+    insert_opt(
+        &mut metrics,
+        "wall_time_ms_stddev",
+        summary.latency.wall_time_ms_stddev,
+    );
+    insert_opt(
+        &mut metrics,
         "wall_time_ms_p50",
         summary.latency.wall_time_ms_p50,
     );
@@ -413,12 +486,32 @@ fn summary_record(
         summary.latency.wall_time_ms_p99,
     );
     insert_opt(&mut metrics, "ttft_ms_p50", summary.latency.ttft_ms_p50);
+    insert_opt(&mut metrics, "ttft_ms_mean", summary.latency.ttft_ms_mean);
+    insert_opt(&mut metrics, "ttft_ms_min", summary.latency.ttft_ms_min);
+    insert_opt(&mut metrics, "ttft_ms_max", summary.latency.ttft_ms_max);
     insert_opt(&mut metrics, "ttft_ms_p95", summary.latency.ttft_ms_p95);
     insert_opt(&mut metrics, "ttft_ms_p99", summary.latency.ttft_ms_p99);
     insert_opt(&mut metrics, "tpot_ms_p50", summary.latency.tpot_ms_p50);
     insert_opt(&mut metrics, "tpot_ms_p95", summary.latency.tpot_ms_p95);
     insert_opt(&mut metrics, "itl_ms_p50", summary.latency.itl_ms_p50);
+    insert_opt(&mut metrics, "itl_ms_p90", summary.latency.itl_ms_p90);
     insert_opt(&mut metrics, "itl_ms_p95", summary.latency.itl_ms_p95);
+    insert_opt(&mut metrics, "itl_ms_p99", summary.latency.itl_ms_p99);
+    insert_opt(
+        &mut metrics,
+        "generation_wall_ms_p50",
+        summary.latency.generation_wall_ms_p50,
+    );
+    insert_opt(
+        &mut metrics,
+        "generation_wall_ms_p95",
+        summary.latency.generation_wall_ms_p95,
+    );
+    insert_opt(
+        &mut metrics,
+        "generation_wall_ms_p99",
+        summary.latency.generation_wall_ms_p99,
+    );
     insert_opt(
         &mut metrics,
         "output_tokens_per_second",
@@ -434,6 +527,31 @@ fn summary_record(
         "requests_per_second",
         summary.throughput.requests_per_second,
     );
+    insert_opt(
+        &mut metrics,
+        "successful_requests_per_second",
+        summary.throughput.successful_requests_per_second,
+    );
+    insert_opt(
+        &mut metrics,
+        "output_tokens_per_second_including_ttft",
+        summary.throughput.output_tokens_per_second_including_ttft,
+    );
+    insert_opt(
+        &mut metrics,
+        "output_tokens_per_second_excluding_ttft",
+        summary.throughput.output_tokens_per_second_excluding_ttft,
+    );
+    insert_opt(
+        &mut metrics,
+        "mean_input_tokens_per_request",
+        summary.throughput.mean_input_tokens_per_request,
+    );
+    insert_opt(
+        &mut metrics,
+        "mean_output_tokens_per_request",
+        summary.throughput.mean_output_tokens_per_request,
+    );
     metrics.insert(
         "total_input_tokens".to_string(),
         json!(summary.throughput.total_input_tokens),
@@ -448,6 +566,22 @@ fn summary_record(
     );
     metrics.insert("requested_output_tokens".to_string(), json!(output_tokens));
     metrics.insert("concurrency".to_string(), json!(concurrency));
+    metrics.insert(
+        "timeout_count".to_string(),
+        json!(summary.errors.timeout_count),
+    );
+    metrics.insert(
+        "http_error_count".to_string(),
+        json!(summary.errors.http_error_count),
+    );
+    metrics.insert(
+        "provider_error_count".to_string(),
+        json!(summary.errors.provider_error_count),
+    );
+    metrics.insert(
+        "empty_response_count".to_string(),
+        json!(summary.errors.empty_response_count),
+    );
 
     BenchmarkResultRecord {
         benchmark_id: "performance-scenario".to_string(),
@@ -469,6 +603,14 @@ fn summary_record(
 fn insert_opt(metrics: &mut HashMap<String, Value>, key: &str, value: Option<f64>) {
     if let Some(value) = value {
         metrics.insert(key.to_string(), json!(value));
+    }
+}
+
+fn rate(tokens: u64, wall_time_ms: f64) -> Option<f64> {
+    if wall_time_ms <= 0.0 {
+        None
+    } else {
+        Some(tokens as f64 / (wall_time_ms / 1000.0))
     }
 }
 

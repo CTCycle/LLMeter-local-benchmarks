@@ -19,6 +19,31 @@ pub enum PerformanceProfile {
     Sweep,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+#[serde(rename_all = "kebab-case")]
+pub enum LoadMeasurementMode {
+    Off,
+    WarmBaseline,
+    ColdWarmEstimate,
+    NativeIfAvailable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+#[serde(rename_all = "kebab-case")]
+pub enum TelemetryLevel {
+    Standard,
+    Detailed,
+    Full,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+#[serde(rename_all = "kebab-case")]
+pub enum ReportDetailLevel {
+    Summary,
+    Detailed,
+    Full,
+}
+
 impl PerformanceProfile {
     pub fn label(self) -> &'static str {
         match self {
@@ -86,6 +111,16 @@ pub struct PerformancePlan {
     pub stream: bool,
     pub workload_jsonl: Option<String>,
     pub extra_params: HashMap<String, Value>,
+    pub load_measurement: LoadMeasurementMode,
+    pub load_probe_runs: u32,
+    pub telemetry: TelemetryLevel,
+    pub sample_interval_ms: u64,
+    pub provider_process: Option<String>,
+    pub probe_capabilities: bool,
+    pub probe_all_endpoints: bool,
+    pub model_cache_dir: Option<String>,
+    pub scan_model_cache: bool,
+    pub detail: ReportDetailLevel,
 }
 
 impl PerformancePlan {
@@ -102,6 +137,16 @@ impl PerformancePlan {
         stream: bool,
         workload_jsonl: Option<String>,
         extra_params: HashMap<String, Value>,
+        load_measurement: LoadMeasurementMode,
+        load_probe_runs: u32,
+        telemetry: TelemetryLevel,
+        sample_interval_ms: u64,
+        provider_process: Option<String>,
+        probe_capabilities: bool,
+        probe_all_endpoints: bool,
+        model_cache_dir: Option<String>,
+        scan_model_cache: bool,
+        detail: ReportDetailLevel,
     ) -> anyhow::Result<Self> {
         let unsafe_large_prompt = extra_params
             .get("unsafe_large_prompt")
@@ -125,6 +170,16 @@ impl PerformancePlan {
                 stream,
                 workload_jsonl,
                 extra_params,
+                load_measurement,
+                load_probe_runs,
+                telemetry,
+                sample_interval_ms,
+                provider_process: provider_process.clone(),
+                probe_capabilities,
+                probe_all_endpoints,
+                model_cache_dir: model_cache_dir.clone(),
+                scan_model_cache,
+                detail,
             },
             PerformanceProfile::Latency => Self {
                 provider,
@@ -142,6 +197,16 @@ impl PerformancePlan {
                 stream,
                 workload_jsonl,
                 extra_params,
+                load_measurement,
+                load_probe_runs,
+                telemetry,
+                sample_interval_ms,
+                provider_process: provider_process.clone(),
+                probe_capabilities,
+                probe_all_endpoints,
+                model_cache_dir: model_cache_dir.clone(),
+                scan_model_cache,
+                detail,
             },
             PerformanceProfile::Throughput => Self {
                 provider,
@@ -161,6 +226,16 @@ impl PerformancePlan {
                 stream,
                 workload_jsonl,
                 extra_params,
+                load_measurement,
+                load_probe_runs,
+                telemetry,
+                sample_interval_ms,
+                provider_process: provider_process.clone(),
+                probe_capabilities,
+                probe_all_endpoints,
+                model_cache_dir: model_cache_dir.clone(),
+                scan_model_cache,
+                detail,
             },
             PerformanceProfile::Sweep => Self {
                 provider,
@@ -180,6 +255,16 @@ impl PerformancePlan {
                 stream,
                 workload_jsonl,
                 extra_params,
+                load_measurement,
+                load_probe_runs,
+                telemetry,
+                sample_interval_ms,
+                provider_process,
+                probe_capabilities,
+                probe_all_endpoints,
+                model_cache_dir,
+                scan_model_cache,
+                detail,
             },
         };
 
@@ -213,6 +298,19 @@ impl PerformancePlan {
         if self.concurrency.levels.contains(&0) {
             return Err(LLMeterError::InvalidOption(
                 "Performance concurrency values must be greater than zero.".to_string(),
+            )
+            .into());
+        }
+        if self.load_measurement != LoadMeasurementMode::Off && self.load_probe_runs == 0 {
+            return Err(LLMeterError::InvalidOption(
+                "Load probe runs must be greater than zero when load measurement is enabled."
+                    .to_string(),
+            )
+            .into());
+        }
+        if self.sample_interval_ms < 100 {
+            return Err(LLMeterError::InvalidOption(
+                "Telemetry sample interval must be at least 100 ms.".to_string(),
             )
             .into());
         }

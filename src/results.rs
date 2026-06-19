@@ -7,12 +7,16 @@ use serde_json::Value;
 
 use crate::benchmarks::base::BenchmarkResultRecord;
 use crate::performance::config::PerformancePlan;
+use crate::performance::load::ModelLoadMeasurement;
+use crate::performance::model_inventory::ModelInventoryMeasurement;
+use crate::performance::provider_probe::ProviderCapabilityReport;
 use crate::performance::resource::EnvironmentSnapshot;
+use crate::performance::telemetry::TelemetrySummary;
 use crate::quality::manifest::QualityPlan;
 use crate::utils;
 
 fn default_schema_version() -> String {
-    "2.0".to_string()
+    "2.1".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -41,6 +45,14 @@ pub struct BenchmarkRun {
     pub performance_plan: Option<PerformancePlan>,
     #[serde(default)]
     pub quality_plan: Option<QualityPlan>,
+    #[serde(default)]
+    pub provider_capabilities: Option<ProviderCapabilityReport>,
+    #[serde(default)]
+    pub model_load_measurements: Option<Vec<ModelLoadMeasurement>>,
+    #[serde(default)]
+    pub model_inventory_measurements: Option<Vec<ModelInventoryMeasurement>>,
+    #[serde(default)]
+    pub telemetry_summary: Option<TelemetrySummary>,
 }
 
 pub struct ResultStore {
@@ -99,6 +111,18 @@ impl ResultStore {
         let mut header_row: Vec<String> = vec![
             "run_id".to_string(),
             "created_at".to_string(),
+            "schema_version".to_string(),
+            "run_kind".to_string(),
+            "provider".to_string(),
+            "base_url".to_string(),
+            "profile".to_string(),
+            "telemetry_level".to_string(),
+            "load_measurement_mode".to_string(),
+            "estimated_load_overhead_ms".to_string(),
+            "load_overhead_confidence".to_string(),
+            "swap_used_ratio".to_string(),
+            "memory_used_ratio".to_string(),
+            "gpu_names".to_string(),
             "benchmark_id".to_string(),
             "benchmark_name".to_string(),
             "model".to_string(),
@@ -112,9 +136,55 @@ impl ResultStore {
 
         // Write data rows
         for record in &run.results {
+            let load = run
+                .model_load_measurements
+                .as_ref()
+                .and_then(|items| items.iter().find(|item| item.model == record.model));
             let mut row: Vec<String> = vec![
                 run.run_id.clone(),
                 run.created_at.clone(),
+                run.schema_version.clone(),
+                run.run_kind
+                    .as_ref()
+                    .map(|kind| format!("{kind:?}"))
+                    .unwrap_or_default(),
+                run.config
+                    .get("provider")
+                    .map(value_to_cell)
+                    .unwrap_or_default(),
+                run.config
+                    .get("base_url")
+                    .map(value_to_cell)
+                    .unwrap_or_default(),
+                run.config
+                    .get("profile")
+                    .map(value_to_cell)
+                    .unwrap_or_default(),
+                run.performance_plan
+                    .as_ref()
+                    .map(|plan| format!("{:?}", plan.telemetry))
+                    .unwrap_or_default(),
+                run.performance_plan
+                    .as_ref()
+                    .map(|plan| format!("{:?}", plan.load_measurement))
+                    .unwrap_or_default(),
+                load.and_then(|item| item.estimated_load_overhead_ms)
+                    .map(|value| value.to_string())
+                    .unwrap_or_default(),
+                load.map(|item| format!("{:?}", item.confidence))
+                    .unwrap_or_default(),
+                run.environment
+                    .as_ref()
+                    .map(|env| env.swap_used_ratio.to_string())
+                    .unwrap_or_default(),
+                run.environment
+                    .as_ref()
+                    .map(|env| env.memory_used_ratio.to_string())
+                    .unwrap_or_default(),
+                run.environment
+                    .as_ref()
+                    .and_then(|env| env.gpu_probe_output.clone())
+                    .unwrap_or_default(),
                 record.benchmark_id.clone(),
                 record.benchmark_name.clone(),
                 record.model.clone(),
@@ -127,12 +197,7 @@ impl ResultStore {
                 let value = record
                     .metrics
                     .get(key)
-                    .map(|v| match v {
-                        Value::String(s) => s.clone(),
-                        Value::Number(n) => n.to_string(),
-                        Value::Bool(b) => b.to_string(),
-                        _ => v.to_string(),
-                    })
+                    .map(value_to_cell)
                     .unwrap_or_default();
                 row.push(value);
             }
@@ -223,6 +288,15 @@ impl ResultStore {
         let run: BenchmarkRun = serde_json::from_str(&content)
             .with_context(|| format!("Invalid JSON in {}", path.display()))?;
         Ok(run)
+    }
+}
+
+fn value_to_cell(value: &Value) -> String {
+    match value {
+        Value::String(s) => s.clone(),
+        Value::Number(n) => n.to_string(),
+        Value::Bool(b) => b.to_string(),
+        _ => value.to_string(),
     }
 }
 

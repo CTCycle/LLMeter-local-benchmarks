@@ -8,11 +8,11 @@ llmeter
 
 The default command opens an interactive menu with these options:
 
-1. **List providers** - shows supported provider presets and default URLs.
-2. **List models** - queries `/v1/models` from the selected provider.
+1. **Provider setup** - shows current provider status, supported provider presets, capability probing, and default provider persistence.
+2. **Model inventory** - lists exposed models, shows raw model metadata, and optionally estimates local cache footprint after a path is provided.
 3. **Benchmark workspace** - opens benchmark selection and execution.
-4. **Reports** - opens saved result/report workflows.
-5. **Help** - prints built-in help topics.
+4. **Reports and comparisons** - opens saved result/report workflows.
+5. **Help and examples** - prints built-in help topics.
 6. **Exit** - returns to shell.
 
 The provider is selected before launch with `--provider` and optional `--base-url`.
@@ -23,11 +23,15 @@ Opened via `llmeter` then selecting option 3, or directly with `llmeter bench me
 
 Options:
 
-1. **View available benchmark tests** - prints the benchmark catalog.
-2. **Run a guided benchmark** - walks through model selection, benchmark selection, run count, token cap, temperature, and output saving, then shows live progress with current model, benchmark, run context, and completion percentage.
-3. **View latest result as terminal report** - renders a saved JSON result.
-4. **Generate report from saved result** - outputs Markdown and/or HTML.
-5. **Back** - returns to main menu.
+1. **Quick benchmark** - runs a conservative smoke-style performance plan with low run counts and Markdown reporting by default.
+2. **Performance benchmark** - guides provider, probe depth, models, profile, warmups, measured runs, streaming, and report choices, then shows a plan preview before execution.
+3. **Standard LLM benchmark** - runs the existing guided LLM benchmark suite.
+4. **Embeddings benchmark** - runs the existing guided embeddings suite.
+5. **Quality benchmark plan** - shows the quality catalog and points to scriptable dry-run planning.
+6. **View benchmark catalog** - prints the benchmark catalog.
+7. **View latest result as terminal report** - renders a saved JSON result.
+8. **Generate report from saved result** - outputs Markdown and/or HTML.
+9. **Back** - returns to main menu.
 
 During execution, LLMeter shows a terminal progress bar for these phases:
 - validation
@@ -47,4 +51,4 @@ Options:
 3. **Generate Markdown or HTML report**.
 4. **Back**.
 
-Last updated: 2026-06-15
+Last updated: 2026-06-18

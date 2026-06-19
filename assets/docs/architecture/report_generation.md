@@ -42,9 +42,15 @@ The Markdown renderer produces these sections:
 2. Executive summary
 3. Run configuration
 4. Aggregated benchmark results
-5. Detailed records
-6. Errors, when present
-7. Interpretation notes
+5. Benchmark timing model for performance runs
+6. Provider capability matrix when a probe was captured
+7. Model load overhead estimates
+8. Performance scenario summary
+9. Resource, memory, swap, GPU, and provider-process context
+10. Model cache and metadata
+11. Detailed records
+12. Errors, when present
+13. Interpretation notes
 
 This is also the format used for terminal report viewing through `llmeter report show` and the interactive "View latest result as terminal report" flow.
 
@@ -55,6 +61,7 @@ The HTML renderer uses the same aggregated data model as Markdown and emits a se
 - summary cards
 - run configuration
 - aggregated benchmark table
+- performance summary table when present
 - detailed records table
 - error section when needed
 
@@ -83,4 +90,4 @@ Supported report choices:
 
 The saved file list is returned to the caller and then shown in the terminal UI.
 
-Last updated: 2026-06-15
+Last updated: 2026-06-18

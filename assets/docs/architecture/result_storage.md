@@ -17,10 +17,14 @@ BenchmarkRun {
     environment: Option<EnvironmentSnapshot>,
     performance_plan: Option<PerformancePlan>,
     quality_plan: Option<QualityPlan>,
+    provider_capabilities: Option<ProviderCapabilityReport>,
+    model_load_measurements: Option<Vec<ModelLoadMeasurement>>,
+    model_inventory_measurements: Option<Vec<ModelInventoryMeasurement>>,
+    telemetry_summary: Option<TelemetrySummary>,
 }
 ```
 
-`schema_version` is now persisted as `2.0`. Older JSON files that omit the new fields still deserialize because the added fields default to `None`.
+`schema_version` is now persisted as `2.1`. Older JSON files that omit the new fields still deserialize because the added fields default to `None`.
 
 ## Result records
 
@@ -53,7 +57,9 @@ Raw files are saved as JSON and CSV. Formatted reports are generated as Markdown
 | Markdown | `.report.md` | Human-readable summary with aggregated tables and interpretation notes. |
 | HTML | `.report.html` | Self-contained browser report with summary cards, sortable tables, and dark mode support. |
 
-JSON is the only format that preserves the full scenario metadata, environment snapshot, quality plan previews, and per-request performance traces.
+JSON is the only format that preserves the full scenario metadata, provider capability probe, model load overhead estimates, model inventory measurements, telemetry summary, environment snapshot, quality plan previews, and per-request performance traces.
+
+CSV keeps one row per result record. It includes fixed high-value columns such as schema version, run kind, provider, base URL, profile, telemetry level, load measurement mode, estimated load overhead, memory ratio, swap ratio, and GPU probe text before dynamic metric columns. Full request traces remain JSON-only.
 
 ## Output directory
 
@@ -61,4 +67,4 @@ Default: `benchmark_results/` in the current working directory.
 
 Overridable via `--output-dir` flag or `LLMETER_OUTPUT_DIR` environment variable.
 
-Last updated: 2026-06-15
+Last updated: 2026-06-18

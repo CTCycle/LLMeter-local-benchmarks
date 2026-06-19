@@ -8,6 +8,14 @@ LLMeter supports these provider presets:
 - `lmstudio`
 - `llama-cpp`
 - `openai-compatible`
+- `vllm`
+- `sglang`
+- `localai`
+- `litellm`
+- `tgi`
+- `text-generation-webui`
+- `jan`
+- `mlx-lm`
 
 Default base URLs:
 
@@ -17,6 +25,16 @@ Default base URLs:
 | `lmstudio` | `http://localhost:1234/v1` |
 | `llama-cpp` | `http://localhost:8080/v1` |
 | `openai-compatible` | `http://localhost:8000/v1` |
+| `vllm` | `http://localhost:8000/v1` |
+| `sglang` | `http://localhost:30000/v1` |
+| `localai` | `http://localhost:8080/v1` |
+| `litellm` | `http://localhost:4000/v1` |
+| `tgi` | `http://localhost:8080/v1` |
+| `text-generation-webui` | `http://localhost:5000/v1` |
+| `jan` | `http://localhost:1337/v1` |
+| `mlx-lm` | `http://localhost:8080/v1` |
+
+The provider list includes compatibility tiers. Ollama, LM Studio, and llama.cpp are first-class local targets. vLLM, SGLang, LocalAI, and LiteLLM are known OpenAI-compatible presets. TGI, text-generation-webui, Jan, and MLX-LM are best-effort because endpoint shape can vary by configuration or version.
 
 ## General rule
 
@@ -41,6 +59,14 @@ List exposed models:
 ```bash
 llmeter --provider ollama models
 ```
+
+Probe provider capabilities before a performance benchmark:
+
+```bash
+llmeter --provider ollama bench perf --models all --profile smoke --probe-capabilities --runs 1 --export none --report none
+```
+
+In interactive mode, use **Provider setup** then **Probe provider capabilities**.
 
 ## Custom base URL
 
@@ -75,4 +101,4 @@ LLMeter accepts a base URL with or without the `/v1` suffix and normalizes it in
 - Ensure the server is local and exposes the required `/v1` endpoints.
 - Capability coverage varies by implementation, so some benchmark types may report per-record errors.
 
-Last updated: 2026-06-15
+Last updated: 2026-06-18

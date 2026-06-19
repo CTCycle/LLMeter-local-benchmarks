@@ -160,12 +160,21 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     ref concurrency,
                     warmup,
                     runs,
-                    stream,
                     no_stream,
                     ref jsonl,
                     ref export,
                     ref report,
                     ref param,
+                    load_measurement,
+                    load_probe_runs,
+                    telemetry,
+                    sample_interval_ms,
+                    ref provider_process,
+                    probe_capabilities,
+                    probe_all_endpoints,
+                    ref model_cache_dir,
+                    scan_model_cache,
+                    detail,
                 } => {
                     let run_config = provider
                         .map(|selected| config.with_provider(selected))
@@ -182,6 +191,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                         Some(m) => m.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect(),
                     };
                     let extra_params = cli::parse_params(param)?;
+                    let stream_enabled = !*no_stream;
                     let plan = llmeter::performance::config::PerformancePlan::from_cli(
                         run_config.provider,
                         selected_models,
@@ -191,9 +201,19 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                         concurrency.as_deref(),
                         *warmup,
                         *runs,
-                        !no_stream || *stream,
+                        stream_enabled,
                         jsonl.clone(),
                         extra_params,
+                        *load_measurement,
+                        *load_probe_runs,
+                        *telemetry,
+                        *sample_interval_ms,
+                        provider_process.clone(),
+                        *probe_capabilities,
+                        *probe_all_endpoints,
+                        model_cache_dir.clone(),
+                        *scan_model_cache,
+                        *detail,
                     )?;
                     let mut progress = TerminalProgressRenderer::new();
                     let run = llmeter::performance::runner::run_performance_plan(
