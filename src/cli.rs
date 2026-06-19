@@ -5,7 +5,9 @@ use std::collections::HashMap;
 
 use crate::benchmarks::registry::BenchmarkSuite;
 use crate::errors::LLMeterError;
-use crate::performance::config::PerformanceProfile;
+use crate::performance::config::{
+    LoadMeasurementMode, PerformanceProfile, ReportDetailLevel, TelemetryLevel,
+};
 use crate::providers::ProviderKind;
 use crate::quality::catalog::QualityFramework;
 
@@ -20,7 +22,7 @@ pub struct Cli {
     #[arg(
         long,
         value_enum,
-        help = "Provider preset: ollama, lmstudio, llama-cpp, or openai-compatible"
+        help = "Provider preset. Use `llmeter providers list` for the full catalog."
     )]
     pub provider: Option<ProviderKind>,
 
@@ -38,6 +40,7 @@ pub struct Cli {
 }
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)]
 pub enum Commands {
     #[command(about = "Show provider API status")]
     Status,
@@ -154,7 +157,10 @@ pub enum BenchCommands {
         param: Vec<String>,
     },
 
-    #[command(about = "Run native performance benchmark scenarios")]
+    #[command(
+        about = "Run native performance benchmark scenarios",
+        visible_alias = "performance"
+    )]
     Perf {
         #[arg(
             long,
@@ -187,9 +193,6 @@ pub enum BenchCommands {
         #[arg(long, help = "Measured request count per scenario")]
         runs: Option<u32>,
 
-        #[arg(long, default_value_t = true, action = clap::ArgAction::SetTrue, help = "Enable streaming requests")]
-        stream: bool,
-
         #[arg(long, action = clap::ArgAction::SetTrue, help = "Disable streaming requests")]
         no_stream: bool,
 
@@ -214,6 +217,36 @@ pub enum BenchCommands {
 
         #[arg(long = "param", action = clap::ArgAction::Append, help = "Extra provider request parameter as key=value, repeatable")]
         param: Vec<String>,
+
+        #[arg(long, value_enum, default_value_t = LoadMeasurementMode::WarmBaseline)]
+        load_measurement: LoadMeasurementMode,
+
+        #[arg(long, default_value_t = 2)]
+        load_probe_runs: u32,
+
+        #[arg(long, value_enum, default_value_t = TelemetryLevel::Standard)]
+        telemetry: TelemetryLevel,
+
+        #[arg(long, default_value_t = 1000)]
+        sample_interval_ms: u64,
+
+        #[arg(long)]
+        provider_process: Option<String>,
+
+        #[arg(long, action = clap::ArgAction::SetTrue)]
+        probe_capabilities: bool,
+
+        #[arg(long, action = clap::ArgAction::SetTrue)]
+        probe_all_endpoints: bool,
+
+        #[arg(long)]
+        model_cache_dir: Option<String>,
+
+        #[arg(long, action = clap::ArgAction::SetTrue)]
+        scan_model_cache: bool,
+
+        #[arg(long, value_enum, default_value_t = ReportDetailLevel::Detailed)]
+        detail: ReportDetailLevel,
     },
 
     #[command(about = "Open the interactive benchmark menu")]

@@ -30,13 +30,18 @@ LLMeter currently exposes three benchmark families:
 Native performance runs record:
 
 - request count, success count, error count, and error rate
-- wall time min plus p50, p90, p95, and p99
-- TTFT p50, p95, and p99 when streaming is enabled
+- wall time min, mean, max, standard deviation, and p50, p90, p95, and p99
+- TTFT min, mean, max, p50, p95, and p99 when streaming is enabled
+- generation wall-time percentiles when TTFT exists
 - TPOT and ITL percentiles when token timing is available
-- requests per second plus input/output token throughput
-- per-request traces and environment snapshots in JSON output
+- requests per second, successful requests per second, and input/output token throughput
+- output tokens per second including TTFT and excluding TTFT when generation timing exists
+- timeout, HTTP error, provider error, and empty-response counts
+- per-request traces, capability probes, load estimates, model inventory, telemetry summaries, and environment snapshots in JSON output
 
 Synthetic prompt sizes are estimates. Provider usage fields remain authoritative when available.
+
+Load overhead is reported as an estimate unless provider-native telemetry exists. Do not interpret it as true model-load time. Non-streaming runs do not report TTFT unless a provider supplies native timing.
 
 ## Quality preparation
 
@@ -90,4 +95,4 @@ Key types:
 
 The benchmark appears in both interactive and scriptable flows.
 
-Last updated: 2026-06-15
+Last updated: 2026-06-18

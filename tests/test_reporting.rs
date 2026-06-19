@@ -1,7 +1,7 @@
 use llmeter::benchmarks::base::BenchmarkResultRecord;
 use llmeter::performance::config::{
-    ConcurrencySpec, OutputSizeSpec, PerformancePlan, PerformanceProfile, PromptSizeSpec,
-    WarmupConfig,
+    ConcurrencySpec, LoadMeasurementMode, OutputSizeSpec, PerformancePlan, PerformanceProfile,
+    PromptSizeSpec, ReportDetailLevel, TelemetryLevel, WarmupConfig,
 };
 use llmeter::providers::ProviderKind;
 use llmeter::reporting::{build_summary_rows, render_html_report, render_markdown_report};
@@ -55,6 +55,10 @@ fn sample_run() -> BenchmarkRun {
         environment: None,
         performance_plan: None,
         quality_plan: None,
+        provider_capabilities: None,
+        model_load_measurements: None,
+        model_inventory_measurements: None,
+        telemetry_summary: None,
     }
 }
 
@@ -134,6 +138,16 @@ fn test_performance_report_sections_appear_when_plan_is_present() {
         stream: true,
         workload_jsonl: None,
         extra_params: std::collections::HashMap::new(),
+        load_measurement: LoadMeasurementMode::WarmBaseline,
+        load_probe_runs: 2,
+        telemetry: TelemetryLevel::Standard,
+        sample_interval_ms: 1000,
+        provider_process: None,
+        probe_capabilities: false,
+        probe_all_endpoints: false,
+        model_cache_dir: None,
+        scan_model_cache: false,
+        detail: ReportDetailLevel::Detailed,
     });
     run.results[0]
         .metrics
@@ -165,6 +179,6 @@ fn test_performance_report_sections_appear_when_plan_is_present() {
     let html = render_html_report(&run);
 
     assert!(markdown.contains("## Performance Summary"));
-    assert!(markdown.contains("## Environment Snapshot"));
+    assert!(markdown.contains("## Benchmark timing model"));
     assert!(html.contains("Performance Summary"));
 }

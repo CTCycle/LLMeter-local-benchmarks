@@ -11,7 +11,8 @@
 | `llmeter show <model>` | Show model metadata from `/v1/models`. |
 | `llmeter bench list [--suite <suite>]` | List available benchmarks, optionally filtered by suite. |
 | `llmeter bench run [options]` | Run benchmarks non-interactively with live progress output. |
-| `llmeter bench perf [options]` | Run native performance scenarios with warmups and concurrency sweeps. |
+| `llmeter bench perf [options]` | Run native performance scenarios with warmups, load estimates, probes, telemetry, and concurrency sweeps. |
+| `llmeter bench performance [options]` | Visible alias for `llmeter bench perf`. |
 | `llmeter report list` | List saved result and report files. |
 | `llmeter report show [result]` | Render a saved JSON result as a terminal report. |
 | `llmeter report generate [result]` | Generate Markdown and/or HTML reports. |
@@ -65,6 +66,20 @@ Run native performance smoke checks:
 llmeter --provider ollama bench perf --models all --profile smoke --export both --report both
 ```
 
+Disable streaming when TTFT is not needed or the provider streaming endpoint is unreliable:
+
+```bash
+llmeter --provider ollama bench perf --models all --profile smoke --runs 1 --no-stream
+```
+
+Add capability probing, client-side load overhead estimation, and detailed telemetry:
+
+```bash
+llmeter --provider ollama bench performance --models all --profile latency --runs 3 --warmup 1 --probe-capabilities --load-measurement cold-warm-estimate --telemetry full --report both --export both
+```
+
+Load overhead is reported as an estimate unless provider-native telemetry is available. Model cache scanning is opt-in with `--scan-model-cache` and never downloads or mutates model files.
+
 Run an explicit latency profile on Windows PowerShell:
 
 ```powershell
@@ -96,4 +111,4 @@ Example:
   run: ./llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export json --report md
 ```
 
-Last updated: 2026-06-15
+Last updated: 2026-06-18

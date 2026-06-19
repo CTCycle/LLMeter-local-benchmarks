@@ -29,6 +29,13 @@ fn trace(
             ttft_ms,
             tpot_ms: Some(12.0),
             itl_ms: Some(9.0),
+            generation_wall_ms: ttft_ms.map(|ttft| wall_time_ms - ttft),
+            output_tokens_per_second_including_ttft: output_tokens
+                .map(|tokens| tokens as f64 / (wall_time_ms / 1000.0)),
+            output_tokens_per_second_excluding_ttft: output_tokens.and_then(|tokens| {
+                ttft_ms.map(|ttft| tokens as f64 / ((wall_time_ms - ttft) / 1000.0))
+            }),
+            ttlt_ms: Some(wall_time_ms),
         },
     }
 }
@@ -54,4 +61,9 @@ fn summarize_traces_computes_rates_and_counts() {
     assert_eq!(summary.throughput.total_output_tokens, 100);
     assert!(summary.throughput.requests_per_second.unwrap() > 6.0);
     assert_eq!(summary.latency.wall_time_ms_p50, Some(100.0));
+    assert_eq!(summary.latency.generation_wall_ms_p50, Some(80.0));
+    assert!(summary
+        .throughput
+        .output_tokens_per_second_excluding_ttft
+        .is_some());
 }

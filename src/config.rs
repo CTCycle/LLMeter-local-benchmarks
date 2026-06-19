@@ -176,6 +176,14 @@ fn provider_env_url(provider: ProviderKind) -> Option<String> {
         ProviderKind::Lmstudio => std::env::var("LMSTUDIO_BASE_URL").ok(),
         ProviderKind::LlamaCpp => std::env::var("LLAMA_CPP_BASE_URL").ok(),
         ProviderKind::OpenaiCompatible => None,
+        ProviderKind::Vllm => std::env::var("VLLM_BASE_URL").ok(),
+        ProviderKind::Sglang => std::env::var("SGLANG_BASE_URL").ok(),
+        ProviderKind::Localai => std::env::var("LOCALAI_BASE_URL").ok(),
+        ProviderKind::Litellm => std::env::var("LITELLM_BASE_URL").ok(),
+        ProviderKind::Tgi => std::env::var("TGI_BASE_URL").ok(),
+        ProviderKind::TextGenerationWebui => std::env::var("TEXT_GENERATION_WEBUI_BASE_URL").ok(),
+        ProviderKind::Jan => std::env::var("JAN_BASE_URL").ok(),
+        ProviderKind::MlxLm => std::env::var("MLX_LM_BASE_URL").ok(),
     }
 }
 

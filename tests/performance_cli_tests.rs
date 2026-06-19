@@ -1,6 +1,8 @@
 use clap::Parser;
 use llmeter::cli::{BenchCommands, Cli, Commands};
-use llmeter::performance::config::{PerformancePlan, PerformanceProfile};
+use llmeter::performance::config::{
+    LoadMeasurementMode, PerformancePlan, PerformanceProfile, ReportDetailLevel, TelemetryLevel,
+};
 use llmeter::providers::ProviderKind;
 use serde_json::json;
 use std::collections::HashMap;
@@ -59,6 +61,16 @@ fn performance_plan_normalizes_and_validates_csv_values() {
         true,
         None,
         HashMap::new(),
+        LoadMeasurementMode::WarmBaseline,
+        2,
+        TelemetryLevel::Standard,
+        1000,
+        None,
+        false,
+        false,
+        None,
+        false,
+        ReportDetailLevel::Detailed,
     )
     .unwrap();
 
@@ -80,6 +92,16 @@ fn performance_plan_rejects_oversized_prompt_without_override() {
         true,
         None,
         HashMap::new(),
+        LoadMeasurementMode::WarmBaseline,
+        2,
+        TelemetryLevel::Standard,
+        1000,
+        None,
+        false,
+        false,
+        None,
+        false,
+        ReportDetailLevel::Detailed,
     )
     .unwrap_err();
 
@@ -99,6 +121,85 @@ fn performance_plan_rejects_oversized_prompt_without_override() {
         true,
         None,
         params,
+        LoadMeasurementMode::WarmBaseline,
+        2,
+        TelemetryLevel::Standard,
+        1000,
+        None,
+        false,
+        false,
+        None,
+        false,
+        ReportDetailLevel::Detailed,
     )
     .unwrap();
+}
+
+#[test]
+fn bench_perf_cli_parses_new_controls_and_no_stream() {
+    let cli = Cli::parse_from([
+        "llmeter",
+        "bench",
+        "perf",
+        "--models",
+        "all",
+        "--profile",
+        "smoke",
+        "--load-measurement",
+        "cold-warm-estimate",
+        "--telemetry",
+        "full",
+        "--sample-interval-ms",
+        "250",
+        "--no-stream",
+    ]);
+
+    match cli.command {
+        Some(Commands::Bench {
+            bench_command:
+                BenchCommands::Perf {
+                    load_measurement,
+                    telemetry,
+                    sample_interval_ms,
+                    no_stream,
+                    ..
+                },
+        }) => {
+            assert_eq!(load_measurement, LoadMeasurementMode::ColdWarmEstimate);
+            assert_eq!(telemetry, TelemetryLevel::Full);
+            assert_eq!(sample_interval_ms, 250);
+            assert!(no_stream);
+        }
+        _ => panic!("expected bench perf command"),
+    }
+}
+
+#[test]
+fn performance_plan_rejects_too_fast_telemetry_sampling() {
+    let error = PerformancePlan::from_cli(
+        ProviderKind::Ollama,
+        vec!["llama3.1".to_string()],
+        PerformanceProfile::Smoke,
+        None,
+        None,
+        None,
+        Some(1),
+        Some(1),
+        false,
+        None,
+        HashMap::new(),
+        LoadMeasurementMode::WarmBaseline,
+        2,
+        TelemetryLevel::Full,
+        50,
+        None,
+        false,
+        false,
+        None,
+        false,
+        ReportDetailLevel::Detailed,
+    )
+    .unwrap_err();
+
+    assert!(error.to_string().contains("at least 100 ms"));
 }

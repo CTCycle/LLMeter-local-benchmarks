@@ -18,6 +18,42 @@ pub enum ProviderKind {
     Lmstudio,
     LlamaCpp,
     OpenaiCompatible,
+    Vllm,
+    Sglang,
+    Localai,
+    Litellm,
+    Tgi,
+    TextGenerationWebui,
+    Jan,
+    MlxLm,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ProviderCompatibilityTier {
+    FirstClass,
+    OpenAiCompatibleKnown,
+    OpenAiCompatibleBestEffort,
+    Custom,
+}
+
+impl ProviderCompatibilityTier {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::FirstClass => "first-class",
+            Self::OpenAiCompatibleKnown => "known OpenAI-compatible",
+            Self::OpenAiCompatibleBestEffort => "best effort",
+            Self::Custom => "custom",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ProviderCatalogEntry {
+    pub provider: ProviderKind,
+    pub tier: ProviderCompatibilityTier,
+    pub default_base_url: &'static str,
+    pub notes: &'static str,
 }
 
 impl ProviderKind {
@@ -27,6 +63,14 @@ impl ProviderKind {
             ProviderKind::Lmstudio => "http://localhost:1234/v1",
             ProviderKind::LlamaCpp => "http://localhost:8080/v1",
             ProviderKind::OpenaiCompatible => "http://localhost:8000/v1",
+            ProviderKind::Vllm => "http://localhost:8000/v1",
+            ProviderKind::Sglang => "http://localhost:30000/v1",
+            ProviderKind::Localai => "http://localhost:8080/v1",
+            ProviderKind::Litellm => "http://localhost:4000/v1",
+            ProviderKind::Tgi => "http://localhost:8080/v1",
+            ProviderKind::TextGenerationWebui => "http://localhost:5000/v1",
+            ProviderKind::Jan => "http://localhost:1337/v1",
+            ProviderKind::MlxLm => "http://localhost:8080/v1",
         }
     }
 
@@ -36,6 +80,14 @@ impl ProviderKind {
             ProviderKind::Lmstudio => "lmstudio",
             ProviderKind::LlamaCpp => "llama-cpp",
             ProviderKind::OpenaiCompatible => "openai-compatible",
+            ProviderKind::Vllm => "vllm",
+            ProviderKind::Sglang => "sglang",
+            ProviderKind::Localai => "localai",
+            ProviderKind::Litellm => "litellm",
+            ProviderKind::Tgi => "tgi",
+            ProviderKind::TextGenerationWebui => "text-generation-webui",
+            ProviderKind::Jan => "jan",
+            ProviderKind::MlxLm => "mlx-lm",
         }
     }
 
@@ -45,7 +97,53 @@ impl ProviderKind {
             ProviderKind::Lmstudio => "LM Studio",
             ProviderKind::LlamaCpp => "llama.cpp",
             ProviderKind::OpenaiCompatible => "OpenAI-compatible",
+            ProviderKind::Vllm => "vLLM",
+            ProviderKind::Sglang => "SGLang",
+            ProviderKind::Localai => "LocalAI",
+            ProviderKind::Litellm => "LiteLLM",
+            ProviderKind::Tgi => "TGI",
+            ProviderKind::TextGenerationWebui => "text-generation-webui",
+            ProviderKind::Jan => "Jan",
+            ProviderKind::MlxLm => "MLX-LM",
         }
+    }
+
+    pub fn compatibility_tier(self) -> ProviderCompatibilityTier {
+        match self {
+            Self::Ollama | Self::Lmstudio | Self::LlamaCpp => ProviderCompatibilityTier::FirstClass,
+            Self::Vllm | Self::Sglang | Self::Localai | Self::Litellm => {
+                ProviderCompatibilityTier::OpenAiCompatibleKnown
+            }
+            Self::Tgi | Self::TextGenerationWebui | Self::Jan | Self::MlxLm => {
+                ProviderCompatibilityTier::OpenAiCompatibleBestEffort
+            }
+            Self::OpenaiCompatible => ProviderCompatibilityTier::Custom,
+        }
+    }
+
+    pub fn catalog() -> Vec<ProviderCatalogEntry> {
+        [
+            (Self::Ollama, "Existing first-class target"),
+            (Self::Lmstudio, "Existing first-class target"),
+            (Self::LlamaCpp, "Existing first-class target"),
+            (Self::OpenaiCompatible, "User-supplied local /v1 server"),
+            (Self::Vllm, "OpenAI-compatible server preset"),
+            (Self::Sglang, "OpenAI-compatible server preset"),
+            (Self::Localai, "OpenAI-compatible server preset"),
+            (Self::Litellm, "OpenAI-compatible proxy preset"),
+            (Self::Tgi, "Requires OpenAI-compatible router mode"),
+            (Self::TextGenerationWebui, "API shape can vary by extension"),
+            (Self::Jan, "Local API behavior can vary by version"),
+            (Self::MlxLm, "OpenAI-compatible server shape can vary"),
+        ]
+        .into_iter()
+        .map(|(provider, notes)| ProviderCatalogEntry {
+            provider,
+            tier: provider.compatibility_tier(),
+            default_base_url: provider.default_base_url(),
+            notes,
+        })
+        .collect()
     }
 }
 
@@ -64,8 +162,16 @@ impl std::str::FromStr for ProviderKind {
             "lmstudio" | "lm-studio" | "lm_studio" => Ok(ProviderKind::Lmstudio),
             "llama-cpp" | "llama.cpp" | "llamacpp" | "llama_cpp" => Ok(ProviderKind::LlamaCpp),
             "openai-compatible" | "openai" | "custom" => Ok(ProviderKind::OpenaiCompatible),
+            "vllm" | "vllm-openai" => Ok(ProviderKind::Vllm),
+            "sglang" | "sgl" => Ok(ProviderKind::Sglang),
+            "localai" | "local-ai" => Ok(ProviderKind::Localai),
+            "litellm" | "lite-llm" => Ok(ProviderKind::Litellm),
+            "tgi" | "text-generation-inference" => Ok(ProviderKind::Tgi),
+            "text-generation-webui" | "oobabooga" => Ok(ProviderKind::TextGenerationWebui),
+            "jan" => Ok(ProviderKind::Jan),
+            "mlx-lm" | "mlxlm" | "mlx_lm" => Ok(ProviderKind::MlxLm),
             other => Err(LLMeterError::InvalidOption(format!(
-                "Unknown provider '{other}'. Use ollama, lmstudio, llama-cpp, or openai-compatible."
+                "Unknown provider '{other}'. Use `llmeter providers list` for supported presets."
             ))),
         }
     }

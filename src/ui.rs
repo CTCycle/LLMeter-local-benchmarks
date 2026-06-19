@@ -12,6 +12,10 @@ use tabled::{
 use crate::benchmarks::registry::{default_registry, BenchmarkSuite};
 use crate::cli::{EXPORT_CHOICES, REPORT_CHOICES};
 use crate::config::AppConfig;
+use crate::performance::config::{
+    LoadMeasurementMode, PerformancePlan, PerformanceProfile, ReportDetailLevel, TelemetryLevel,
+};
+use crate::performance::provider_probe::probe_provider_capabilities;
 use crate::progress::TerminalProgressRenderer;
 use crate::providers::{ProviderClient, ProviderKind, ProviderStatus};
 use crate::quality::catalog::default_catalog;
@@ -49,23 +53,13 @@ pub fn print_status_panel(status: &ProviderStatus) {
 
 pub fn print_provider_catalog() {
     let mut builder = Builder::new();
-    builder.push_record(vec!["Provider", "Default /v1 base URL", "Notes"]);
-    for provider in [
-        ProviderKind::Ollama,
-        ProviderKind::Lmstudio,
-        ProviderKind::LlamaCpp,
-        ProviderKind::OpenaiCompatible,
-    ] {
-        let notes = match provider {
-            ProviderKind::Ollama => "Ollama OpenAI-compatible API",
-            ProviderKind::Lmstudio => "LM Studio local server",
-            ProviderKind::LlamaCpp => "llama.cpp server",
-            ProviderKind::OpenaiCompatible => "Any local OpenAI-compatible server",
-        };
+    builder.push_record(vec!["Provider", "Tier", "Default /v1 base URL", "Notes"]);
+    for entry in ProviderKind::catalog() {
         builder.push_record(vec![
-            provider.label().to_string(),
-            provider.default_base_url().to_string(),
-            notes.to_string(),
+            entry.provider.label().to_string(),
+            entry.tier.label().to_string(),
+            entry.default_base_url.to_string(),
+            entry.notes.to_string(),
         ]);
     }
     let mut table = builder.build();
@@ -384,27 +378,18 @@ pub fn main_menu(config: &AppConfig, client: &ProviderClient) -> Result<()> {
         let choice = menu(
             "Main menu",
             &[
-                "List providers",
-                "List models",
+                "Provider setup",
+                "Model inventory",
                 "Benchmark workspace",
-                "Reports",
-                "Help",
+                "Reports and comparisons",
+                "Help and examples",
                 "Exit",
             ],
         )?;
 
         match choice {
-            1 => {
-                print_provider_catalog();
-                pause();
-            }
-            2 => {
-                match client.list_models() {
-                    Ok(models) => print_models(&models, config.provider),
-                    Err(e) => println!("{} {e}", "Error:".red()),
-                }
-                pause();
-            }
+            1 => provider_setup_menu(config, client)?,
+            2 => model_inventory_menu(config, client)?,
             3 => benchmark_menu(config, client)?,
             4 => report_menu(config)?,
             5 => {
@@ -417,14 +402,91 @@ pub fn main_menu(config: &AppConfig, client: &ProviderClient) -> Result<()> {
     }
 }
 
+pub fn provider_setup_menu(config: &AppConfig, client: &ProviderClient) -> Result<()> {
+    loop {
+        let choice = menu(
+            "Provider setup",
+            &[
+                "Show current provider status",
+                "List supported provider presets",
+                "Probe provider capabilities",
+                "Set default provider",
+                "Back",
+            ],
+        )?;
+        match choice {
+            1 => print_status_panel(&client.status()),
+            2 => print_provider_catalog(),
+            3 => probe_provider_capabilities_interactive(config, client)?,
+            4 => {
+                let choices = ProviderKind::catalog()
+                    .iter()
+                    .map(|entry| entry.provider.label().to_string())
+                    .collect::<Vec<_>>();
+                let selected = choose_from_menu("Default provider", &choices, false, false)?;
+                if let Some(label) = selected.first() {
+                    let provider = label.parse().unwrap_or(config.provider);
+                    let path = crate::config::save_global_provider(provider)?;
+                    println!(
+                        "Saved default provider '{}' to {}",
+                        provider,
+                        path.display()
+                    );
+                }
+            }
+            5 => return Ok(()),
+            _ => {}
+        }
+        pause();
+    }
+}
+
+pub fn model_inventory_menu(config: &AppConfig, client: &ProviderClient) -> Result<()> {
+    loop {
+        let choice = menu(
+            "Model inventory",
+            &[
+                "List exposed models",
+                "Show raw model metadata",
+                "Estimate model cache footprint",
+                "Back",
+            ],
+        )?;
+        match choice {
+            1 => match client.list_models() {
+                Ok(models) => print_models(&models, config.provider),
+                Err(error) => println!("{} {error}", "Error:".red()),
+            },
+            2 => {
+                let models = runner::installed_model_names(client)?;
+                let selected = choose_from_menu("Choose model", &models, false, false)?;
+                if let Some(model) = selected.first() {
+                    match client.show_model(model) {
+                        Ok(value) => println!("{}", serde_json::to_string_pretty(&value)?),
+                        Err(error) => println!("{} {error}", "Error:".red()),
+                    }
+                }
+            }
+            3 => estimate_model_inventory_interactive(config, client)?,
+            4 => return Ok(()),
+            _ => {}
+        }
+        pause();
+    }
+}
+
 pub fn benchmark_menu(config: &AppConfig, client: &ProviderClient) -> Result<()> {
     loop {
         print_header();
         let choice = menu(
             "Benchmark workspace",
             &[
-                "View available benchmark tests",
-                "Run a guided benchmark",
+                "Quick benchmark",
+                "Performance benchmark",
+                "Standard LLM benchmark",
+                "Embeddings benchmark",
+                "Quality benchmark plan",
+                "View benchmark catalog",
                 "View latest result as terminal report",
                 "Generate report from saved result",
                 "Back",
@@ -432,26 +494,67 @@ pub fn benchmark_menu(config: &AppConfig, client: &ProviderClient) -> Result<()>
         )?;
 
         match choice {
-            1 => {
+            1 => guided_quick_benchmark_run(config, client)?,
+            2 => guided_performance_run(config, client)?,
+            3 => guided_standard_llm_run(config, client)?,
+            4 => guided_embeddings_run(config, client)?,
+            5 => guided_quality_plan(),
+            6 => {
                 print_benchmark_catalog(None);
                 pause();
             }
-            2 => guided_benchmark_run(config, client)?,
-            3 => {
+            7 => {
                 show_latest_report(config);
                 pause();
             }
-            4 => generate_report_interactive(config)?,
-            5 => return Ok(()),
+            8 => generate_report_interactive(config)?,
+            9 => return Ok(()),
             _ => {}
         }
     }
 }
 
-fn guided_benchmark_run(config: &AppConfig, _client: &ProviderClient) -> Result<()> {
+fn provider_labels() -> Vec<String> {
+    ProviderKind::catalog()
+        .iter()
+        .map(|entry| entry.provider.label().to_string())
+        .collect()
+}
+
+fn guided_quick_benchmark_run(config: &AppConfig, client: &ProviderClient) -> Result<()> {
+    guided_performance_run_with_profile(config, client, PerformanceProfile::Smoke, true)
+}
+
+fn guided_standard_llm_run(config: &AppConfig, client: &ProviderClient) -> Result<()> {
+    guided_benchmark_run_for_suite(config, client, BenchmarkSuite::Llm)
+}
+
+fn guided_embeddings_run(config: &AppConfig, client: &ProviderClient) -> Result<()> {
+    guided_benchmark_run_for_suite(config, client, BenchmarkSuite::Embeddings)
+}
+
+fn guided_quality_plan() {
+    print_quality_catalog();
+    println!("Use `llmeter quality plan --framework <name> --task <task> --model <model>` to build an executable dry-run plan.");
+    pause();
+}
+
+fn guided_benchmark_run_for_suite(
+    config: &AppConfig,
+    _client: &ProviderClient,
+    fixed_suite: BenchmarkSuite,
+) -> Result<()> {
+    guided_benchmark_run_inner(config, fixed_suite)
+}
+
+fn guided_benchmark_run_inner(config: &AppConfig, suite: BenchmarkSuite) -> Result<()> {
+    let provider_choices = provider_labels();
     let provider_choice = ask_choice(
         "Provider for this benchmark run",
-        &["ollama", "lmstudio", "llama-cpp", "openai-compatible"],
+        &provider_choices
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
         config.provider.label(),
     )?;
     let provider = provider_choice.parse().unwrap_or(config.provider);
@@ -461,17 +564,6 @@ fn guided_benchmark_run(config: &AppConfig, _client: &ProviderClient) -> Result<
         &run_config.base_url,
         run_config.timeout,
     );
-
-    let suite_choice = ask_choice(
-        "Benchmark suite",
-        &["llm", "embeddings"],
-        BenchmarkSuite::Llm.label(),
-    )?;
-    let suite = if suite_choice == "embeddings" {
-        BenchmarkSuite::Embeddings
-    } else {
-        BenchmarkSuite::Llm
-    };
 
     let models = match runner::installed_model_names(&run_client) {
         Ok(models) => models,
@@ -549,6 +641,291 @@ fn guided_benchmark_run(config: &AppConfig, _client: &ProviderClient) -> Result<
     summarize_run(&run);
     print_saved_paths(&saved);
     pause();
+    Ok(())
+}
+
+fn guided_performance_run(config: &AppConfig, client: &ProviderClient) -> Result<()> {
+    guided_performance_run_with_profile(config, client, PerformanceProfile::Latency, false)
+}
+
+fn guided_performance_run_with_profile(
+    config: &AppConfig,
+    _client: &ProviderClient,
+    default_profile: PerformanceProfile,
+    quick: bool,
+) -> Result<()> {
+    let provider_choices = provider_labels();
+    let provider_choice = ask_choice(
+        "Provider for this performance run",
+        &provider_choices
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        config.provider.label(),
+    )?;
+    let provider = provider_choice.parse().unwrap_or(config.provider);
+    let run_config = config.with_provider(provider);
+    let run_client = ProviderClient::new(
+        run_config.provider,
+        &run_config.base_url,
+        run_config.timeout,
+    );
+
+    let probe_choice = ask_choice(
+        "Capability probe",
+        &["basic probe", "full endpoint probe", "skip probe"],
+        "basic probe",
+    )?;
+    let models = match runner::installed_model_names(&run_client) {
+        Ok(models) => models,
+        Err(error) => {
+            println!("{} {error}", "Error:".red());
+            return Ok(());
+        }
+    };
+    let selected_models = choose_from_menu("Choose model or models", &models, !quick, true)?;
+    if selected_models.is_empty() {
+        println!("{} No models selected.", "Warning:".yellow());
+        return Ok(());
+    }
+
+    let profile_choice = if quick {
+        "smoke".to_string()
+    } else {
+        ask_choice(
+            "Performance profile",
+            &["smoke", "latency", "throughput", "sweep"],
+            default_profile.label(),
+        )?
+    };
+    let profile = profile_choice.parse().unwrap_or(default_profile);
+    let runs = choose_number(
+        "Measured runs per scenario",
+        if quick { 1 } else { 3 },
+        1,
+        None,
+    )?;
+    let warmup = choose_number("Warmup requests", 1, 0, None)?;
+    let stream_choice = ask_choice("Streaming", &["yes", "no"], "yes")?;
+    let export = ask_choice("Save raw results", EXPORT_CHOICES, "both")?;
+    let report = ask_choice(
+        "Generate formatted report",
+        REPORT_CHOICES,
+        if quick { "md" } else { "both" },
+    )?;
+
+    let plan = PerformancePlan::from_cli(
+        run_config.provider,
+        selected_models,
+        profile,
+        None,
+        None,
+        None,
+        Some(warmup),
+        Some(runs),
+        stream_choice == "yes",
+        None,
+        std::collections::HashMap::new(),
+        LoadMeasurementMode::WarmBaseline,
+        2,
+        TelemetryLevel::Standard,
+        1000,
+        None,
+        probe_choice != "skip probe",
+        probe_choice == "full endpoint probe",
+        None,
+        false,
+        ReportDetailLevel::Detailed,
+    )?;
+
+    print_performance_plan_preview(&plan);
+    let confirm = ask_choice("Run this benchmark plan", &["yes", "no"], "yes")?;
+    if confirm != "yes" {
+        return Ok(());
+    }
+
+    let mut progress = TerminalProgressRenderer::new();
+    let run = crate::performance::runner::run_performance_plan(
+        &run_config,
+        &run_client,
+        plan,
+        Some(&mut progress),
+    )?;
+    let saved = runner::save_outputs(&run_config, &run, &export, &report, Some(&mut progress))?;
+    summarize_run(&run);
+    print_saved_paths(&saved);
+    pause();
+    Ok(())
+}
+
+fn print_performance_plan_preview(plan: &PerformancePlan) {
+    let mut builder = Builder::new();
+    builder.push_record(vec!["Setting", "Value"]);
+    builder.push_record(vec!["Provider", plan.provider.label()]);
+    builder.push_record(vec!["Models", &plan.models.join(", ")]);
+    builder.push_record(vec!["Profile", plan.profile.label()]);
+    builder.push_record(vec![
+        "Prompt sizes",
+        &format!("{:?}", plan.prompt_sizes.estimated_tokens),
+    ]);
+    builder.push_record(vec![
+        "Output sizes",
+        &format!("{:?}", plan.output_sizes.estimated_tokens),
+    ]);
+    builder.push_record(vec![
+        "Concurrency",
+        &format!("{:?}", plan.concurrency.levels),
+    ]);
+    builder.push_record(vec!["Warmup", &plan.warmup.requests.to_string()]);
+    builder.push_record(vec!["Runs", &plan.runs.to_string()]);
+    builder.push_record(vec!["Streaming", if plan.stream { "yes" } else { "no" }]);
+    builder.push_record(vec![
+        "Capability probe",
+        if plan.probe_all_endpoints {
+            "full"
+        } else if plan.probe_capabilities {
+            "basic"
+        } else {
+            "skip"
+        },
+    ]);
+    let mut table = builder.build();
+    table.with(Panel::header("Benchmark plan preview"));
+    table.with(Style::rounded());
+    println!("{table}");
+}
+
+fn probe_provider_capabilities_interactive(
+    _config: &AppConfig,
+    client: &ProviderClient,
+) -> Result<()> {
+    let full = ask_choice("Probe depth", &["basic", "full"], "basic")? == "full";
+    let models = runner::installed_model_names(client).unwrap_or_default();
+    let plan = PerformancePlan::from_cli(
+        client.provider(),
+        models,
+        PerformanceProfile::Smoke,
+        None,
+        None,
+        None,
+        Some(0),
+        Some(1),
+        true,
+        None,
+        std::collections::HashMap::new(),
+        LoadMeasurementMode::Off,
+        1,
+        TelemetryLevel::Standard,
+        1000,
+        None,
+        true,
+        full,
+        None,
+        false,
+        ReportDetailLevel::Summary,
+    )?;
+    let report = probe_provider_capabilities(client, &plan);
+    let mut builder = Builder::new();
+    builder.push_record(vec![
+        "Endpoint",
+        "Method",
+        "Path",
+        "Supported",
+        "Latency ms",
+        "Error",
+    ]);
+    for endpoint in report.endpoints {
+        builder.push_record(vec![
+            endpoint.name,
+            endpoint.method,
+            endpoint.path,
+            endpoint.supported.to_string(),
+            endpoint
+                .latency_ms
+                .map(|value| format!("{value:.2}"))
+                .unwrap_or_default(),
+            endpoint.error.unwrap_or_default(),
+        ]);
+    }
+    let mut table = builder.build();
+    table.with(Panel::header(format!(
+        "{} capability probe",
+        client.provider().display_name()
+    )));
+    table.with(Style::rounded());
+    println!("{table}");
+    if !report.warnings.is_empty() {
+        println!("{}", "Warnings".yellow().bold());
+        for warning in report.warnings {
+            println!("- {warning}");
+        }
+    }
+    Ok(())
+}
+
+fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderClient) -> Result<()> {
+    let models = runner::installed_model_names(client)?;
+    let selected = choose_from_menu("Choose model or models", &models, true, true)?;
+    if selected.is_empty() {
+        return Ok(());
+    }
+    let cache_dir = Text::new("Optional cache directory to scan")
+        .with_default("")
+        .prompt()
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
+    let scan = !cache_dir.trim().is_empty();
+    let plan = PerformancePlan::from_cli(
+        config.provider,
+        selected.clone(),
+        PerformanceProfile::Smoke,
+        None,
+        None,
+        None,
+        Some(0),
+        Some(1),
+        true,
+        None,
+        std::collections::HashMap::new(),
+        LoadMeasurementMode::Off,
+        1,
+        TelemetryLevel::Standard,
+        1000,
+        None,
+        false,
+        false,
+        scan.then(|| cache_dir.trim().to_string()),
+        scan,
+        ReportDetailLevel::Summary,
+    )?;
+    let measurements =
+        crate::performance::model_inventory::measure_model_inventory(client, &selected, &plan);
+    let mut builder = Builder::new();
+    builder.push_record(vec![
+        "Model",
+        "Metadata ms",
+        "Metadata bytes",
+        "Cache bytes",
+        "Notes",
+    ]);
+    for item in measurements {
+        builder.push_record(vec![
+            item.model,
+            item.metadata_latency_ms
+                .map(|value| format!("{value:.2}"))
+                .unwrap_or_default(),
+            item.metadata_payload_bytes
+                .map(|value| value.to_string())
+                .unwrap_or_default(),
+            item.cache_bytes
+                .map(|value| value.to_string())
+                .unwrap_or_default(),
+            item.notes.join("; "),
+        ]);
+    }
+    let mut table = builder.build();
+    table.with(Panel::header("Model cache and metadata"));
+    table.with(Style::rounded());
+    println!("{table}");
     Ok(())
 }
 
@@ -658,10 +1035,7 @@ pub fn print_help_topic(topic: Option<&str>) {
     match topic.unwrap_or("overview").to_ascii_lowercase().as_str() {
         "providers" => {
             println!("Providers:");
-            println!("  --provider ollama             default http://localhost:11434/v1");
-            println!("  --provider lmstudio           default http://localhost:1234/v1");
-            println!("  --provider llama-cpp          default http://localhost:8080/v1");
-            println!("  --provider openai-compatible  use with --base-url");
+            println!("  Use `llmeter providers list` for the full provider catalog, compatibility tiers, and default /v1 URLs.");
         }
         "bench" | "benchmarks" => {
             println!("Benchmark examples:");
@@ -671,6 +1045,7 @@ pub fn print_help_topic(topic: Option<&str>) {
             );
             println!("  llmeter bench run --provider ollama --suite embeddings --models all --benchmarks all");
             println!("  llmeter bench perf --models all --profile smoke --export json --report md");
+            println!("  llmeter bench performance --models all --profile latency --probe-capabilities --telemetry full");
         }
         "reports" => {
             println!("Reports:");
