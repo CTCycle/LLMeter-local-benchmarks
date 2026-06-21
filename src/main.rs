@@ -31,12 +31,12 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
 
     match cli.command {
         None | Some(cli::Commands::Menu) => {
-            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout);
+            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout)?;
             llmeter::ui::main_menu(&config, &client)?;
             Ok(0)
         }
         Some(cli::Commands::Status) => {
-            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout);
+            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout)?;
             llmeter::ui::print_status_panel(&client.status());
             Ok(0)
         }
@@ -57,7 +57,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             Ok(0)
         }
         Some(cli::Commands::Models { json }) => {
-            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout);
+            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout)?;
             let models = client.list_models()?;
             if json {
                 println!("{}", serde_json::to_string_pretty(&models)?);
@@ -67,7 +67,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             Ok(0)
         }
         Some(cli::Commands::Show { ref model }) => {
-            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout);
+            let client = ProviderClient::new(config.provider, &config.base_url, config.timeout)?;
             let info = client.show_model(model)?;
             println!("{}", serde_json::to_string_pretty(&info)?);
             Ok(0)
@@ -76,7 +76,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             match bench_command {
                 cli::BenchCommands::Menu => {
                     let client =
-                        ProviderClient::new(config.provider, &config.base_url, config.timeout);
+                        ProviderClient::new(config.provider, &config.base_url, config.timeout)?;
                     llmeter::ui::benchmark_menu(&config, &client)?;
                 }
                 cli::BenchCommands::List { suite } => {
@@ -101,7 +101,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                         run_config.provider,
                         &run_config.base_url,
                         run_config.timeout,
-                    );
+                    )?;
                     let available_models = llmeter::runner::installed_model_names(&client)?;
                     let selected_models: Vec<String> = match models.as_deref() {
                         None => return Err(anyhow::anyhow!("--models is required for non-interactive benchmark runs. Use 'all' or a comma-separated list.")),
@@ -183,7 +183,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                         run_config.provider,
                         &run_config.base_url,
                         run_config.timeout,
-                    );
+                    )?;
                     let available_models = llmeter::runner::installed_model_names(&client)?;
                     let selected_models: Vec<String> = match models.as_deref() {
                         None => return Err(anyhow::anyhow!("--models is required for performance runs. Use 'all' or a comma-separated list.")),

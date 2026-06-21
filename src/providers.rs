@@ -222,17 +222,17 @@ pub struct ProviderClient {
 }
 
 impl ProviderClient {
-    pub fn new(provider: ProviderKind, base_url: &str, timeout: f64) -> Self {
+    pub fn new(provider: ProviderKind, base_url: &str, timeout: f64) -> anyhow::Result<Self> {
         let client = HttpClient::builder()
             .timeout(std::time::Duration::from_secs_f64(timeout))
             .build()
-            .expect("Failed to build HTTP client");
+            .context("Failed to build HTTP client")?;
 
-        ProviderClient {
+        Ok(ProviderClient {
             provider,
             base_url: base_url.trim_end_matches('/').to_string(),
             client,
-        }
+        })
     }
 
     pub fn provider(&self) -> ProviderKind {
@@ -592,7 +592,7 @@ mod tests {
 
     #[test]
     fn list_models_returns_friendly_provider_error() {
-        let client = ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1);
+        let client = ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1).unwrap();
         let error = client.list_models().unwrap_err().to_string();
         assert!(error.contains("Failed to list models from Ollama"));
         assert!(error.contains("http://127.0.0.1:1/v1"));
