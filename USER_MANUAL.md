@@ -14,11 +14,35 @@ cargo build --release
 
 The binary is at `target/release/llmeter` or `target/release/llmeter.exe`.
 
+By default, LLMeter stores its runtime state in a single home folder:
+
+- Windows: `%USERPROFILE%\\.llmeter`
+- Unix: `~/.llmeter`
+- Override: set `LLMETER_HOME`
+
 On Windows PowerShell, the included launcher builds when needed and runs the release binary:
 
 ```powershell
 .\run_llmeter.ps1 status
 .\run_llmeter.ps1 --provider lmstudio bench run --models all --benchmarks all
+```
+
+Create a managed install usable from `cmd.exe`:
+
+```cmd
+llmeter install
+```
+
+Update that managed install from a newer binary:
+
+```cmd
+llmeter update --source C:\downloads\llmeter.exe
+```
+
+Uninstall it:
+
+```cmd
+llmeter uninstall
 ```
 
 ## Provider Setup
@@ -81,6 +105,9 @@ llmeter /help examples
 | `llmeter report list` | List saved raw results and generated reports. |
 | `llmeter report show [result]` | Render a saved JSON result in the terminal. |
 | `llmeter report generate [result] --format both` | Generate Markdown and/or HTML reports. |
+| `llmeter install [--force]` | Install a managed CLI copy into `<LLMETER_HOME>/bin`. |
+| `llmeter update [--source <exe>]` | Update the managed CLI copy from a newer executable. |
+| `llmeter uninstall [--purge-home]` | Remove the managed CLI copy and optionally remove `LLMETER_HOME`. |
 | `llmeter help [topic]` | Show built-in help for `providers`, `bench`, `reports`, or `examples`. |
 | `llmeter /help [topic]` | Alias for built-in help. |
 
@@ -144,7 +171,7 @@ Some providers or models may not support every endpoint or capability. Unsupport
 
 ## Reports And Output Files
 
-Default output directory: `benchmark_results/`
+Default output directory: `<LLMETER_HOME>/benchmark_results/`
 
 ```text
 <run-id>.json
@@ -173,20 +200,22 @@ llmeter --output-dir ./benchmark-runs bench run --models all --benchmarks all
 
 | Variable | Default | Description |
 |---|---|---|
+| `LLMETER_HOME` | `%USERPROFILE%\\.llmeter` on Windows, `~/.llmeter` on Unix | Root directory for LLMeter state. |
 | `LLMETER_PROVIDER` | `ollama` | Provider preset. |
 | `LLMETER_BASE_URL` | provider default | OpenAI-compatible `/v1` base URL. |
 | `OLLAMA_HOST` | unset | If set for Ollama, LLMeter maps it to `<OLLAMA_HOST>/v1`. |
 | `LMSTUDIO_BASE_URL` | unset | LM Studio base URL override. |
 | `LLAMA_CPP_BASE_URL` | unset | llama.cpp base URL override. |
 | `LLMETER_TIMEOUT` | `120` | HTTP timeout in seconds. |
-| `LLMETER_OUTPUT_DIR` | `benchmark_results` | Output directory. |
+| `LLMETER_OUTPUT_DIR` | `<LLMETER_HOME>/benchmark_results` | Output directory. Relative or absolute values are used as provided. |
+| `LLMETER_CONFIG_DIR` | `<LLMETER_HOME>/config` | Override the persisted config directory. |
 | `LLMETER_RUNS` | `3` | Default benchmark repetitions. |
 | `LLMETER_MAX_TOKENS` | `128` | Default output token cap. |
 | `LLMETER_TEMPERATURE` | `0.2` | Default sampling temperature. |
 
 CLI flags override environment variables.
 
-Persist the default provider in the user config directory:
+Persist the default provider in `<LLMETER_HOME>/config/config.json` unless `LLMETER_CONFIG_DIR` is set:
 
 ```bash
 llmeter providers set ollama
@@ -219,4 +248,4 @@ For LM Studio, load a model and start the local server. For llama.cpp, start `ll
 
 Not every provider/model supports every OpenAI-compatible capability. `responses-generation`, `structured-output`, `tool-calling`, and `embeddings` may fail independently. These failures are saved as error records in JSON/CSV and shown in reports.
 
-Last updated: 2026-06-15
+Last updated: 2026-06-21

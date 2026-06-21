@@ -78,8 +78,44 @@ pub enum Commands {
         quality_command: QualityCommands,
     },
 
+    #[command(about = "Install LLMeter into the managed CLI home bin directory")]
+    Install {
+        #[arg(
+            long,
+            help = "Managed bin directory override. Defaults to <LLMETER_HOME>/bin"
+        )]
+        bin_dir: Option<String>,
+
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Overwrite an existing managed install")]
+        force: bool,
+    },
+
+    #[command(about = "Update the managed LLMeter install")]
+    Update {
+        #[arg(long, help = "Path to the replacement llmeter executable")]
+        source: Option<String>,
+
+        #[arg(
+            long,
+            help = "Managed bin directory override. Defaults to <LLMETER_HOME>/bin"
+        )]
+        bin_dir: Option<String>,
+    },
+
+    #[command(about = "Uninstall the managed LLMeter CLI")]
+    Uninstall {
+        #[arg(
+            long,
+            help = "Managed bin directory override. Defaults to <LLMETER_HOME>/bin"
+        )]
+        bin_dir: Option<String>,
+
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Also remove <LLMETER_HOME> config and benchmark outputs")]
+        purge_home: bool,
+    },
+
     #[command(
-        about = "Show built-in help. Use a topic such as providers, bench, reports, or examples",
+        about = "Show built-in help. Use a topic such as providers, bench, reports, install, or examples",
         visible_alias = "/help"
     )]
     Help { topic: Option<String> },
@@ -455,6 +491,35 @@ mod tests {
                 assert_eq!(model, "llama3.1");
             }
             _ => panic!("expected quality plan command"),
+        }
+    }
+
+    #[test]
+    fn parses_install_command() {
+        let cli = Cli::parse_from(["llmeter", "install", "--force"]);
+        match cli.command {
+            Some(Commands::Install { force, .. }) => assert!(force),
+            _ => panic!("expected install command"),
+        }
+    }
+
+    #[test]
+    fn parses_update_command() {
+        let cli = Cli::parse_from(["llmeter", "update", "--source", "C:\\temp\\llmeter.exe"]);
+        match cli.command {
+            Some(Commands::Update { source, .. }) => {
+                assert_eq!(source.as_deref(), Some("C:\\temp\\llmeter.exe"));
+            }
+            _ => panic!("expected update command"),
+        }
+    }
+
+    #[test]
+    fn parses_uninstall_command() {
+        let cli = Cli::parse_from(["llmeter", "uninstall", "--purge-home"]);
+        match cli.command {
+            Some(Commands::Uninstall { purge_home, .. }) => assert!(purge_home),
+            _ => panic!("expected uninstall command"),
         }
     }
 }

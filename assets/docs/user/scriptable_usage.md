@@ -18,6 +18,9 @@
 | `llmeter report generate [result]` | Generate Markdown and/or HTML reports. |
 | `llmeter quality list` | List quality benchmark catalog entries. |
 | `llmeter quality plan [options]` | Print a dry-run external quality benchmark plan as JSON. |
+| `llmeter install [--force]` | Install a managed CLI copy into `<LLMETER_HOME>/bin`. |
+| `llmeter update [--source <exe>]` | Refresh the managed CLI copy from a newer executable. |
+| `llmeter uninstall [--purge-home]` | Remove the managed CLI copy and optionally all LLMeter home data. |
 | `llmeter help [topic]` | Show built-in help. |
 | `llmeter /help [topic]` | Built-in help alias. |
 
@@ -58,6 +61,24 @@ Custom output directory:
 
 ```bash
 llmeter --output-dir ./ci-runs bench run --models all --benchmarks all
+```
+
+Install the managed CLI copy for `cmd.exe` use:
+
+```cmd
+llmeter install
+```
+
+Update it from a newer downloaded binary:
+
+```cmd
+llmeter update --source C:\downloads\llmeter.exe
+```
+
+Remove it:
+
+```cmd
+llmeter uninstall
 ```
 
 Run native performance smoke checks:
@@ -111,4 +132,4 @@ Example:
   run: ./llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export json --report md
 ```
 
-Last updated: 2026-06-18
+Last updated: 2026-06-21

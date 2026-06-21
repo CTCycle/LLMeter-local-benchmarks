@@ -13,7 +13,7 @@ LLMeter can save four artifact types per run:
 
 Default output directory:
 
-- `benchmark_results/`
+- `<LLMETER_HOME>/benchmark_results/`
 
 ## During benchmark runs
 
@@ -36,14 +36,14 @@ Show the latest or a selected saved JSON result as a terminal report:
 
 ```bash
 llmeter report show
-llmeter report show benchmark_results/<run-id>.json
+llmeter report show <LLMETER_HOME>/benchmark_results/<run-id>.json
 ```
 
 Generate Markdown and HTML from a saved JSON run:
 
 ```bash
 llmeter report generate --format both
-llmeter report generate benchmark_results/<run-id>.json --format html
+llmeter report generate <LLMETER_HOME>/benchmark_results/<run-id>.json --format html
 ```
 
 ## What reports contain
@@ -96,4 +96,4 @@ Environment snapshots record the host OS, CPU count, memory and swap ratios, dis
 - Use CSV when slicing metrics in spreadsheets.
 - Use Markdown or HTML when sharing human-readable summaries.
 
-Last updated: 2026-06-18
+Last updated: 2026-06-21

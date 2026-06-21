@@ -63,8 +63,10 @@ CSV keeps one row per result record. It includes fixed high-value columns such a
 
 ## Output directory
 
-Default: `benchmark_results/` in the current working directory.
+Default: `<LLMETER_HOME>/benchmark_results/`.
+
+If `LLMETER_HOME` is unset, the effective home is `%USERPROFILE%\\.llmeter` on Windows and `~/.llmeter` on Unix.
 
 Overridable via `--output-dir` flag or `LLMETER_OUTPUT_DIR` environment variable.
 
-Last updated: 2026-06-18
+Last updated: 2026-06-21

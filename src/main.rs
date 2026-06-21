@@ -6,6 +6,7 @@ use colored::Colorize;
 use llmeter::cli::{self, Cli};
 use llmeter::config::{self, AppConfig};
 use llmeter::errors::LLMeterError;
+use llmeter::lifecycle;
 use llmeter::progress::TerminalProgressRenderer;
 use llmeter::providers::ProviderClient;
 
@@ -253,6 +254,36 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                         llmeter::quality::adapter::build_quality_plan(*framework, task, model);
                     println!("{}", serde_json::to_string_pretty(&plan)?);
                 }
+            }
+            Ok(0)
+        }
+        Some(cli::Commands::Install { ref bin_dir, force }) => {
+            let result = lifecycle::install(bin_dir.as_deref(), *force)?;
+            println!("{}", result.summary);
+            for detail in result.details {
+                println!("  - {detail}");
+            }
+            Ok(0)
+        }
+        Some(cli::Commands::Update {
+            ref source,
+            ref bin_dir,
+        }) => {
+            let result = lifecycle::update(bin_dir.as_deref(), source.as_deref())?;
+            println!("{}", result.summary);
+            for detail in result.details {
+                println!("  - {detail}");
+            }
+            Ok(0)
+        }
+        Some(cli::Commands::Uninstall {
+            ref bin_dir,
+            purge_home,
+        }) => {
+            let result = lifecycle::uninstall(bin_dir.as_deref(), *purge_home)?;
+            println!("{}", result.summary);
+            for detail in result.details {
+                println!("  - {detail}");
             }
             Ok(0)
         }
