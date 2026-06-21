@@ -646,7 +646,7 @@ mod tests {
 
     #[test]
     fn execute_benchmark_plan_reports_all_steps() {
-        let client = ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1);
+        let client = ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1).unwrap();
         let config = test_config();
         let context = BenchmarkContext {
             runs: 1,
@@ -699,7 +699,7 @@ mod tests {
 
     #[test]
     fn execute_benchmark_plan_advances_progress_when_records_fail() {
-        let client = ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1);
+        let client = ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1).unwrap();
         let config = test_config();
         let context = BenchmarkContext {
             runs: 1,
@@ -752,7 +752,7 @@ mod tests {
 
     #[test]
     fn execute_benchmark_plan_records_suite_in_metadata() {
-        let client = ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1);
+        let client = ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1).unwrap();
         let config = test_config();
         let context = BenchmarkContext {
             runs: 1,

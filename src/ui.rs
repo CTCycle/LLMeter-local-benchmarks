@@ -559,11 +559,17 @@ fn guided_benchmark_run_inner(config: &AppConfig, suite: BenchmarkSuite) -> Resu
     )?;
     let provider = provider_choice.parse().unwrap_or(config.provider);
     let run_config = config.with_provider(provider);
-    let run_client = ProviderClient::new(
+    let run_client = match ProviderClient::new(
         run_config.provider,
         &run_config.base_url,
         run_config.timeout,
-    );
+    ) {
+        Ok(client) => client,
+        Err(error) => {
+            println!("{} {error}", "Error:".red());
+            return Ok(());
+        }
+    };
 
     let models = match runner::installed_model_names(&run_client) {
         Ok(models) => models,
@@ -665,11 +671,17 @@ fn guided_performance_run_with_profile(
     )?;
     let provider = provider_choice.parse().unwrap_or(config.provider);
     let run_config = config.with_provider(provider);
-    let run_client = ProviderClient::new(
+    let run_client = match ProviderClient::new(
         run_config.provider,
         &run_config.base_url,
         run_config.timeout,
-    );
+    ) {
+        Ok(client) => client,
+        Err(error) => {
+            println!("{} {error}", "Error:".red());
+            return Ok(());
+        }
+    };
 
     let probe_choice = ask_choice(
         "Capability probe",
@@ -810,7 +822,7 @@ fn probe_provider_capabilities_interactive(
         None,
         Some(0),
         Some(1),
-        true,
+        false,
         None,
         std::collections::HashMap::new(),
         LoadMeasurementMode::Off,
