@@ -592,7 +592,8 @@ mod tests {
 
     #[test]
     fn list_models_returns_friendly_provider_error() {
-        let client = ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1).unwrap();
+        let client =
+            ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1).unwrap();
         let error = client.list_models().unwrap_err().to_string();
         assert!(error.contains("Failed to list models from Ollama"));
         assert!(error.contains("http://127.0.0.1:1/v1"));

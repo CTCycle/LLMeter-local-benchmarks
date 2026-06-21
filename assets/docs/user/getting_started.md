@@ -19,6 +19,8 @@ Supported presets:
 
 Download the binary for your platform, rename it to `llmeter` or `llmeter.exe`, and place it on your `PATH`.
 
+By default, LLMeter stores its config and outputs under `%USERPROFILE%\\.llmeter` on Windows and `~/.llmeter` on Unix. Set `LLMETER_HOME` to move that state into another portable folder.
+
 ### Building from source
 
 ```bash
@@ -51,8 +53,14 @@ Open the interactive menu:
 llmeter --provider lmstudio
 ```
 
+Create a managed install for `cmd.exe` usage after adding `<LLMETER_HOME>\bin` to `PATH`:
+
+```cmd
+llmeter install
+```
+
 ## Verify it works
 
 `llmeter status` should show the selected provider, base URL, reachable API status, and model count.
 
-Last updated: 2026-06-12
+Last updated: 2026-06-21

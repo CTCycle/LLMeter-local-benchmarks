@@ -34,6 +34,70 @@ Or directly from a published crate (when available):
 cargo install llmeter
 ```
 
+To install into a user-owned folder, set `CARGO_INSTALL_ROOT` or pass `--root` directly:
+
+```bash
+cargo install --path . --root ~/.local
+```
+
+On Windows PowerShell:
+
+```powershell
+cargo install --path . --root "$env:USERPROFILE\\.local"
+```
+
+LLMeter runtime state is portable because it defaults to a single home folder:
+
+- Windows: `%USERPROFILE%\\.llmeter`
+- Unix: `~/.llmeter`
+- Override: set `LLMETER_HOME` before running the CLI
+
+That home folder contains persisted config under `config/` and default benchmark outputs under `benchmark_results/`.
+
+### Managed CLI install
+
+LLMeter can also install a managed copy of itself under `<LLMETER_HOME>/bin`:
+
+```cmd
+llmeter install
+```
+
+This writes:
+
+- `llmeter.exe`
+- `llmeter.cmd`
+- `llmeter.ps1`
+
+Use `--force` to overwrite an existing managed install:
+
+```cmd
+llmeter install --force
+```
+
+Update the managed install from a newer executable:
+
+```cmd
+llmeter update --source C:\path\to\new\llmeter.exe
+```
+
+Or run the newer executable directly and let it refresh the managed install:
+
+```cmd
+C:\path\to\new\llmeter.exe update
+```
+
+Uninstall the managed copy:
+
+```cmd
+llmeter uninstall
+```
+
+Remove the managed copy plus `LLMETER_HOME` state:
+
+```cmd
+llmeter uninstall --purge-home
+```
+
 ### Prebuilt binaries
 
 Prebuilt binaries for Linux (x86_64, aarch64 with musl), macOS (x86_64, arm64), and Windows (x86_64) are available from the releases page. These are statically linked with `rustls` — no `openssl` or system libraries required.
@@ -53,4 +117,4 @@ Cross-platform (Windows, macOS, Linux). Binary naming is `llmeter.exe` on Window
 
 The binary is compiled with `rustls` (no `openssl`), making it fully statically linkable for musl targets.
 
-Last updated: 2026-06-12
+Last updated: 2026-06-21

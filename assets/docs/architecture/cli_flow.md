@@ -26,8 +26,8 @@
 
 ## Scriptable entry point
 
-`src/main.rs` parses arguments with `clap`, builds `AppConfig`, resolves the effective provider for the active command, creates a `ProviderClient`, and dispatches to provider, model, benchmark, report, menu, or built-in help commands.
+`src/main.rs` parses arguments with `clap`, builds `AppConfig`, resolves the effective provider for the active command, creates a `ProviderClient`, and dispatches to provider, model, benchmark, report, install/update/uninstall lifecycle, menu, or built-in help commands.
 
 `src/runner.rs` owns benchmark orchestration, work-unit planning, and shared progress reporting so interactive and non-interactive benchmark runs use the same terminal progress lifecycle.
 
-Last updated: 2026-06-15
+Last updated: 2026-06-21

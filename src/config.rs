@@ -8,6 +8,8 @@ use crate::providers::ProviderKind;
 
 const DEFAULT_OUTPUT_DIR: &str = "benchmark_results";
 const CONFIG_FILE_NAME: &str = "config.json";
+const CONFIG_DIR_NAME: &str = "config";
+const DEFAULT_HOME_DIR_NAME: &str = ".llmeter";
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
@@ -60,7 +62,8 @@ impl AppConfig {
             .output_dir
             .clone()
             .or_else(|| std::env::var("LLMETER_OUTPUT_DIR").ok())
-            .unwrap_or_else(|| DEFAULT_OUTPUT_DIR.to_string());
+            .map(PathBuf::from)
+            .unwrap_or_else(default_output_dir);
 
         let default_runs = std::env::var("LLMETER_RUNS")
             .ok()
@@ -81,7 +84,7 @@ impl AppConfig {
             provider,
             base_url: normalize_base_url(&base_url),
             timeout,
-            output_dir: PathBuf::from(output_dir),
+            output_dir,
             default_runs,
             default_max_tokens,
             default_temperature,
@@ -159,7 +162,19 @@ fn default_config_path() -> Option<PathBuf> {
 fn config_root_dir() -> Option<PathBuf> {
     std::env::var_os("LLMETER_CONFIG_DIR")
         .map(PathBuf::from)
-        .or_else(|| dirs::config_dir().map(|dir| dir.join("llmeter")))
+        .or_else(|| llmeter_home_dir().map(|dir| dir.join(CONFIG_DIR_NAME)))
+}
+
+fn default_output_dir() -> PathBuf {
+    llmeter_home_dir()
+        .map(|dir| dir.join(DEFAULT_OUTPUT_DIR))
+        .unwrap_or_else(|| PathBuf::from(DEFAULT_OUTPUT_DIR))
+}
+
+pub fn llmeter_home_dir() -> Option<PathBuf> {
+    std::env::var_os("LLMETER_HOME")
+        .map(PathBuf::from)
+        .or_else(|| dirs::home_dir().map(|dir| dir.join(DEFAULT_HOME_DIR_NAME)))
 }
 
 fn provider_from_env() -> Option<ProviderKind> {
@@ -199,25 +214,28 @@ fn normalize_base_url(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use clap::Parser;
+    use std::path::PathBuf;
     use std::sync::{Mutex, OnceLock};
 
     use tempfile::tempdir;
 
     use super::{
-        load_persisted_provider_from_path, normalize_base_url, save_global_provider_to_path,
-        AppConfig,
+        load_persisted_provider_from_path, normalize_base_url, save_global_provider,
+        save_global_provider_to_path, AppConfig,
     };
     use crate::cli::Cli;
     use crate::providers::ProviderKind;
 
     fn clear_env() {
         for key in [
+            "LLMETER_HOME",
             "LLMETER_PROVIDER",
             "LLMETER_BASE_URL",
             "OLLAMA_HOST",
             "LMSTUDIO_BASE_URL",
             "LLAMA_CPP_BASE_URL",
             "LLMETER_CONFIG_DIR",
+            "LLMETER_OUTPUT_DIR",
         ] {
             std::env::remove_var(key);
         }
@@ -277,6 +295,48 @@ mod tests {
         let cli = Cli::parse_from(["llmeter"]);
         let config = AppConfig::from_env(&cli);
         assert_eq!(config.provider, ProviderKind::Ollama);
+    }
+
+    #[test]
+    fn default_output_dir_uses_llmeter_home_when_present() {
+        let _guard = env_lock().lock().unwrap();
+        clear_env();
+        let temp = tempdir().unwrap();
+        std::env::set_var("LLMETER_HOME", temp.path());
+
+        let cli = Cli::parse_from(["llmeter"]);
+        let config = AppConfig::from_env(&cli);
+
+        assert_eq!(config.output_dir, temp.path().join("benchmark_results"));
+    }
+
+    #[test]
+    fn output_dir_env_override_wins_over_llmeter_home_default() {
+        let _guard = env_lock().lock().unwrap();
+        clear_env();
+        let temp = tempdir().unwrap();
+        std::env::set_var("LLMETER_HOME", temp.path());
+        std::env::set_var("LLMETER_OUTPUT_DIR", "custom-results");
+
+        let cli = Cli::parse_from(["llmeter"]);
+        let config = AppConfig::from_env(&cli);
+
+        assert_eq!(config.output_dir, PathBuf::from("custom-results"));
+    }
+
+    #[test]
+    fn persisted_provider_uses_llmeter_home_config_root_by_default() {
+        let _guard = env_lock().lock().unwrap();
+        clear_env();
+        let temp = tempdir().unwrap();
+        std::env::set_var("LLMETER_HOME", temp.path());
+
+        save_global_provider(ProviderKind::Lmstudio).unwrap();
+
+        let cli = Cli::parse_from(["llmeter"]);
+        let config = AppConfig::from_env(&cli);
+
+        assert_eq!(config.provider, ProviderKind::Lmstudio);
     }
 
     #[test]

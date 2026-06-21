@@ -1065,18 +1065,27 @@ pub fn print_help_topic(topic: Option<&str>) {
             println!("  llmeter report show");
             println!("  llmeter report generate --format both");
         }
+        "install" | "lifecycle" => {
+            println!("Install and lifecycle:");
+            println!("  llmeter install");
+            println!("  llmeter install --force");
+            println!("  llmeter update --source C:\\path\\to\\llmeter.exe");
+            println!("  llmeter uninstall");
+            println!("  llmeter uninstall --purge-home");
+        }
         "examples" => {
             println!("Examples:");
             println!("  llmeter status");
             println!("  llmeter providers list");
             println!("  llmeter providers set ollama");
             println!("  llmeter models");
+            println!("  llmeter install");
             println!("  llmeter bench run --suite llm --models all --benchmarks all --runs 3 --max-tokens 128");
             println!("  llmeter quality list");
             println!("  llmeter quality plan --framework lighteval --task leaderboard|mmlu|5 --model llama3.1");
         }
         _ => {
-            println!("LLMeter help topics: providers, bench, reports, examples");
+            println!("LLMeter help topics: providers, bench, reports, install, examples");
             println!("Use `llmeter help <topic>` or normal CLI help with `llmeter --help`.");
         }
     }

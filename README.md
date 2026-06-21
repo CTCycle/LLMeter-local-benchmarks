@@ -52,6 +52,9 @@ Common commands:
 ```bash
 llmeter providers list
 llmeter providers set ollama
+llmeter install
+llmeter update --source C:\path\to\llmeter.exe
+llmeter uninstall
 llmeter bench list --suite llm
 llmeter report list
 llmeter report show
@@ -72,7 +75,10 @@ Saved outputs can include:
 - `.html` formatted reports
 
 Default output location:
-- `benchmark_results`
+- `%USERPROFILE%\\.llmeter\\benchmark_results` on Windows
+- `~/.llmeter/benchmark_results` on Unix
+
+Set `LLMETER_HOME` to move both persisted config and the default output tree into another folder.
 
 ## 5. Development
 Run:
@@ -97,4 +103,4 @@ The codebase is organized under:
 ## 7. License
 Distributed under the MIT License. See [LICENSE](LICENSE).
 
-Last updated: 2026-06-15
+Last updated: 2026-06-21
