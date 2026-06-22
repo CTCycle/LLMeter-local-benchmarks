@@ -79,6 +79,13 @@ While running, every benchmark step emits:
 - optional prompt name
 - completed work units vs total work units
 
+For performance runs, progress now also covers the previously silent pre/post scenario work around timed requests:
+
+- capability endpoint probes
+- per-model load estimate probes
+- per-model metadata and optional cache scan inventory work
+- final environment snapshot capture
+
 ## Execution model
 
 Execution is serial.
@@ -101,7 +108,7 @@ There is no concurrent benchmark scheduling. This keeps timing simpler and makes
 
 Each scenario emits one summary record plus serialized request traces inside record metadata.
 
-Before scenarios, performance runs can optionally capture a provider capability matrix and load overhead estimate. Load overhead is a client-side first-probe minus warm-probe estimate, not true model-load telemetry. Detailed and full telemetry levels sample system state during scenario execution and summarize the collected samples at run finalization.
+Before scenarios, performance runs can optionally capture a provider capability matrix, load overhead estimate, and model inventory metadata/cache footprint. Each of those steps emits terminal progress. Load overhead is a client-side first-probe minus warm-probe estimate, not true model-load telemetry. Detailed and full telemetry levels sample system state during scenario execution and summarize the collected samples at run finalization.
 
 ## Performance scenarios
 
@@ -137,4 +144,4 @@ Fatal failures stop the command when they happen before or outside benchmark exe
 
 Benchmark-level capability failures do not abort the whole run. Instead, individual benchmarks return result records with `error` populated so the run can continue and reports still include the partial outcome.
 
-Last updated: 2026-06-18
+Last updated: 2026-06-22

@@ -101,6 +101,8 @@ llmeter --provider ollama bench performance --models all --profile latency --run
 
 When capability probing is enabled, LLMeter reports each validation step before timed scenarios begin so long provider checks remain visible in terminal output.
 
+Load-estimate probes, model inventory metadata/cache scans, and `llmeter report generate ...` now also emit progress updates instead of staying silent until completion.
+
 Load overhead is reported as an estimate unless provider-native telemetry is available. Model cache scanning is opt-in with `--scan-model-cache` and never downloads or mutates model files.
 
 Run an explicit latency profile on Windows PowerShell:

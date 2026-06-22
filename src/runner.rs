@@ -9,6 +9,11 @@ use crate::benchmarks::registry::{default_registry, BenchmarkSuite};
 use crate::cli::ReportCommands;
 use crate::config::AppConfig;
 use crate::errors::LLMeterError;
+use crate::performance::load::planned_load_steps;
+use crate::performance::model_inventory::planned_inventory_steps;
+use crate::performance::provider_probe::planned_probe_steps;
+use crate::performance::resource::ENVIRONMENT_SNAPSHOT_STEPS;
+use crate::progress::TerminalProgressRenderer;
 use crate::progress::{ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate};
 use crate::providers::ProviderClient;
 use crate::reporting::{save_html_report, save_markdown_report};
@@ -430,7 +435,8 @@ pub fn command_report(config: &AppConfig, report_cmd: &ReportCommands) -> anyhow
         ReportCommands::Generate { result, format } => {
             let path = resolve_result_file(config, result.as_deref())?;
             let run = store.load_json(&path)?;
-            let saved = save_outputs(config, &run, "none", format, None)?;
+            let mut progress = TerminalProgressRenderer::new();
+            let saved = save_outputs(config, &run, "none", format, Some(&mut progress))?;
             crate::ui::print_saved_paths(&saved);
         }
     }
@@ -463,6 +469,25 @@ fn resolve_result_file(config: &AppConfig, maybe_path: Option<&str>) -> anyhow::
 }
 
 fn planned_steps_for_run(run: &BenchmarkRun) -> u32 {
+    if matches!(run.run_kind, Some(BenchmarkRunKind::Performance)) {
+        if let Some(plan) = &run.performance_plan {
+            let scenario_units = (run.models.len()
+                * plan.prompt_sizes.estimated_tokens.len()
+                * plan.output_sizes.estimated_tokens.len()
+                * plan.concurrency.levels.len()) as u32;
+            let probe_units = if plan.probe_capabilities || plan.probe_all_endpoints {
+                planned_probe_steps(plan)
+            } else {
+                0
+            };
+            return scenario_units
+                + probe_units
+                + planned_load_steps(plan, run.models.len())
+                + planned_inventory_steps(plan, run.models.len())
+                + ENVIRONMENT_SNAPSHOT_STEPS;
+        }
+    }
+
     let registry = default_registry();
     let context = BenchmarkContext {
         runs: run
