@@ -7,7 +7,10 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $manifestPath = Join-Path $repoRoot "Cargo.toml"
-$binaryPath = Join-Path $repoRoot "target\release\llmeter.exe"
+$defaultTargetDir = Join-Path $repoRoot "target"
+$defaultBinaryPath = Join-Path $defaultTargetDir "release\llmeter.exe"
+$fallbackTargetDir = Join-Path ([System.IO.Path]::GetTempPath()) "llmeter-build"
+$fallbackBinaryPath = Join-Path $fallbackTargetDir "release\llmeter.exe"
 
 function Test-NeedsBuild {
     param(
@@ -40,6 +43,20 @@ function Test-NeedsBuild {
     return $false
 }
 
+function Invoke-CargoBuild {
+    param(
+        [string]$TargetDir
+    )
+
+    $buildArgs = @("build", "--release")
+    if ($TargetDir) {
+        $buildArgs += @("--target-dir", $TargetDir)
+    }
+
+    & cargo @buildArgs
+    return $LASTEXITCODE
+}
+
 Push-Location $repoRoot
 try {
     if (-not (Test-Path -LiteralPath $manifestPath)) {
@@ -50,22 +67,43 @@ try {
         throw "cargo is not on PATH. Install the stable Rust toolchain, then rerun this script."
     }
 
-    if (Test-NeedsBuild -RepoRoot $repoRoot -BinaryPath $binaryPath -ManifestPath $manifestPath) {
-        Write-Host "Building llmeter (release)..." -ForegroundColor Cyan
-        & cargo build --release
-        if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
-        }
-    }
-    else {
+    $selectedBinaryPath = $null
+    $defaultNeedsBuild = Test-NeedsBuild -RepoRoot $repoRoot -BinaryPath $defaultBinaryPath -ManifestPath $manifestPath
+    $fallbackNeedsBuild = Test-NeedsBuild -RepoRoot $repoRoot -BinaryPath $fallbackBinaryPath -ManifestPath $manifestPath
+
+    if (-not $defaultNeedsBuild) {
+        $selectedBinaryPath = $defaultBinaryPath
         Write-Host "Using existing release build." -ForegroundColor DarkGray
     }
-
-    if (-not (Test-Path -LiteralPath $binaryPath)) {
-        throw "Build completed, but $binaryPath was not found."
+    elseif (-not $fallbackNeedsBuild) {
+        $selectedBinaryPath = $fallbackBinaryPath
+        Write-Host "Using existing fallback release build from $fallbackTargetDir." -ForegroundColor DarkGray
+    }
+    else {
+        Write-Host "Building llmeter (release)..." -ForegroundColor Cyan
+        $defaultBuildExitCode = Invoke-CargoBuild -TargetDir $null
+        if ($defaultBuildExitCode -eq 0 -and (Test-Path -LiteralPath $defaultBinaryPath)) {
+            $selectedBinaryPath = $defaultBinaryPath
+        }
+        else {
+            Write-Host "Default target build failed. Retrying with fallback target dir $fallbackTargetDir..." -ForegroundColor Yellow
+            $fallbackBuildExitCode = Invoke-CargoBuild -TargetDir $fallbackTargetDir
+            if ($fallbackBuildExitCode -ne 0) {
+                exit $fallbackBuildExitCode
+            }
+            $selectedBinaryPath = $fallbackBinaryPath
+        }
     }
 
-    & $binaryPath @LlmeterArgs
+    if (-not $selectedBinaryPath) {
+        throw "No llmeter executable was selected."
+    }
+
+    if (-not (Test-Path -LiteralPath $selectedBinaryPath)) {
+        throw "Build completed, but $selectedBinaryPath was not found."
+    }
+
+    & $selectedBinaryPath @LlmeterArgs
     exit $LASTEXITCODE
 }
 finally {

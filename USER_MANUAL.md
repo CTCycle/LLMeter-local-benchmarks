@@ -20,7 +20,7 @@ By default, LLMeter stores its runtime state in a single home folder:
 - Unix: `~/.llmeter`
 - Override: set `LLMETER_HOME`
 
-On Windows PowerShell, the included launcher builds when needed and runs the release binary:
+On Windows PowerShell, the included launcher builds when needed, retries in a temp Cargo target directory if the workspace `target\release` tree is locked, and then runs the release binary:
 
 ```powershell
 .\run_llmeter.ps1 status
