@@ -15,8 +15,12 @@ use crate::config::AppConfig;
 use crate::performance::config::{
     LoadMeasurementMode, PerformancePlan, PerformanceProfile, ReportDetailLevel, TelemetryLevel,
 };
-use crate::performance::provider_probe::probe_provider_capabilities;
-use crate::progress::TerminalProgressRenderer;
+use crate::performance::provider_probe::{
+    planned_probe_steps, probe_provider_capabilities_with_progress,
+};
+use crate::progress::{
+    ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate, TerminalProgressRenderer,
+};
 use crate::providers::{ProviderClient, ProviderKind, ProviderStatus};
 use crate::quality::catalog::default_catalog;
 use crate::reporting::{build_summary_rows, render_markdown_report};
@@ -836,7 +840,28 @@ fn probe_provider_capabilities_interactive(
         false,
         ReportDetailLevel::Summary,
     )?;
-    let report = probe_provider_capabilities(client, &plan);
+    let total_units = planned_probe_steps(&plan);
+    let mut progress = TerminalProgressRenderer::new();
+    let report =
+        probe_provider_capabilities_with_progress(client, &plan, &mut progress, 0, total_units);
+    progress.on_update(ProgressUpdate {
+        kind: ProgressEventKind::Finished,
+        phase: ProgressPhase::Completed,
+        message: "Capability probe complete".to_string(),
+        completed_units: total_units,
+        total_units,
+        model_name: None,
+        model_index: None,
+        total_models: Some(plan.models.len()),
+        benchmark_id: Some("provider-probe".to_string()),
+        benchmark_name: Some("Provider capability probe".to_string()),
+        benchmark_index: Some(total_units as usize),
+        total_benchmarks: Some(total_units as usize),
+        step_index: Some(total_units),
+        total_steps: Some(total_units),
+        run_index: None,
+        prompt_name: None,
+    });
     let mut builder = Builder::new();
     builder.push_record(vec![
         "Endpoint",

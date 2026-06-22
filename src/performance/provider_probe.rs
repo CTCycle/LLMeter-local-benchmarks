@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::performance::config::PerformancePlan;
+use crate::progress::{ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate};
 use crate::providers::{ProviderClient, ProviderCompatibilityTier, ProviderKind};
 use crate::utils::{error_chain, utc_now_iso};
 
@@ -40,13 +41,54 @@ pub struct ModelCapability {
     pub raw: Value,
 }
 
+pub fn planned_probe_steps(plan: &PerformancePlan) -> u32 {
+    let mut steps = 1;
+    let has_probe_model = !plan.models.is_empty();
+    if has_probe_model {
+        steps += 1;
+        if plan.stream || plan.probe_all_endpoints {
+            steps += 1;
+        }
+        if plan.probe_all_endpoints {
+            steps += 2;
+        }
+    }
+    steps
+}
+
 pub fn probe_provider_capabilities(
     client: &ProviderClient,
     plan: &PerformancePlan,
 ) -> ProviderCapabilityReport {
+    let mut null_sink = crate::progress::NullProgressSink;
+    probe_provider_capabilities_with_progress(
+        client,
+        plan,
+        &mut null_sink,
+        0,
+        planned_probe_steps(plan),
+    )
+}
+
+pub fn probe_provider_capabilities_with_progress(
+    client: &ProviderClient,
+    plan: &PerformancePlan,
+    sink: &mut dyn ProgressSink,
+    completed_units_before: u32,
+    total_units: u32,
+) -> ProviderCapabilityReport {
     let mut endpoints = Vec::new();
     let mut warnings = Vec::new();
+    let probe_steps = planned_probe_steps(plan);
+    let mut probe_progress = ProbeProgress::new(
+        sink,
+        completed_units_before,
+        total_units,
+        probe_steps,
+        plan.models.len(),
+    );
     let started = Instant::now();
+    probe_progress.start("Checking model catalog", None, "Models");
     let models_result = client.list_models();
     let model_error = models_result
         .as_ref()
@@ -65,6 +107,7 @@ pub fn probe_provider_capabilities(
         },
         model_error,
     ));
+    probe_progress.finish("Checked model catalog", None, "Models");
 
     let probe_model = plan
         .models
@@ -73,13 +116,33 @@ pub fn probe_provider_capabilities(
         .or_else(|| first_model_id(&model_values));
 
     if let Some(model) = probe_model {
+        probe_progress.start(
+            "Checking chat completions",
+            Some(&model),
+            "Chat completions",
+        );
         endpoints.push(probe_chat(client, &model, false));
+        probe_progress.finish("Checked chat completions", Some(&model), "Chat completions");
         if plan.stream || plan.probe_all_endpoints {
+            probe_progress.start(
+                "Checking streaming chat completions",
+                Some(&model),
+                "Chat completions streaming",
+            );
             endpoints.push(probe_chat(client, &model, true));
+            probe_progress.finish(
+                "Checked streaming chat completions",
+                Some(&model),
+                "Chat completions streaming",
+            );
         }
         if plan.probe_all_endpoints {
+            probe_progress.start("Checking embeddings", Some(&model), "Embeddings");
             endpoints.push(probe_embeddings(client, &model));
+            probe_progress.finish("Checked embeddings", Some(&model), "Embeddings");
+            probe_progress.start("Checking responses", Some(&model), "Responses");
             endpoints.push(probe_responses(client, &model));
+            probe_progress.finish("Checked responses", Some(&model), "Responses");
         }
     } else {
         warnings
@@ -104,6 +167,77 @@ pub fn probe_provider_capabilities(
         endpoints,
         models: parse_model_capabilities(&model_values),
         warnings,
+    }
+}
+
+struct ProbeProgress<'a> {
+    sink: &'a mut dyn ProgressSink,
+    completed_units_before: u32,
+    total_units: u32,
+    completed_probe_steps: u32,
+    total_probe_steps: u32,
+    total_models: usize,
+}
+
+impl<'a> ProbeProgress<'a> {
+    fn new(
+        sink: &'a mut dyn ProgressSink,
+        completed_units_before: u32,
+        total_units: u32,
+        total_probe_steps: u32,
+        total_models: usize,
+    ) -> Self {
+        Self {
+            sink,
+            completed_units_before,
+            total_units,
+            completed_probe_steps: 0,
+            total_probe_steps,
+            total_models,
+        }
+    }
+
+    fn start(&mut self, message: &str, model_name: Option<&str>, benchmark_name: &str) {
+        self.sink.on_update(ProgressUpdate {
+            kind: ProgressEventKind::StepStarted,
+            phase: ProgressPhase::Validating,
+            message: message.to_string(),
+            completed_units: self.completed_units_before + self.completed_probe_steps,
+            total_units: self.total_units,
+            model_name: model_name.map(str::to_string),
+            model_index: model_name.map(|_| 1),
+            total_models: model_name.map(|_| self.total_models.max(1)),
+            benchmark_id: Some("provider-probe".to_string()),
+            benchmark_name: Some(benchmark_name.to_string()),
+            benchmark_index: Some((self.completed_probe_steps + 1) as usize),
+            total_benchmarks: Some(self.total_probe_steps as usize),
+            step_index: Some(self.completed_units_before + self.completed_probe_steps + 1),
+            total_steps: Some(self.total_units),
+            run_index: None,
+            prompt_name: None,
+        });
+    }
+
+    fn finish(&mut self, message: &str, model_name: Option<&str>, benchmark_name: &str) {
+        self.completed_probe_steps += 1;
+        self.sink.on_update(ProgressUpdate {
+            kind: ProgressEventKind::StepCompleted,
+            phase: ProgressPhase::Validating,
+            message: message.to_string(),
+            completed_units: self.completed_units_before + self.completed_probe_steps,
+            total_units: self.total_units,
+            model_name: model_name.map(str::to_string),
+            model_index: model_name.map(|_| 1),
+            total_models: model_name.map(|_| self.total_models.max(1)),
+            benchmark_id: Some("provider-probe".to_string()),
+            benchmark_name: Some(benchmark_name.to_string()),
+            benchmark_index: Some(self.completed_probe_steps as usize),
+            total_benchmarks: Some(self.total_probe_steps as usize),
+            step_index: Some(self.completed_units_before + self.completed_probe_steps),
+            total_steps: Some(self.total_units),
+            run_index: None,
+            prompt_name: None,
+        });
     }
 }
 
@@ -233,4 +367,140 @@ fn first_string(value: &Value, keys: &[&str]) -> Option<String> {
             .and_then(|item| item.as_str())
             .map(str::to_string)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        endpoint_probe_from_result, parse_model_capabilities, planned_probe_steps,
+        probe_provider_capabilities_with_progress,
+    };
+    use crate::performance::config::{
+        LoadMeasurementMode, PerformancePlan, PerformanceProfile, ReportDetailLevel, TelemetryLevel,
+    };
+    use crate::progress::{ProgressEventKind, ProgressSink, ProgressUpdate};
+    use crate::providers::{ProviderClient, ProviderKind};
+    use serde_json::json;
+    use std::collections::HashMap;
+
+    #[derive(Default)]
+    struct RecordingProgressSink {
+        updates: Vec<ProgressUpdate>,
+    }
+
+    impl ProgressSink for RecordingProgressSink {
+        fn on_update(&mut self, update: ProgressUpdate) {
+            self.updates.push(update);
+        }
+    }
+
+    fn test_plan(stream: bool, probe_all_endpoints: bool) -> PerformancePlan {
+        PerformancePlan::from_cli(
+            ProviderKind::Ollama,
+            vec!["qwen3.5:2b".to_string()],
+            PerformanceProfile::Smoke,
+            None,
+            None,
+            None,
+            Some(0),
+            Some(1),
+            stream,
+            None,
+            HashMap::new(),
+            LoadMeasurementMode::Off,
+            1,
+            TelemetryLevel::Standard,
+            1000,
+            None,
+            true,
+            probe_all_endpoints,
+            None,
+            false,
+            ReportDetailLevel::Summary,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn planned_probe_steps_match_basic_and_full_modes() {
+        assert_eq!(planned_probe_steps(&test_plan(false, false)), 2);
+        assert_eq!(planned_probe_steps(&test_plan(true, false)), 3);
+        assert_eq!(planned_probe_steps(&test_plan(false, true)), 5);
+    }
+
+    #[test]
+    fn parse_model_capabilities_extracts_common_metadata() {
+        let models = vec![json!({
+            "id": "llama3.1",
+            "owned_by": "local",
+            "context_length": 8192,
+            "max_output_tokens": 2048,
+            "architecture": "llama",
+            "quantization": "q4"
+        })];
+
+        let parsed = parse_model_capabilities(&models);
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].id, "llama3.1");
+        assert_eq!(parsed[0].owned_by.as_deref(), Some("local"));
+        assert_eq!(parsed[0].context_length, Some(8192));
+        assert_eq!(parsed[0].max_output_tokens, Some(2048));
+        assert_eq!(parsed[0].architecture.as_deref(), Some("llama"));
+        assert_eq!(parsed[0].quantization.as_deref(), Some("q4"));
+    }
+
+    #[test]
+    fn endpoint_probe_marks_errors_as_unsupported() {
+        let probe = endpoint_probe_from_result(
+            "Models",
+            "GET",
+            "/v1/models",
+            12.5,
+            None,
+            Some("connection refused".to_string()),
+        );
+
+        assert!(!probe.supported);
+        assert_eq!(probe.latency_ms, Some(12.5));
+        assert_eq!(probe.error.as_deref(), Some("connection refused"));
+    }
+
+    #[test]
+    fn probe_reports_progress_for_each_step() {
+        let client =
+            ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1).unwrap();
+        let plan = test_plan(false, false);
+        let mut sink = RecordingProgressSink::default();
+
+        let report = probe_provider_capabilities_with_progress(
+            &client,
+            &plan,
+            &mut sink,
+            0,
+            planned_probe_steps(&plan),
+        );
+
+        assert_eq!(report.endpoints.len(), 2);
+        let started = sink
+            .updates
+            .iter()
+            .filter(|update| matches!(update.kind, ProgressEventKind::StepStarted))
+            .count();
+        let completed = sink
+            .updates
+            .iter()
+            .filter(|update| matches!(update.kind, ProgressEventKind::StepCompleted))
+            .count();
+        assert_eq!(started, 2);
+        assert_eq!(completed, 2);
+        assert_eq!(
+            sink.updates.last().map(|update| update.completed_units),
+            Some(2)
+        );
+        assert_eq!(
+            sink.updates.last().map(|update| update.total_units),
+            Some(2)
+        );
+    }
 }

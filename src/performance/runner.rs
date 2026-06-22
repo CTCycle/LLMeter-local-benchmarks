@@ -16,7 +16,9 @@ use crate::performance::metrics::{
     summarize_traces, PerformanceSummary, RequestTiming, RequestTrace, TokenTiming,
 };
 use crate::performance::model_inventory::measure_model_inventory;
-use crate::performance::provider_probe::probe_provider_capabilities;
+use crate::performance::provider_probe::{
+    planned_probe_steps, probe_provider_capabilities_with_progress,
+};
 use crate::performance::resource::capture_environment_snapshot;
 use crate::performance::telemetry::{summarize_samples, TelemetrySampler};
 use crate::performance::workload::{
@@ -46,7 +48,12 @@ pub fn run_performance_plan(
         .into());
     }
 
-    let total_units = planned_units(&plan);
+    let probe_units = if plan.probe_capabilities || plan.probe_all_endpoints {
+        planned_probe_steps(&plan)
+    } else {
+        0
+    };
+    let total_units = planned_units(&plan) + probe_units;
     sink.on_update(ProgressUpdate {
         kind: ProgressEventKind::Phase,
         phase: ProgressPhase::Planning,
@@ -78,7 +85,15 @@ pub fn run_performance_plan(
     let mut completed_units = 0u32;
     let process_memory_before = current_process_memory();
     let provider_capabilities = if plan.probe_capabilities || plan.probe_all_endpoints {
-        Some(probe_provider_capabilities(client, &plan))
+        let report = probe_provider_capabilities_with_progress(
+            client,
+            &plan,
+            sink,
+            completed_units,
+            total_units,
+        );
+        completed_units += probe_units;
+        Some(report)
     } else {
         None
     };
