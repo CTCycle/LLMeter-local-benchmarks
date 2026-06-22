@@ -15,6 +15,9 @@ use crate::config::AppConfig;
 use crate::performance::config::{
     LoadMeasurementMode, PerformancePlan, PerformanceProfile, ReportDetailLevel, TelemetryLevel,
 };
+use crate::performance::model_inventory::{
+    measure_model_inventory_with_progress, planned_inventory_steps,
+};
 use crate::performance::provider_probe::{
     planned_probe_steps, probe_provider_capabilities_with_progress,
 };
@@ -934,8 +937,34 @@ fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderCli
         scan,
         ReportDetailLevel::Summary,
     )?;
-    let measurements =
-        crate::performance::model_inventory::measure_model_inventory(client, &selected, &plan);
+    let total_units = planned_inventory_steps(&plan, selected.len());
+    let mut progress = TerminalProgressRenderer::new();
+    let measurements = measure_model_inventory_with_progress(
+        client,
+        &selected,
+        &plan,
+        &mut progress,
+        0,
+        total_units,
+    );
+    progress.on_update(ProgressUpdate {
+        kind: ProgressEventKind::Finished,
+        phase: ProgressPhase::Completed,
+        message: "Model inventory complete".to_string(),
+        completed_units: total_units,
+        total_units,
+        model_name: None,
+        model_index: None,
+        total_models: Some(selected.len()),
+        benchmark_id: Some("model-inventory".to_string()),
+        benchmark_name: Some("Model inventory".to_string()),
+        benchmark_index: Some(total_units as usize),
+        total_benchmarks: Some(total_units as usize),
+        step_index: Some(total_units),
+        total_steps: Some(total_units),
+        run_index: None,
+        prompt_name: None,
+    });
     let mut builder = Builder::new();
     builder.push_record(vec![
         "Model",
@@ -1028,7 +1057,8 @@ fn generate_report_interactive(config: &AppConfig) -> Result<()> {
     }
 
     let run = store.load_json(&path)?;
-    let saved = runner::save_outputs(config, &run, "none", &report_format, None)?;
+    let mut progress = TerminalProgressRenderer::new();
+    let saved = runner::save_outputs(config, &run, "none", &report_format, Some(&mut progress))?;
     print_saved_paths(&saved);
     Ok(())
 }

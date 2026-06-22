@@ -5,6 +5,7 @@ use sysinfo::{Disks, ProcessesToUpdate, System};
 
 use crate::config::AppConfig;
 use crate::performance::process::{discover_provider_processes, ProcessSnapshot};
+use crate::progress::{ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate};
 use crate::providers::ProviderKind;
 use crate::utils::error_chain;
 
@@ -31,12 +32,53 @@ pub struct EnvironmentSnapshot {
     pub gpu_probe_error: Option<String>,
 }
 
+pub const ENVIRONMENT_SNAPSHOT_STEPS: u32 = 1;
+
 pub fn capture_environment_snapshot(
     config: &AppConfig,
     process_memory_before: Option<u64>,
     process_memory_after: Option<u64>,
     provider_process_hint: Option<&str>,
 ) -> EnvironmentSnapshot {
+    let mut null_sink = crate::progress::NullProgressSink;
+    capture_environment_snapshot_with_progress(
+        config,
+        process_memory_before,
+        process_memory_after,
+        provider_process_hint,
+        &mut null_sink,
+        0,
+        ENVIRONMENT_SNAPSHOT_STEPS,
+    )
+}
+
+pub fn capture_environment_snapshot_with_progress(
+    config: &AppConfig,
+    process_memory_before: Option<u64>,
+    process_memory_after: Option<u64>,
+    provider_process_hint: Option<&str>,
+    sink: &mut dyn ProgressSink,
+    completed_units_before: u32,
+    total_units: u32,
+) -> EnvironmentSnapshot {
+    sink.on_update(ProgressUpdate {
+        kind: ProgressEventKind::StepStarted,
+        phase: ProgressPhase::Running,
+        message: "Capturing environment snapshot".to_string(),
+        completed_units: completed_units_before,
+        total_units,
+        model_name: None,
+        model_index: None,
+        total_models: None,
+        benchmark_id: Some("environment-snapshot".to_string()),
+        benchmark_name: Some("Environment snapshot".to_string()),
+        benchmark_index: Some(1),
+        total_benchmarks: Some(ENVIRONMENT_SNAPSHOT_STEPS as usize),
+        step_index: Some(completed_units_before + 1),
+        total_steps: Some(total_units),
+        run_index: None,
+        prompt_name: None,
+    });
     let mut system = System::new_all();
     system.refresh_memory();
     system.refresh_processes(ProcessesToUpdate::All, true);
@@ -66,7 +108,7 @@ pub fn capture_environment_snapshot(
         Err(error) => (None, Some(error_chain(&error))),
     };
 
-    EnvironmentSnapshot {
+    let snapshot = EnvironmentSnapshot {
         os: System::name().unwrap_or_else(|| std::env::consts::OS.to_string()),
         cpu_count: system.cpus().len(),
         total_memory: system.total_memory(),
@@ -86,7 +128,26 @@ pub fn capture_environment_snapshot(
         llmeter_version: env!("CARGO_PKG_VERSION").to_string(),
         gpu_probe_output,
         gpu_probe_error,
-    }
+    };
+    sink.on_update(ProgressUpdate {
+        kind: ProgressEventKind::StepCompleted,
+        phase: ProgressPhase::Running,
+        message: "Captured environment snapshot".to_string(),
+        completed_units: completed_units_before + ENVIRONMENT_SNAPSHOT_STEPS,
+        total_units,
+        model_name: None,
+        model_index: None,
+        total_models: None,
+        benchmark_id: Some("environment-snapshot".to_string()),
+        benchmark_name: Some("Environment snapshot".to_string()),
+        benchmark_index: Some(ENVIRONMENT_SNAPSHOT_STEPS as usize),
+        total_benchmarks: Some(ENVIRONMENT_SNAPSHOT_STEPS as usize),
+        step_index: Some(completed_units_before + ENVIRONMENT_SNAPSHOT_STEPS),
+        total_steps: Some(total_units),
+        run_index: None,
+        prompt_name: None,
+    });
+    snapshot
 }
 
 fn ratio(used: u64, total: u64) -> f64 {

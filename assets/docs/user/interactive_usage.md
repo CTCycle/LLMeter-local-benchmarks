@@ -42,6 +42,8 @@ During execution, LLMeter shows a terminal progress bar for these phases:
 
 Capability probing under provider setup and performance benchmarking reports each endpoint check during validation, so basic and full probes stay visible while `/v1/models`, chat, streaming, embeddings, or responses checks run.
 
+The model inventory cache-footprint flow also reports metadata fetches and optional cache scans, and interactive report generation reuses the same terminal progress renderer as scriptable output generation.
+
 ## Reports workspace
 
 Opened via `llmeter` then selecting option 4.

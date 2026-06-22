@@ -11,15 +11,19 @@ use crate::benchmarks::base::BenchmarkResultRecord;
 use crate::config::AppConfig;
 use crate::errors::LLMeterError;
 use crate::performance::config::{PerformancePlan, TelemetryLevel};
-use crate::performance::load::measure_model_load;
+use crate::performance::load::{measure_model_load_with_progress, planned_load_steps};
 use crate::performance::metrics::{
     summarize_traces, PerformanceSummary, RequestTiming, RequestTrace, TokenTiming,
 };
-use crate::performance::model_inventory::measure_model_inventory;
+use crate::performance::model_inventory::{
+    measure_model_inventory_with_progress, planned_inventory_steps,
+};
 use crate::performance::provider_probe::{
     planned_probe_steps, probe_provider_capabilities_with_progress,
 };
-use crate::performance::resource::capture_environment_snapshot;
+use crate::performance::resource::{
+    capture_environment_snapshot_with_progress, ENVIRONMENT_SNAPSHOT_STEPS,
+};
 use crate::performance::telemetry::{summarize_samples, TelemetrySampler};
 use crate::performance::workload::{
     load_jsonl_workload, synthetic_prompt_for_tokens, PerformancePrompt,
@@ -53,7 +57,13 @@ pub fn run_performance_plan(
     } else {
         0
     };
-    let total_units = planned_units(&plan) + probe_units;
+    let load_units = planned_load_steps(&plan, plan.models.len());
+    let inventory_units = planned_inventory_steps(&plan, plan.models.len());
+    let total_units = planned_units(&plan)
+        + probe_units
+        + load_units
+        + inventory_units
+        + ENVIRONMENT_SNAPSHOT_STEPS;
     sink.on_update(ProgressUpdate {
         kind: ProgressEventKind::Phase,
         phase: ProgressPhase::Planning,
@@ -97,8 +107,24 @@ pub fn run_performance_plan(
     } else {
         None
     };
-    let model_load_measurements = measure_model_load(client, &available, &plan);
-    let model_inventory_measurements = measure_model_inventory(client, &available, &plan);
+    let model_load_measurements = measure_model_load_with_progress(
+        client,
+        &available,
+        &plan,
+        sink,
+        completed_units,
+        total_units,
+    );
+    completed_units += load_units;
+    let model_inventory_measurements = measure_model_inventory_with_progress(
+        client,
+        &available,
+        &plan,
+        sink,
+        completed_units,
+        total_units,
+    );
+    completed_units += inventory_units;
     let mut telemetry_samples = Vec::new();
 
     for (model_index, model) in available.iter().enumerate() {
@@ -181,11 +207,14 @@ pub fn run_performance_plan(
         }
     }
 
-    let environment = capture_environment_snapshot(
+    let environment = capture_environment_snapshot_with_progress(
         config,
         process_memory_before,
         current_process_memory(),
         plan.provider_process.as_deref(),
+        sink,
+        completed_units,
+        total_units,
     );
     let telemetry_summary = if telemetry_samples.is_empty() {
         None
