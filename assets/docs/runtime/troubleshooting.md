@@ -17,6 +17,8 @@ llmeter --provider ollama status
 
 If the base URL is supplied without `/v1`, `AppConfig` normalizes it automatically. If the host or port is wrong, status will still fail.
 
+If `.\run_llmeter.ps1` fails while Cargo writes under `target\release`, rerun the launcher. It automatically retries the build in a temp target directory when the workspace target tree is locked on Windows.
+
 ## Provider health checks fail
 
 Typical causes:
@@ -73,4 +75,4 @@ Raw and formatted outputs are saved separately. A run can intentionally save onl
 
 This is expected when a provider or model supports some OpenAI-compatible features but not others. Unsupported endpoints such as `/v1/responses` or `/v1/embeddings` are recorded as per-record errors instead of invalidating the entire run.
 
-Last updated: 2026-06-15
+Last updated: 2026-06-21

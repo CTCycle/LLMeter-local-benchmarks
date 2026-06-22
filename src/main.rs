@@ -258,7 +258,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             Ok(0)
         }
         Some(cli::Commands::Install { ref bin_dir, force }) => {
-            let result = lifecycle::install(bin_dir.as_deref(), *force)?;
+            let result = lifecycle::install(bin_dir.as_deref(), force)?;
             println!("{}", result.summary);
             for detail in result.details {
                 println!("  - {detail}");
@@ -280,7 +280,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             ref bin_dir,
             purge_home,
         }) => {
-            let result = lifecycle::uninstall(bin_dir.as_deref(), *purge_home)?;
+            let result = lifecycle::uninstall(bin_dir.as_deref(), purge_home)?;
             println!("{}", result.summary);
             for detail in result.details {
                 println!("  - {detail}");

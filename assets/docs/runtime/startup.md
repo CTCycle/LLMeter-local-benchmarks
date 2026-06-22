@@ -15,10 +15,17 @@ LLMeter does not manage provider startup or model loading.
 PowerShell:
 
 ```powershell
-cargo build --release
 .\target\release\llmeter.exe --provider ollama status
 .\target\release\llmeter.exe --provider ollama models
 .\target\release\llmeter.exe --provider ollama
+```
+
+Or use the repo launcher, which builds when needed and falls back to a temp Cargo target directory if the workspace `target\release` tree is locked on Windows:
+
+```powershell
+.\run_llmeter.ps1 --provider ollama status
+.\run_llmeter.ps1 --provider ollama models
+.\run_llmeter.ps1 --provider ollama
 ```
 
 CMD:
@@ -69,4 +76,4 @@ llmeter --provider ollama bench run --models all --benchmarks all --export both 
 
 This performs provider validation, builds a benchmark plan, runs benchmarks serially, saves raw outputs, and then generates formatted reports.
 
-Last updated: 2026-06-15
+Last updated: 2026-06-21
