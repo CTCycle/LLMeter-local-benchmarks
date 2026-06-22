@@ -40,6 +40,8 @@ During execution, LLMeter shows a terminal progress bar for these phases:
 - raw result saving
 - report generation
 
+Capability probing under provider setup and performance benchmarking reports each endpoint check during validation, so basic and full probes stay visible while `/v1/models`, chat, streaming, embeddings, or responses checks run.
+
 ## Reports workspace
 
 Opened via `llmeter` then selecting option 4.
@@ -51,4 +53,4 @@ Options:
 3. **Generate Markdown or HTML report**.
 4. **Back**.
 
-Last updated: 2026-06-18
+Last updated: 2026-06-22
