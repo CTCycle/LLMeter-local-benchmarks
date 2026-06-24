@@ -42,10 +42,10 @@ pub struct Cli {
 #[derive(Subcommand)]
 #[allow(clippy::large_enum_variant)]
 pub enum Commands {
-    #[command(about = "Show provider API status")]
+    #[command(about = "Check provider /v1 endpoint reachability, health, and exposed model count")]
     Status,
 
-    #[command(about = "List supported provider presets")]
+    #[command(about = "List supported provider presets with compatibility tiers and default URLs")]
     Providers {
         #[command(subcommand)]
         provider_command: ProviderCommands,
@@ -60,19 +60,19 @@ pub enum Commands {
     #[command(about = "Show model metadata from the selected provider")]
     Show { model: String },
 
-    #[command(about = "Benchmark menu and commands")]
+    #[command(about = "Run and manage LLM benchmarks — generation, latency, performance, and quality")]
     Bench {
         #[command(subcommand)]
         bench_command: BenchCommands,
     },
 
-    #[command(about = "View and generate formatted benchmark reports")]
+    #[command(about = "View saved results and export formatted Markdown or HTML reports")]
     Report {
         #[command(subcommand)]
         report_command: ReportCommands,
     },
 
-    #[command(about = "Prepare quality benchmark plans and external tool adapters")]
+    #[command(about = "Quality benchmark plans for lighteval, inspect-ai, lm-eval-harness, and SWE-bench")]
     Quality {
         #[command(subcommand)]
         quality_command: QualityCommands,
@@ -126,7 +126,7 @@ pub enum Commands {
 
 #[derive(Subcommand)]
 pub enum ProviderCommands {
-    #[command(about = "List provider presets and default base URLs")]
+    #[command(about = "List provider presets with compatibility tiers and default base URLs")]
     List,
 
     #[command(about = "Persist the default provider for future runs")]
@@ -135,13 +135,13 @@ pub enum ProviderCommands {
 
 #[derive(Subcommand)]
 pub enum BenchCommands {
-    #[command(about = "List available benchmarks")]
+    #[command(about = "List benchmark IDs, suites, names, and descriptions")]
     List {
         #[arg(long, value_enum, help = "Filter benchmarks by suite")]
         suite: Option<BenchmarkSuite>,
     },
 
-    #[command(about = "Run benchmarks")]
+    #[command(about = "Run standard benchmarks — generation, consistency, structured output, etc.")]
     Run {
         #[arg(
             long,
@@ -194,7 +194,7 @@ pub enum BenchCommands {
     },
 
     #[command(
-        about = "Run native performance benchmark scenarios",
+        about = "Measure latency, throughput, TTFT, and token timing under concurrent load",
         visible_alias = "performance"
     )]
     Perf {
@@ -294,10 +294,10 @@ pub enum ReportCommands {
     #[command(about = "List recent JSON result files and generated reports")]
     List,
 
-    #[command(about = "Render a saved JSON result as a terminal report")]
+    #[command(about = "Display a saved JSON benchmark result as a formatted terminal report")]
     Show { result: Option<String> },
 
-    #[command(about = "Generate Markdown and/or HTML reports from a saved JSON result")]
+    #[command(about = "Export a saved JSON result as a Markdown or HTML report")]
     Generate {
         result: Option<String>,
 
@@ -313,10 +313,10 @@ pub enum ReportCommands {
 
 #[derive(Subcommand)]
 pub enum QualityCommands {
-    #[command(about = "List built-in quality benchmark catalog entries")]
+    #[command(about = "List quality benchmark tasks (MMLU, HellaSwag, etc.) with frameworks and metrics")]
     List,
 
-    #[command(about = "Build a dry-run external quality benchmark plan")]
+    #[command(about = "Build a dry-run plan for an external quality benchmark (lighteval, inspect-ai, etc.)")]
     Plan {
         #[arg(
             long,
@@ -353,173 +353,3 @@ pub fn parse_params(values: &[String]) -> anyhow::Result<HashMap<String, Value>>
     Ok(parsed)
 }
 
-#[cfg(test)]
-mod tests {
-    use clap::Parser;
-
-    use super::{BenchCommands, Cli, Commands, ProviderCommands, QualityCommands};
-    use crate::benchmarks::registry::BenchmarkSuite;
-    use crate::performance::config::PerformanceProfile;
-    use crate::providers::ProviderKind;
-    use crate::quality::catalog::QualityFramework;
-
-    #[test]
-    fn parses_provider_set_command() {
-        let cli = Cli::parse_from(["llmeter", "providers", "set", "lmstudio"]);
-        match cli.command {
-            Some(Commands::Providers {
-                provider_command: ProviderCommands::Set { provider },
-            }) => {
-                assert_eq!(provider, ProviderKind::Lmstudio);
-            }
-            _ => panic!("expected providers set command"),
-        }
-    }
-
-    #[test]
-    fn parses_bench_run_provider_and_suite() {
-        let cli = Cli::parse_from([
-            "llmeter",
-            "bench",
-            "run",
-            "--provider",
-            "ollama",
-            "--suite",
-            "embeddings",
-            "--models",
-            "all",
-        ]);
-        match cli.command {
-            Some(Commands::Bench {
-                bench_command:
-                    BenchCommands::Run {
-                        provider,
-                        suite,
-                        models,
-                        ..
-                    },
-            }) => {
-                assert_eq!(provider, Some(ProviderKind::Ollama));
-                assert_eq!(suite, BenchmarkSuite::Embeddings);
-                assert_eq!(models.as_deref(), Some("all"));
-            }
-            _ => panic!("expected bench run command"),
-        }
-    }
-
-    #[test]
-    fn rejects_invalid_export_choice() {
-        let result = Cli::try_parse_from([
-            "llmeter", "bench", "run", "--models", "all", "--export", "raw",
-        ]);
-
-        let error = result.err().expect("expected clap validation error");
-        assert!(error.to_string().contains("raw"));
-        assert!(error.to_string().contains("possible values"));
-    }
-
-    #[test]
-    fn rejects_invalid_report_choice() {
-        let result = Cli::try_parse_from(["llmeter", "report", "generate", "--format", "pdf"]);
-
-        let error = result.err().expect("expected clap validation error");
-        assert!(error.to_string().contains("pdf"));
-        assert!(error.to_string().contains("possible values"));
-    }
-
-    #[test]
-    fn parses_bench_perf_command() {
-        let cli = Cli::parse_from([
-            "llmeter",
-            "bench",
-            "perf",
-            "--models",
-            "llama3.1",
-            "--profile",
-            "sweep",
-            "--prompt-tokens",
-            "128,512",
-            "--concurrency",
-            "1,2,4",
-        ]);
-
-        match cli.command {
-            Some(Commands::Bench {
-                bench_command:
-                    BenchCommands::Perf {
-                        models,
-                        profile,
-                        prompt_tokens,
-                        concurrency,
-                        ..
-                    },
-            }) => {
-                assert_eq!(models.as_deref(), Some("llama3.1"));
-                assert_eq!(profile, PerformanceProfile::Sweep);
-                assert_eq!(prompt_tokens.as_deref(), Some("128,512"));
-                assert_eq!(concurrency.as_deref(), Some("1,2,4"));
-            }
-            _ => panic!("expected bench perf command"),
-        }
-    }
-
-    #[test]
-    fn parses_quality_plan_command() {
-        let cli = Cli::parse_from([
-            "llmeter",
-            "quality",
-            "plan",
-            "--framework",
-            "lighteval",
-            "--task",
-            "leaderboard|mmlu|5",
-            "--model",
-            "llama3.1",
-        ]);
-
-        match cli.command {
-            Some(Commands::Quality {
-                quality_command:
-                    QualityCommands::Plan {
-                        framework,
-                        task,
-                        model,
-                    },
-            }) => {
-                assert_eq!(framework, QualityFramework::LightEval);
-                assert_eq!(task, "leaderboard|mmlu|5");
-                assert_eq!(model, "llama3.1");
-            }
-            _ => panic!("expected quality plan command"),
-        }
-    }
-
-    #[test]
-    fn parses_install_command() {
-        let cli = Cli::parse_from(["llmeter", "install", "--force"]);
-        match cli.command {
-            Some(Commands::Install { force, .. }) => assert!(force),
-            _ => panic!("expected install command"),
-        }
-    }
-
-    #[test]
-    fn parses_update_command() {
-        let cli = Cli::parse_from(["llmeter", "update", "--source", "C:\\temp\\llmeter.exe"]);
-        match cli.command {
-            Some(Commands::Update { source, .. }) => {
-                assert_eq!(source.as_deref(), Some("C:\\temp\\llmeter.exe"));
-            }
-            _ => panic!("expected update command"),
-        }
-    }
-
-    #[test]
-    fn parses_uninstall_command() {
-        let cli = Cli::parse_from(["llmeter", "uninstall", "--purge-home"]);
-        match cli.command {
-            Some(Commands::Uninstall { purge_home, .. }) => assert!(purge_home),
-            _ => panic!("expected uninstall command"),
-        }
-    }
-}

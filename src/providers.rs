@@ -153,6 +153,25 @@ impl fmt::Display for ProviderKind {
     }
 }
 
+impl ProviderKind {
+    pub fn default_cache_dir(self) -> Option<std::path::PathBuf> {
+        match self {
+            ProviderKind::Ollama => dirs::home_dir().map(|h| h.join(".ollama").join("models")),
+            ProviderKind::Lmstudio => {
+                #[cfg(target_os = "windows")]
+                {
+                    dirs::data_dir().map(|h| h.join("lm-studio").join("models"))
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    dirs::home_dir().map(|h| h.join(".cache").join("lm-studio").join("models"))
+                }
+            }
+            _ => None,
+        }
+    }
+}
+
 impl std::str::FromStr for ProviderKind {
     type Err = LLMeterError;
 

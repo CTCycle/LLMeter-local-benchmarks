@@ -258,10 +258,74 @@ pub fn print_terminal_report(markdown: &str) {
 }
 
 pub fn menu(prompt: &str, choices: &[&str]) -> Result<usize> {
-    let selected = Select::new(prompt, choices.to_vec())
-        .prompt()
-        .map_err(|e| anyhow::anyhow!("{e}"))?;
-    Ok(choices.iter().position(|&c| c == selected).unwrap_or(0) + 1)
+    use crossterm::{
+        cursor, execute,
+        terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
+        event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
+    };
+    use std::io::{stdout, Write};
+
+    enable_raw_mode()?;
+    let mut stdout = stdout();
+    let mut selected = 0usize;
+
+    let result = loop {
+        execute!(
+            stdout,
+            cursor::MoveTo(0, 0),
+            Clear(ClearType::FromCursorDown)
+        )?;
+        writeln!(stdout, "{}", prompt.bold())?;
+        writeln!(stdout)?;
+        for (i, choice) in choices.iter().enumerate() {
+            if i == selected {
+                writeln!(stdout, "  {} {}", "▸".cyan().to_string(), choice.cyan())?;
+            } else {
+                writeln!(stdout, "    {}", choice)?;
+            }
+        }
+        writeln!(stdout)?;
+        write!(
+            stdout,
+            "{}",
+            "Navigation: ↑↓ • Select: Enter • Back: ← / Esc".dimmed()
+        )?;
+        stdout.flush()?;
+
+        match event::read()? {
+            Event::Key(KeyEvent {
+                code: KeyCode::Up,
+                kind: KeyEventKind::Press | KeyEventKind::Repeat,
+                ..
+            }) => {
+                selected = selected.saturating_sub(1);
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Down,
+                kind: KeyEventKind::Press | KeyEventKind::Repeat,
+                ..
+            }) => {
+                selected = selected.saturating_add(1).min(choices.len().saturating_sub(1));
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Enter, ..
+            }) => break selected + 1,
+            Event::Key(KeyEvent {
+                code: KeyCode::Left | KeyCode::Esc,
+                ..
+            }) => {
+                break choices
+                    .iter()
+                    .position(|&c| c == "Back")
+                    .unwrap_or(choices.len());
+            }
+            _ => {}
+        }
+    };
+
+    execute!(stdout, cursor::MoveTo(0, 0), Clear(ClearType::FromCursorDown))?;
+    disable_raw_mode()?;
+    Ok(result)
 }
 
 pub fn choose_from_menu(
@@ -909,8 +973,18 @@ fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderCli
     if selected.is_empty() {
         return Ok(());
     }
-    let cache_dir = Text::new("Optional cache directory to scan")
-        .with_default("")
+    let default_path = config
+        .provider
+        .default_cache_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let hint = if default_path.is_empty() {
+        "Model cache directory to scan (leave empty to skip)"
+    } else {
+        "Model cache directory to scan (leave empty to skip)"
+    };
+    let cache_dir = Text::new(hint)
+        .with_default(&default_path)
         .prompt()
         .map_err(|error| anyhow::anyhow!("{error}"))?;
     let scan = !cache_dir.trim().is_empty();
@@ -970,7 +1044,7 @@ fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderCli
         "Model",
         "Metadata ms",
         "Metadata bytes",
-        "Cache bytes",
+        "Cache",
         "Notes",
     ]);
     for item in measurements {
@@ -982,9 +1056,7 @@ fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderCli
             item.metadata_payload_bytes
                 .map(|value| value.to_string())
                 .unwrap_or_default(),
-            item.cache_bytes
-                .map(|value| value.to_string())
-                .unwrap_or_default(),
+            fmt_bytes(item.cache_bytes),
             item.notes.join("; "),
         ]);
     }
@@ -992,6 +1064,20 @@ fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderCli
     table.with(Panel::header("Model cache and metadata"));
     table.with(Style::rounded());
     println!("{table}");
+    if !scan {
+        if let Some(path) = config.provider.default_cache_dir() {
+            println!(
+                "{} Enter a cache directory path to measure disk usage (e.g. {})",
+                "Hint:".yellow(),
+                path.display()
+            );
+        } else {
+            println!(
+                "{} Enter a cache directory path to measure disk usage.",
+                "Hint:".yellow()
+            );
+        }
+    }
     Ok(())
 }
 
@@ -1101,11 +1187,18 @@ fn report_menu(config: &AppConfig) -> Result<()> {
 pub fn print_help_topic(topic: Option<&str>) {
     match topic.unwrap_or("overview").to_ascii_lowercase().as_str() {
         "providers" => {
-            println!("Providers:");
-            println!("  Use `llmeter providers list` for the full provider catalog, compatibility tiers, and default /v1 URLs.");
+            println!("Providers — Supported OpenAI-compatible LLM backends:");
+            println!("  Use `llmeter providers list` for the full catalog with compatibility tiers");
+            println!("  and default /v1 base URLs (Ollama, LM Studio, llama.cpp, vLLM, etc.).");
+            println!("  Use `llmeter providers set <name>` to persist a default provider.");
         }
         "bench" | "benchmarks" => {
-            println!("Benchmark examples:");
+            println!("Benchmarks — Generation latency, consistency, performance under load:");
+            println!("  Standard benchmarks  : llmeter bench run (chat, JSON, tool calls, embeddings)");
+            println!("  Performance bench    : llmeter bench perf (latency/throughput/TTFT profiles)");
+            println!("  Interactive menu     : llmeter menu");
+            println!();
+            println!("Examples:");
             println!("  llmeter bench list --suite llm");
             println!(
                 "  llmeter --provider lmstudio bench run --suite llm --models all --benchmarks all"
@@ -1115,13 +1208,18 @@ pub fn print_help_topic(topic: Option<&str>) {
             println!("  llmeter bench performance --models all --profile latency --probe-capabilities --telemetry full");
         }
         "reports" => {
-            println!("Reports:");
-            println!("  llmeter report list");
-            println!("  llmeter report show");
-            println!("  llmeter report generate --format both");
+            println!("Reports — View and export saved benchmark results:");
+            println!("  llmeter report list       List recent JSON result files and generated reports");
+            println!("  llmeter report show       Display a saved result as a terminal report");
+            println!("  llmeter report generate   Export a saved result as Markdown or HTML");
         }
         "install" | "lifecycle" => {
-            println!("Install and lifecycle:");
+            println!("Install and lifecycle — Manage the LLMeter binary:");
+            println!("  llmeter install           Install to the managed CLI home directory");
+            println!("  llmeter update            Replace with a newer binary");
+            println!("  llmeter uninstall         Remove the managed install");
+            println!();
+            println!("Examples:");
             println!("  llmeter install");
             println!("  llmeter install --force");
             println!("  llmeter update --source C:\\path\\to\\llmeter.exe");
@@ -1129,19 +1227,20 @@ pub fn print_help_topic(topic: Option<&str>) {
             println!("  llmeter uninstall --purge-home");
         }
         "examples" => {
-            println!("Examples:");
-            println!("  llmeter status");
-            println!("  llmeter providers list");
-            println!("  llmeter providers set ollama");
-            println!("  llmeter models");
-            println!("  llmeter install");
-            println!("  llmeter bench run --suite llm --models all --benchmarks all --runs 3 --max-tokens 128");
-            println!("  llmeter quality list");
-            println!("  llmeter quality plan --framework lighteval --task leaderboard|mmlu|5 --model llama3.1");
+            println!("Quick examples — Common workflows:");
+            println!("  llmeter status                                Check your provider is reachable");
+            println!("  llmeter providers set ollama                  Set Ollama as the default");
+            println!("  llmeter models                                List local models");
+            println!("  llmeter menu                                  Open the interactive menu");
+            println!("  llmeter bench run --suite llm --models all \\");
+            println!("    --benchmarks all --runs 3 --max-tokens 128  Run all LLM benchmarks");
+            println!("  llmeter perf --models all --profile smoke     Quick performance check");
+            println!("  llmeter quality list                          Browse quality tasks");
         }
         _ => {
-            println!("LLMeter help topics: providers, bench, reports, install, examples");
-            println!("Use `llmeter help <topic>` or normal CLI help with `llmeter --help`.");
+            println!("LLMeter — Benchmark local OpenAI-compatible LLM providers.");
+            println!("Help topics: providers, bench, reports, install, examples");
+            println!("Use `llmeter help <topic>` for details, or `llmeter --help` for CLI reference.");
         }
     }
 }
@@ -1150,6 +1249,16 @@ fn fmt(value: Option<f64>) -> String {
     match value {
         Some(v) if v.is_finite() => format!("{:.2}", v),
         _ => String::new(),
+    }
+}
+
+fn fmt_bytes(bytes: Option<u64>) -> String {
+    match bytes {
+        Some(b) if b >= 1_073_741_824 => format!("{:.1} GB", b as f64 / 1_073_741_824.0),
+        Some(b) if b >= 1_048_576 => format!("{:.1} MB", b as f64 / 1_048_576.0),
+        Some(b) if b >= 1_024 => format!("{:.1} KB", b as f64 / 1_024.0),
+        Some(b) => format!("{b} B"),
+        None => String::new(),
     }
 }
 

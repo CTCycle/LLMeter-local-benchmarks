@@ -105,7 +105,7 @@ fn measure_one_model(
             })
             .tap(|_| progress.finish("Scanned local model cache", model, model_index))
     } else {
-        notes.push("Local cache scan disabled; pass --scan-model-cache to opt in.".to_string());
+        notes.push("Skipped — enter a model cache directory path to measure disk usage".to_string());
         None
     };
 

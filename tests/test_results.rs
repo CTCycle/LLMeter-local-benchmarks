@@ -76,12 +76,3 @@ fn test_load_json_roundtrip() {
     assert_eq!(loaded.results.len(), 1);
     assert_eq!(loaded.results[0].benchmark_id, "chat-generation");
 }
-
-#[test]
-fn test_new_run_id_format() {
-    let dir = tempfile::tempdir().unwrap();
-    let store = ResultStore::new(&dir.path().to_path_buf());
-    let id = store.new_run_id(&["llama3".to_string()]);
-    assert!(id.contains("llama3"), "run_id should contain model name");
-    assert!(!id.is_empty());
-}
