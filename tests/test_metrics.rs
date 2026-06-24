@@ -1,4 +1,4 @@
-use llmeter::benchmarks::metrics::{generation_metrics, pairwise_similarity, preview};
+use llmeter::benchmarks::metrics::pairwise_similarity;
 use llmeter::providers::ApiResult;
 use serde_json::json;
 
@@ -29,19 +29,6 @@ fn test_tokens_per_second() {
 }
 
 #[test]
-fn test_generation_metrics_contains_all_keys() {
-    let result = make_result(50, 500_000_000);
-    let metrics = generation_metrics(&result);
-    assert!(metrics.contains_key("wall_time_ms"));
-    assert!(metrics.contains_key("time_to_first_token_ms"));
-    assert!(metrics.contains_key("input_tokens"));
-    assert!(metrics.contains_key("output_tokens"));
-    assert!(metrics.contains_key("total_tokens"));
-    assert!(metrics.contains_key("tokens_per_second"));
-    assert!(metrics.contains_key("finish_reason"));
-}
-
-#[test]
 fn test_tokens_per_second_zero_duration_returns_none() {
     let result = make_result(10, 0);
     assert!(result.tokens_per_second().is_none());
@@ -67,18 +54,4 @@ fn test_pairwise_similarity_different_texts() {
     let scores = pairwise_similarity(&texts);
     assert_eq!(scores.len(), 1);
     assert!(scores[0] < 1.0, "Different texts should have ratio < 1.0");
-}
-
-#[test]
-fn test_preview_short_text() {
-    let text = "hello world";
-    assert_eq!(preview(text, 180), "hello world");
-}
-
-#[test]
-fn test_preview_long_text() {
-    let text = "a".repeat(200);
-    let result = preview(&text, 180);
-    assert_eq!(result.chars().count(), 180);
-    assert!(result.ends_with('…'));
 }

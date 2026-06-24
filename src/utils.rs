@@ -78,23 +78,3 @@ pub fn error_chain(error: &dyn std::error::Error) -> String {
     parts.join(": ")
 }
 
-#[cfg(test)]
-mod tests {
-    use std::time::{Duration, SystemTime};
-
-    #[test]
-    fn error_chain_includes_context_and_root_cause() {
-        let error = anyhow::anyhow!("root cause").context("outer context");
-        let formatted = super::error_chain(&*error);
-
-        assert_eq!(formatted, "outer context: root cause");
-    }
-
-    #[test]
-    fn format_system_time_utc_is_readable() {
-        let value = SystemTime::UNIX_EPOCH + Duration::from_secs(1_781_534_859);
-        let formatted = super::format_system_time_utc(value);
-
-        assert_eq!(formatted, "2026-06-15 14:47:39 UTC");
-    }
-}

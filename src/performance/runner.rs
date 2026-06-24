@@ -531,6 +531,7 @@ fn summary_record(
     );
     insert_opt(&mut metrics, "ttft_ms_p50", summary.latency.ttft_ms_p50);
     insert_opt(&mut metrics, "ttft_ms_mean", summary.latency.ttft_ms_mean);
+    insert_opt(&mut metrics, "time_to_first_token_ms", summary.latency.ttft_ms_mean);
     insert_opt(&mut metrics, "ttft_ms_min", summary.latency.ttft_ms_min);
     insert_opt(&mut metrics, "ttft_ms_max", summary.latency.ttft_ms_max);
     insert_opt(&mut metrics, "ttft_ms_p95", summary.latency.ttft_ms_p95);

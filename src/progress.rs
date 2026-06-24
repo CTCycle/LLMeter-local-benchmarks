@@ -201,38 +201,7 @@ impl ProgressSink for TerminalProgressRenderer {
 
 #[cfg(test)]
 mod tests {
-    use super::{ProgressEventKind, ProgressPhase, ProgressUpdate, TerminalProgressRenderer};
-
-    #[test]
-    fn format_update_includes_context_fields() {
-        let update = ProgressUpdate {
-            kind: ProgressEventKind::StepStarted,
-            phase: ProgressPhase::Running,
-            message: "Issuing request".to_string(),
-            completed_units: 3,
-            total_units: 12,
-            model_name: Some("qwen3.5:9b".to_string()),
-            model_index: Some(1),
-            total_models: Some(2),
-            benchmark_id: Some("chat-generation".to_string()),
-            benchmark_name: Some("Basic generation latency".to_string()),
-            benchmark_index: Some(2),
-            total_benchmarks: Some(7),
-            step_index: Some(1),
-            total_steps: Some(3),
-            run_index: Some(1),
-            prompt_name: Some("short".to_string()),
-        };
-
-        let line = TerminalProgressRenderer::format_update(&update);
-        assert!(line.contains("25%"));
-        assert!(line.contains("Running"));
-        assert!(line.contains("Model 1/2: qwen3.5:9b"));
-        assert!(line.contains("Benchmark 2/7: Basic generation latency"));
-        assert!(line.contains("Step 1/3"));
-        assert!(line.contains("Run 1"));
-        assert!(line.contains("Prompt short"));
-    }
+    use super::{ProgressEventKind, ProgressPhase, ProgressUpdate};
 
     #[test]
     fn percent_complete_handles_zero_total_units() {

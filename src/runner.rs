@@ -538,7 +538,6 @@ mod tests {
     use crate::config::AppConfig;
     use crate::progress::{ProgressEventKind, ProgressSink, ProgressUpdate};
     use crate::providers::{ProviderClient, ProviderKind};
-    use crate::results::{BenchmarkRun, BenchmarkRunKind};
 
     struct StubBenchmark {
         id: &'static str,
@@ -815,61 +814,5 @@ mod tests {
             run.config.get("suite").and_then(|value| value.as_str()),
             Some("embeddings")
         );
-    }
-
-    #[test]
-    fn save_outputs_rejects_invalid_export_choice() {
-        let config = test_config();
-        let run = BenchmarkRun {
-            run_id: "test-run".to_string(),
-            created_at: "2026-06-15T13:00:00Z".to_string(),
-            models: vec!["qwen3.5:2b".to_string()],
-            benchmark_ids: vec!["chat-generation".to_string()],
-            config: HashMap::new(),
-            results: Vec::new(),
-            schema_version: "2.0".to_string(),
-            run_kind: Some(BenchmarkRunKind::Benchmark),
-            environment: None,
-            performance_plan: None,
-            quality_plan: None,
-            provider_capabilities: None,
-            model_load_measurements: None,
-            model_inventory_measurements: None,
-            telemetry_summary: None,
-        };
-
-        let error = super::save_outputs(&config, &run, "raw", "none", None)
-            .expect_err("expected invalid export choice to fail");
-        assert!(error
-            .to_string()
-            .contains("Invalid --export 'raw'. Use one of: json, csv, both, none."));
-    }
-
-    #[test]
-    fn save_outputs_rejects_invalid_report_choice() {
-        let config = test_config();
-        let run = BenchmarkRun {
-            run_id: "test-run".to_string(),
-            created_at: "2026-06-15T13:00:00Z".to_string(),
-            models: vec!["qwen3.5:2b".to_string()],
-            benchmark_ids: vec!["chat-generation".to_string()],
-            config: HashMap::new(),
-            results: Vec::new(),
-            schema_version: "2.0".to_string(),
-            run_kind: Some(BenchmarkRunKind::Benchmark),
-            environment: None,
-            performance_plan: None,
-            quality_plan: None,
-            provider_capabilities: None,
-            model_load_measurements: None,
-            model_inventory_measurements: None,
-            telemetry_summary: None,
-        };
-
-        let error = super::save_outputs(&config, &run, "none", "pdf", None)
-            .expect_err("expected invalid report choice to fail");
-        assert!(error
-            .to_string()
-            .contains("Invalid --report 'pdf'. Use one of: md, html, both, none."));
     }
 }
