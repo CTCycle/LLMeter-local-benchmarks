@@ -5,7 +5,7 @@ use llmeter::performance::config::{
 };
 use llmeter::providers::ProviderKind;
 use llmeter::reporting::{build_summary_rows, render_html_report, render_markdown_report};
-use llmeter::results::{BenchmarkRun, BenchmarkRunKind};
+use llmeter::results::{BenchmarkRun, BenchmarkRunKind, RESULT_SCHEMA_VERSION};
 use serde_json::json;
 
 fn sample_run() -> BenchmarkRun {
@@ -50,7 +50,7 @@ fn sample_run() -> BenchmarkRun {
                 metadata: None,
             },
         ],
-        schema_version: "2.0".to_string(),
+        schema_version: RESULT_SCHEMA_VERSION.to_string(),
         run_kind: Some(BenchmarkRunKind::Benchmark),
         environment: None,
         performance_plan: None,
@@ -181,4 +181,59 @@ fn test_performance_report_sections_appear_when_plan_is_present() {
     assert!(markdown.contains("## Performance Summary"));
     assert!(markdown.contains("## Benchmark timing model"));
     assert!(html.contains("Performance Summary"));
+}
+
+#[test]
+fn test_reports_escape_adversarial_table_and_html_values() {
+    let mut run = sample_run();
+    run.models = vec!["bad|model<script>".to_string()];
+    run.benchmark_ids = vec!["bench`id".to_string()];
+    run.results[0].model = "bad|model<script>".to_string();
+    run.results[0].benchmark_id = "performance-scenario".to_string();
+    run.results[0].prompt_name = Some("line\nbreak|prompt`tick".to_string());
+    run.results[0].response_preview =
+        Some("<img src=x onerror=alert(1)>|`preview`\nnext".to_string());
+    run.results[0].error = Some("<script>alert(1)</script>|bad`err`\nnext".to_string());
+    run.results[0]
+        .metrics
+        .insert("concurrency".to_string(), json!("<b>2</b>|x`y`\n3"));
+    run.performance_plan = Some(PerformancePlan {
+        provider: ProviderKind::Ollama,
+        models: vec!["bad|model<script>".to_string()],
+        profile: PerformanceProfile::Smoke,
+        prompt_sizes: PromptSizeSpec {
+            estimated_tokens: vec![128],
+        },
+        output_sizes: OutputSizeSpec {
+            estimated_tokens: vec![64],
+        },
+        concurrency: ConcurrencySpec { levels: vec![1] },
+        warmup: WarmupConfig { requests: 1 },
+        runs: 1,
+        stream: true,
+        workload_jsonl: None,
+        extra_params: std::collections::HashMap::new(),
+        load_measurement: LoadMeasurementMode::WarmBaseline,
+        load_probe_runs: 2,
+        telemetry: TelemetryLevel::Standard,
+        sample_interval_ms: 1000,
+        provider_process: None,
+        probe_capabilities: false,
+        probe_all_endpoints: false,
+        model_cache_dir: None,
+        scan_model_cache: false,
+        detail: ReportDetailLevel::Detailed,
+    });
+
+    let markdown = render_markdown_report(&run);
+    assert!(markdown.contains("bad\\|model<script>"));
+    assert!(markdown.contains("line break\\|prompt\\`tick"));
+    assert!(markdown.contains("<b>2</b>\\|x\\`y\\` 3"));
+    assert!(!markdown.contains("| line\nbreak|prompt`tick |"));
+
+    let html = render_html_report(&run);
+    assert!(html.contains("&lt;script&gt;"));
+    assert!(html.contains("&lt;b&gt;2&lt;/b&gt;|x`y`"));
+    assert!(!html.contains("<script>alert(1)</script>"));
+    assert!(!html.contains("<b>2</b>"));
 }

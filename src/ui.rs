@@ -259,9 +259,10 @@ pub fn print_terminal_report(markdown: &str) {
 
 pub fn menu(prompt: &str, choices: &[&str]) -> Result<usize> {
     use crossterm::{
-        cursor, execute,
-        terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
+        cursor,
         event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
+        execute,
+        terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
     };
     use std::io::{stdout, Write};
 
@@ -279,7 +280,7 @@ pub fn menu(prompt: &str, choices: &[&str]) -> Result<usize> {
         writeln!(stdout)?;
         for (i, choice) in choices.iter().enumerate() {
             if i == selected {
-                writeln!(stdout, "  {} {}", "▸".cyan().to_string(), choice.cyan())?;
+                writeln!(stdout, "  {} {}", "▸".cyan(), choice.cyan())?;
             } else {
                 writeln!(stdout, "    {}", choice)?;
             }
@@ -305,10 +306,13 @@ pub fn menu(prompt: &str, choices: &[&str]) -> Result<usize> {
                 kind: KeyEventKind::Press | KeyEventKind::Repeat,
                 ..
             }) => {
-                selected = selected.saturating_add(1).min(choices.len().saturating_sub(1));
+                selected = selected
+                    .saturating_add(1)
+                    .min(choices.len().saturating_sub(1));
             }
             Event::Key(KeyEvent {
-                code: KeyCode::Enter, ..
+                code: KeyCode::Enter,
+                ..
             }) => break selected + 1,
             Event::Key(KeyEvent {
                 code: KeyCode::Left | KeyCode::Esc,
@@ -323,7 +327,11 @@ pub fn menu(prompt: &str, choices: &[&str]) -> Result<usize> {
         }
     };
 
-    execute!(stdout, cursor::MoveTo(0, 0), Clear(ClearType::FromCursorDown))?;
+    execute!(
+        stdout,
+        cursor::MoveTo(0, 0),
+        Clear(ClearType::FromCursorDown)
+    )?;
     disable_raw_mode()?;
     Ok(result)
 }
@@ -606,7 +614,9 @@ fn guided_embeddings_run(config: &AppConfig, client: &ProviderClient) -> Result<
 
 fn guided_quality_plan() {
     print_quality_catalog();
-    println!("Use `llmeter quality plan --framework <name> --task <task> --model <model>` to build an executable dry-run plan.");
+    println!(
+        "Use `llmeter quality plan --framework <name> --task <task> --model <model>` to build an executable dry-run plan."
+    );
     pause();
 }
 
@@ -819,6 +829,7 @@ fn guided_performance_run_with_profile(
         None,
         false,
         ReportDetailLevel::Detailed,
+        None,
     )?;
 
     print_performance_plan_preview(&plan);
@@ -906,6 +917,7 @@ fn probe_provider_capabilities_interactive(
         None,
         false,
         ReportDetailLevel::Summary,
+        None,
     )?;
     let total_units = planned_probe_steps(&plan);
     let mut progress = TerminalProgressRenderer::new();
@@ -978,11 +990,7 @@ fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderCli
         .default_cache_dir()
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_default();
-    let hint = if default_path.is_empty() {
-        "Model cache directory to scan (leave empty to skip)"
-    } else {
-        "Model cache directory to scan (leave empty to skip)"
-    };
+    let hint = "Model cache directory to scan (leave empty to skip)";
     let cache_dir = Text::new(hint)
         .with_default(&default_path)
         .prompt()
@@ -1010,6 +1018,7 @@ fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderCli
         scan.then(|| cache_dir.trim().to_string()),
         scan,
         ReportDetailLevel::Summary,
+        None,
     )?;
     let total_units = planned_inventory_steps(&plan, selected.len());
     let mut progress = TerminalProgressRenderer::new();
@@ -1188,14 +1197,20 @@ pub fn print_help_topic(topic: Option<&str>) {
     match topic.unwrap_or("overview").to_ascii_lowercase().as_str() {
         "providers" => {
             println!("Providers — Supported OpenAI-compatible LLM backends:");
-            println!("  Use `llmeter providers list` for the full catalog with compatibility tiers");
+            println!(
+                "  Use `llmeter providers list` for the full catalog with compatibility tiers"
+            );
             println!("  and default /v1 base URLs (Ollama, LM Studio, llama.cpp, vLLM, etc.).");
             println!("  Use `llmeter providers set <name>` to persist a default provider.");
         }
         "bench" | "benchmarks" => {
             println!("Benchmarks — Generation latency, consistency, performance under load:");
-            println!("  Standard benchmarks  : llmeter bench run (chat, JSON, tool calls, embeddings)");
-            println!("  Performance bench    : llmeter bench perf (latency/throughput/TTFT profiles)");
+            println!(
+                "  Standard benchmarks  : llmeter bench run (chat, JSON, tool calls, embeddings)"
+            );
+            println!(
+                "  Performance bench    : llmeter bench perf (latency/throughput/TTFT profiles)"
+            );
             println!("  Interactive menu     : llmeter menu");
             println!();
             println!("Examples:");
@@ -1203,13 +1218,19 @@ pub fn print_help_topic(topic: Option<&str>) {
             println!(
                 "  llmeter --provider lmstudio bench run --suite llm --models all --benchmarks all"
             );
-            println!("  llmeter bench run --provider ollama --suite embeddings --models all --benchmarks all");
+            println!(
+                "  llmeter bench run --provider ollama --suite embeddings --models all --benchmarks all"
+            );
             println!("  llmeter bench perf --models all --profile smoke --export json --report md");
-            println!("  llmeter bench performance --models all --profile latency --probe-capabilities --telemetry full");
+            println!(
+                "  llmeter bench performance --models all --profile latency --probe-capabilities --telemetry full"
+            );
         }
         "reports" => {
             println!("Reports — View and export saved benchmark results:");
-            println!("  llmeter report list       List recent JSON result files and generated reports");
+            println!(
+                "  llmeter report list       List recent JSON result files and generated reports"
+            );
             println!("  llmeter report show       Display a saved result as a terminal report");
             println!("  llmeter report generate   Export a saved result as Markdown or HTML");
         }
@@ -1228,7 +1249,9 @@ pub fn print_help_topic(topic: Option<&str>) {
         }
         "examples" => {
             println!("Quick examples — Common workflows:");
-            println!("  llmeter status                                Check your provider is reachable");
+            println!(
+                "  llmeter status                                Check your provider is reachable"
+            );
             println!("  llmeter providers set ollama                  Set Ollama as the default");
             println!("  llmeter models                                List local models");
             println!("  llmeter menu                                  Open the interactive menu");
@@ -1240,7 +1263,9 @@ pub fn print_help_topic(topic: Option<&str>) {
         _ => {
             println!("LLMeter — Benchmark local OpenAI-compatible LLM providers.");
             println!("Help topics: providers, bench, reports, install, examples");
-            println!("Use `llmeter help <topic>` for details, or `llmeter --help` for CLI reference.");
+            println!(
+                "Use `llmeter help <topic>` for details, or `llmeter --help` for CLI reference."
+            );
         }
     }
 }

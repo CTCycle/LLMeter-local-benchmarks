@@ -17,7 +17,7 @@ use crate::progress::TerminalProgressRenderer;
 use crate::progress::{ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate};
 use crate::providers::ProviderClient;
 use crate::reporting::{save_html_report, save_markdown_report};
-use crate::results::{BenchmarkRun, BenchmarkRunKind, ResultStore};
+use crate::results::{BenchmarkRun, BenchmarkRunKind, ResultStore, RESULT_SCHEMA_VERSION};
 use crate::utils::utc_now_iso;
 
 pub struct BenchmarkRunRequest<'a> {
@@ -272,7 +272,7 @@ fn execute_benchmark_plan(
             c
         },
         results: Vec::new(),
-        schema_version: "2.0".to_string(),
+        schema_version: RESULT_SCHEMA_VERSION.to_string(),
         run_kind: Some(BenchmarkRunKind::Benchmark),
         environment: None,
         performance_plan: None,

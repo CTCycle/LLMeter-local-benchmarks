@@ -7,6 +7,7 @@ use crate::benchmarks::registry::BenchmarkSuite;
 use crate::errors::LLMeterError;
 use crate::performance::config::{
     LoadMeasurementMode, PerformanceProfile, ReportDetailLevel, TelemetryLevel,
+    DEFAULT_MAX_PERFORMANCE_REQUESTS,
 };
 use crate::providers::ProviderKind;
 use crate::quality::catalog::QualityFramework;
@@ -60,7 +61,9 @@ pub enum Commands {
     #[command(about = "Show model metadata from the selected provider")]
     Show { model: String },
 
-    #[command(about = "Run and manage LLM benchmarks — generation, latency, performance, and quality")]
+    #[command(
+        about = "Run and manage LLM benchmarks — generation, latency, performance, and quality"
+    )]
     Bench {
         #[command(subcommand)]
         bench_command: BenchCommands,
@@ -72,7 +75,9 @@ pub enum Commands {
         report_command: ReportCommands,
     },
 
-    #[command(about = "Quality benchmark plans for lighteval, inspect-ai, lm-eval-harness, and SWE-bench")]
+    #[command(
+        about = "Quality benchmark plans for lighteval, inspect-ai, lm-eval-harness, and SWE-bench"
+    )]
     Quality {
         #[command(subcommand)]
         quality_command: QualityCommands,
@@ -141,7 +146,9 @@ pub enum BenchCommands {
         suite: Option<BenchmarkSuite>,
     },
 
-    #[command(about = "Run standard benchmarks — generation, consistency, structured output, etc.")]
+    #[command(
+        about = "Run standard benchmarks — generation, consistency, structured output, etc."
+    )]
     Run {
         #[arg(
             long,
@@ -283,6 +290,12 @@ pub enum BenchCommands {
 
         #[arg(long, value_enum, default_value_t = ReportDetailLevel::Detailed)]
         detail: ReportDetailLevel,
+
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Print the performance scenario and request estimate without running requests")]
+        dry_run: bool,
+
+        #[arg(long, default_value_t = DEFAULT_MAX_PERFORMANCE_REQUESTS, help = "Maximum warmup plus measured requests allowed before requiring an explicit override")]
+        max_requests: u32,
     },
 
     #[command(about = "Open the interactive benchmark menu")]
@@ -313,10 +326,14 @@ pub enum ReportCommands {
 
 #[derive(Subcommand)]
 pub enum QualityCommands {
-    #[command(about = "List quality benchmark tasks (MMLU, HellaSwag, etc.) with frameworks and metrics")]
+    #[command(
+        about = "List quality benchmark tasks (MMLU, HellaSwag, etc.) with frameworks and metrics"
+    )]
     List,
 
-    #[command(about = "Build a dry-run plan for an external quality benchmark (lighteval, inspect-ai, etc.)")]
+    #[command(
+        about = "Build a dry-run plan for an external quality benchmark (lighteval, inspect-ai, etc.)"
+    )]
     Plan {
         #[arg(
             long,
@@ -352,4 +369,3 @@ pub fn parse_params(values: &[String]) -> anyhow::Result<HashMap<String, Value>>
     }
     Ok(parsed)
 }
-

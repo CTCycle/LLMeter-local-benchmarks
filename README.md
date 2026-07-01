@@ -85,8 +85,10 @@ Run:
 ```bash
 cargo fmt --check
 cargo clippy -- -D warnings
-cargo test
+cargo test -- --test-threads=1
 ```
+
+Use a single test thread because some configuration tests mutate process environment variables.
 
 The codebase is organized under:
 - `src`: CLI, provider client, benchmark implementations, runner, reporting, and UI
@@ -99,8 +101,9 @@ The codebase is organized under:
 - [assets/docs/architecture/cli_flow.md](assets/docs/architecture/cli_flow.md): menu structure and execution flow.
 - [assets/docs/user/interactive_usage.md](assets/docs/user/interactive_usage.md): guided menu behavior.
 - [assets/docs/user/scriptable_usage.md](assets/docs/user/scriptable_usage.md): non-interactive command usage.
+- [assets/docs/runtime/release_checklist.md](assets/docs/runtime/release_checklist.md): release validation and artifact checklist.
 
 ## 7. License
 Distributed under the MIT License. See [LICENSE](LICENSE).
 
-Last updated: 2026-06-21
+Last updated: 2026-07-01

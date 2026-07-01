@@ -290,14 +290,14 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
                 "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
                 md(&record.model),
                 md(record.prompt_name.as_deref().unwrap_or("")),
-                metric_display(metrics, "concurrency"),
-                metric_display(metrics, "wall_time_ms_p50"),
-                metric_display(metrics, "wall_time_ms_p95"),
-                metric_display(metrics, "wall_time_ms_p99"),
-                metric_display(metrics, "ttft_ms_p50"),
-                metric_display(metrics, "output_tokens_per_second"),
-                metric_display(metrics, "requests_per_second"),
-                metric_display(metrics, "error_count"),
+                md(&metric_display(metrics, "concurrency")),
+                md(&metric_display(metrics, "wall_time_ms_p50")),
+                md(&metric_display(metrics, "wall_time_ms_p95")),
+                md(&metric_display(metrics, "wall_time_ms_p99")),
+                md(&metric_display(metrics, "ttft_ms_p50")),
+                md(&metric_display(metrics, "output_tokens_per_second")),
+                md(&metric_display(metrics, "requests_per_second")),
+                md(&metric_display(metrics, "error_count")),
             ));
         }
         lines.push(String::new());
@@ -640,14 +640,14 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
                     "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
                     escape(&record.model),
                     escape(record.prompt_name.as_deref().unwrap_or("")),
-                    metric_display(&record.metrics, "concurrency"),
-                    metric_display(&record.metrics, "wall_time_ms_p50"),
-                    metric_display(&record.metrics, "wall_time_ms_p95"),
-                    metric_display(&record.metrics, "wall_time_ms_p99"),
-                    metric_display(&record.metrics, "ttft_ms_p50"),
-                    metric_display(&record.metrics, "output_tokens_per_second"),
-                    metric_display(&record.metrics, "requests_per_second"),
-                    metric_display(&record.metrics, "error_count"),
+                    escape(&metric_display(&record.metrics, "concurrency")),
+                    escape(&metric_display(&record.metrics, "wall_time_ms_p50")),
+                    escape(&metric_display(&record.metrics, "wall_time_ms_p95")),
+                    escape(&metric_display(&record.metrics, "wall_time_ms_p99")),
+                    escape(&metric_display(&record.metrics, "ttft_ms_p50")),
+                    escape(&metric_display(&record.metrics, "output_tokens_per_second")),
+                    escape(&metric_display(&record.metrics, "requests_per_second")),
+                    escape(&metric_display(&record.metrics, "error_count")),
                 )
             })
             .collect::<Vec<_>>()
@@ -831,7 +831,15 @@ fn fmt_ratio(value: Option<f64>) -> String {
 fn md(value: &str) -> String {
     value
         .replace('|', "\\|")
-        .replace('\n', " ")
+        .replace('`', "\\`")
+        .replace(['\r', '\n'], " ")
+        .chars()
+        .filter(|ch| !ch.is_control() || *ch == '\t')
+        .collect::<String>()
+        .replace('\t', " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
         .trim()
         .to_string()
 }

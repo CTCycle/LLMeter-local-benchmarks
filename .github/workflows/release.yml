@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build
+        required: true
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.artifact }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: llmeter-linux-x86_64
+            bin: llmeter
+            archive: tar.gz
+          - os: macos-13
+            target: x86_64-apple-darwin
+            artifact: llmeter-macos-x86_64
+            bin: llmeter
+            archive: tar.gz
+          - os: macos-14
+            target: aarch64-apple-darwin
+            artifact: llmeter-macos-aarch64
+            bin: llmeter
+            archive: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: llmeter-windows-x86_64
+            bin: llmeter.exe
+            archive: zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          components: clippy
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Run clippy
+        run: cargo clippy --target ${{ matrix.target }} -- -D warnings
+
+      - name: Run tests
+        run: cargo test -- --test-threads=1
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package Unix artifact
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "dist/${{ matrix.artifact }}"
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "dist/${{ matrix.artifact }}/"
+          cp README.md LICENSE "dist/${{ matrix.artifact }}/"
+          tar -C dist -czf "dist/${{ matrix.artifact }}.tar.gz" "${{ matrix.artifact }}"
+          shasum -a 256 "dist/${{ matrix.artifact }}.tar.gz" > "dist/${{ matrix.artifact }}.tar.gz.sha256"
+
+      - name: Package Windows artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "dist/${{ matrix.artifact }}" | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/${{ matrix.bin }}" "dist/${{ matrix.artifact }}/"
+          Copy-Item README.md,LICENSE "dist/${{ matrix.artifact }}/"
+          Compress-Archive -Path "dist/${{ matrix.artifact }}/*" -DestinationPath "dist/${{ matrix.artifact }}.zip" -Force
+          $hash = Get-FileHash "dist/${{ matrix.artifact }}.zip" -Algorithm SHA256
+          "$($hash.Hash.ToLowerInvariant())  ${{ matrix.artifact }}.zip" | Set-Content -Path "dist/${{ matrix.artifact }}.zip.sha256" -NoNewline
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist/${{ matrix.artifact }}.${{ matrix.archive }}
+            dist/${{ matrix.artifact }}.${{ matrix.archive }}.sha256
+          if-no-files-found: error
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/${{ matrix.artifact }}.${{ matrix.archive }}
+            dist/${{ matrix.artifact }}.${{ matrix.archive }}.sha256

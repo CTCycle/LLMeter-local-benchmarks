@@ -30,7 +30,7 @@ use crate::performance::workload::{
 };
 use crate::progress::{ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate};
 use crate::providers::ProviderClient;
-use crate::results::{BenchmarkRun, BenchmarkRunKind, ResultStore};
+use crate::results::{BenchmarkRun, BenchmarkRunKind, ResultStore, RESULT_SCHEMA_VERSION};
 use crate::utils::{error_chain, ns_to_ms, utc_now_iso};
 
 pub fn run_performance_plan(
@@ -236,7 +236,7 @@ pub fn run_performance_plan(
             config_map
         },
         results,
-        schema_version: "2.1".to_string(),
+        schema_version: RESULT_SCHEMA_VERSION.to_string(),
         run_kind: Some(BenchmarkRunKind::Performance),
         environment: Some(environment),
         performance_plan: Some(plan),
@@ -531,7 +531,11 @@ fn summary_record(
     );
     insert_opt(&mut metrics, "ttft_ms_p50", summary.latency.ttft_ms_p50);
     insert_opt(&mut metrics, "ttft_ms_mean", summary.latency.ttft_ms_mean);
-    insert_opt(&mut metrics, "time_to_first_token_ms", summary.latency.ttft_ms_mean);
+    insert_opt(
+        &mut metrics,
+        "time_to_first_token_ms",
+        summary.latency.ttft_ms_mean,
+    );
     insert_opt(&mut metrics, "ttft_ms_min", summary.latency.ttft_ms_min);
     insert_opt(&mut metrics, "ttft_ms_max", summary.latency.ttft_ms_max);
     insert_opt(&mut metrics, "ttft_ms_p95", summary.latency.ttft_ms_p95);

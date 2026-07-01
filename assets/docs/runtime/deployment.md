@@ -100,7 +100,18 @@ llmeter uninstall --purge-home
 
 ### Prebuilt binaries
 
-Prebuilt binaries for Linux (x86_64, aarch64 with musl), macOS (x86_64, arm64), and Windows (x86_64) are available from the releases page. These are statically linked with `rustls` — no `openssl` or system libraries required.
+Prebuilt binaries for Linux (x86_64), macOS (x86_64, arm64), and Windows (x86_64) are available from the releases page. These are built with `rustls` — no `openssl` dependency is required.
+
+Release archives are produced by GitHub Actions from release tags:
+
+| Platform | Artifact |
+|---|---|
+| Linux x86_64 | `llmeter-linux-x86_64.tar.gz` |
+| macOS x86_64 | `llmeter-macos-x86_64.tar.gz` |
+| macOS arm64 | `llmeter-macos-aarch64.tar.gz` |
+| Windows x86_64 | `llmeter-windows-x86_64.zip` |
+
+Each archive is published with a matching `.sha256` checksum. Verify the checksum before installing a downloaded binary.
 
 ## Dependencies
 
@@ -117,4 +128,4 @@ Cross-platform (Windows, macOS, Linux). Binary naming is `llmeter.exe` on Window
 
 The binary is compiled with `rustls` (no `openssl`), making it fully statically linkable for musl targets.
 
-Last updated: 2026-06-21
+Last updated: 2026-07-01
