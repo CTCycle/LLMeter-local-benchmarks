@@ -9,6 +9,7 @@ use crate::providers::ProviderKind;
 
 pub const DOCUMENTED_MAX_PROMPT_TOKENS: u32 = 32768;
 pub const DOCUMENTED_MAX_OUTPUT_TOKENS: u32 = 8192;
+pub const DEFAULT_MAX_PERFORMANCE_REQUESTS: u32 = 500;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
 #[serde(rename_all = "kebab-case")]
@@ -147,9 +148,14 @@ impl PerformancePlan {
         model_cache_dir: Option<String>,
         scan_model_cache: bool,
         detail: ReportDetailLevel,
+        max_requests: Option<u32>,
     ) -> anyhow::Result<Self> {
         let unsafe_large_prompt = extra_params
             .get("unsafe_large_prompt")
+            .and_then(|value| value.as_bool())
+            .unwrap_or(false);
+        let unsafe_large_matrix = extra_params
+            .get("unsafe_large_matrix")
             .and_then(|value| value.as_bool())
             .unwrap_or(false);
 
@@ -284,11 +290,37 @@ impl PerformancePlan {
             plan.runs = value;
         }
 
-        plan.validate(unsafe_large_prompt)?;
+        plan.validate(unsafe_large_prompt, max_requests, unsafe_large_matrix)?;
         Ok(plan)
     }
 
-    pub fn validate(&self, unsafe_large_prompt: bool) -> anyhow::Result<()> {
+    pub fn scenario_count(&self) -> u32 {
+        self.models
+            .len()
+            .saturating_mul(self.prompt_sizes.estimated_tokens.len())
+            .saturating_mul(self.output_sizes.estimated_tokens.len())
+            .saturating_mul(self.concurrency.levels.len()) as u32
+    }
+
+    pub fn total_warmup_requests(&self) -> u32 {
+        self.scenario_count().saturating_mul(self.warmup.requests)
+    }
+
+    pub fn total_measured_requests(&self) -> u32 {
+        self.scenario_count().saturating_mul(self.runs)
+    }
+
+    pub fn total_requests(&self) -> u32 {
+        self.total_warmup_requests()
+            .saturating_add(self.total_measured_requests())
+    }
+
+    pub fn validate(
+        &self,
+        unsafe_large_prompt: bool,
+        max_requests: Option<u32>,
+        unsafe_large_matrix: bool,
+    ) -> anyhow::Result<()> {
         if self.runs == 0 {
             return Err(LLMeterError::InvalidOption(
                 "Performance runs must be greater than zero.".to_string(),
@@ -337,6 +369,15 @@ impl PerformancePlan {
                 "Output token values above {DOCUMENTED_MAX_OUTPUT_TOKENS} require --param unsafe_large_prompt=true."
             ))
             .into());
+        }
+        if let Some(limit) = max_requests {
+            if self.total_requests() > limit && !unsafe_large_matrix {
+                return Err(LLMeterError::InvalidOption(format!(
+                    "Performance plan requests {} exceed --max-requests {limit}. Reduce the matrix, raise --max-requests, use --dry-run to inspect it, or pass --param unsafe_large_matrix=true.",
+                    self.total_requests()
+                ))
+                .into());
+            }
         }
         Ok(())
     }

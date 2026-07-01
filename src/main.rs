@@ -105,9 +105,17 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     )?;
                     let available_models = llmeter::runner::installed_model_names(&client)?;
                     let selected_models: Vec<String> = match models.as_deref() {
-                        None => return Err(anyhow::anyhow!("--models is required for non-interactive benchmark runs. Use 'all' or a comma-separated list.")),
+                        None => {
+                            return Err(anyhow::anyhow!(
+                                "--models is required for non-interactive benchmark runs. Use 'all' or a comma-separated list."
+                            ));
+                        }
                         Some(m) if m.trim().to_lowercase() == "all" => available_models,
-                        Some(m) => m.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect(),
+                        Some(m) => m
+                            .split(',')
+                            .map(|s| s.trim().to_string())
+                            .filter(|s| !s.is_empty())
+                            .collect(),
                     };
 
                     let (selected_benchmarks, all_benchmarks) = match benchmarks.as_deref() {
@@ -176,6 +184,8 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     ref model_cache_dir,
                     scan_model_cache,
                     detail,
+                    dry_run,
+                    max_requests,
                 } => {
                     let run_config = provider
                         .map(|selected| config.with_provider(selected))
@@ -187,9 +197,17 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     )?;
                     let available_models = llmeter::runner::installed_model_names(&client)?;
                     let selected_models: Vec<String> = match models.as_deref() {
-                        None => return Err(anyhow::anyhow!("--models is required for performance runs. Use 'all' or a comma-separated list.")),
+                        None => {
+                            return Err(anyhow::anyhow!(
+                                "--models is required for performance runs. Use 'all' or a comma-separated list."
+                            ));
+                        }
                         Some(m) if m.trim().to_lowercase() == "all" => available_models,
-                        Some(m) => m.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect(),
+                        Some(m) => m
+                            .split(',')
+                            .map(|s| s.trim().to_string())
+                            .filter(|s| !s.is_empty())
+                            .collect(),
                     };
                     let extra_params = cli::parse_params(param)?;
                     let stream_enabled = !*no_stream;
@@ -215,7 +233,12 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                         model_cache_dir.clone(),
                         *scan_model_cache,
                         *detail,
+                        Some(*max_requests),
                     )?;
+                    print_performance_estimate(&plan, *max_requests);
+                    if *dry_run {
+                        return Ok(0);
+                    }
                     let mut progress = TerminalProgressRenderer::new();
                     let run = llmeter::performance::runner::run_performance_plan(
                         &run_config,
@@ -292,4 +315,44 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             Ok(0)
         }
     }
+}
+
+fn print_performance_estimate(
+    plan: &llmeter::performance::config::PerformancePlan,
+    max_requests: u32,
+) {
+    println!("Performance plan estimate:");
+    println!("  Models: {}", plan.models.join(", "));
+    println!(
+        "  Prompt tokens: {}",
+        plan.prompt_sizes
+            .estimated_tokens
+            .iter()
+            .map(u32::to_string)
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    println!(
+        "  Output tokens: {}",
+        plan.output_sizes
+            .estimated_tokens
+            .iter()
+            .map(u32::to_string)
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    println!(
+        "  Concurrency: {}",
+        plan.concurrency
+            .levels
+            .iter()
+            .map(u32::to_string)
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    println!("  Scenarios: {}", plan.scenario_count());
+    println!("  Warmup requests: {}", plan.total_warmup_requests());
+    println!("  Measured requests: {}", plan.total_measured_requests());
+    println!("  Total requests: {}", plan.total_requests());
+    println!("  Max requests: {max_requests}");
 }

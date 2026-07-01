@@ -117,6 +117,14 @@ Run a full matrix sweep:
 llmeter bench perf --models llama3.1 --profile sweep --prompt-tokens 128,512 --output-tokens 64,128 --concurrency 1,2
 ```
 
+Preview a performance matrix before sending requests:
+
+```bash
+llmeter bench perf --models llama3.1 --profile sweep --prompt-tokens 128,512 --output-tokens 64,128 --concurrency 1,2 --dry-run
+```
+
+`bench perf` prints models, prompt sizes, output sizes, concurrency levels, scenario count, warmup requests, measured requests, total requests, and the active request limit before execution. The default `--max-requests` value is `500`; larger matrices must reduce the matrix, raise `--max-requests`, or pass `--param unsafe_large_matrix=true`.
+
 Preview external quality commands without installing tools automatically:
 
 ```bash
@@ -136,4 +144,4 @@ Example:
   run: ./llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export json --report md
 ```
 
-Last updated: 2026-06-22
+Last updated: 2026-07-01

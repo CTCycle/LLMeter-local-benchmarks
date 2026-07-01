@@ -57,8 +57,11 @@ Planned steps come from each benchmark's `planned_steps()` implementation, which
 - capability probe flags
 - telemetry level and sample interval
 - optional provider process hint and model cache scan path
+- dry-run and request budget guard values
 
-The plan rejects zero runs, zero concurrency, invalid load probe counts, telemetry sampling below 100 ms, and oversized prompt/output token requests unless `--param unsafe_large_prompt=true` is present.
+The plan rejects zero runs, zero concurrency, invalid load probe counts, telemetry sampling below 100 ms, oversized prompt/output token requests unless `--param unsafe_large_prompt=true` is present, and oversized scenario matrices above `--max-requests` unless `--param unsafe_large_matrix=true` is present.
+
+Scriptable performance runs print a plan estimate before timed requests begin. The estimate includes selected models, prompt sizes, output sizes, concurrency levels, scenario count, warmup requests, measured requests, total requests, and the active maximum request limit. `--dry-run` prints this estimate and exits before provider load probes, timed requests, saving, or report generation.
 
 ## Progress lifecycle
 
@@ -144,4 +147,4 @@ Fatal failures stop the command when they happen before or outside benchmark exe
 
 Benchmark-level capability failures do not abort the whole run. Instead, individual benchmarks return result records with `error` populated so the run can continue and reports still include the partial outcome.
 
-Last updated: 2026-06-22
+Last updated: 2026-07-01

@@ -1,5 +1,7 @@
-use llmeter::results::BenchmarkRun;
+use llmeter::benchmarks::base::BenchmarkResultRecord;
+use llmeter::results::{BenchmarkRun, BenchmarkRunKind, RESULT_SCHEMA_VERSION};
 use serde_json::json;
+use std::collections::HashMap;
 
 #[test]
 fn old_result_shape_deserializes_with_optional_new_fields() {
@@ -20,11 +22,45 @@ fn old_result_shape_deserializes_with_optional_new_fields() {
     });
 
     let run: BenchmarkRun = serde_json::from_value(legacy).unwrap();
-    assert_eq!(run.schema_version, "2.1");
+    assert_eq!(run.schema_version, RESULT_SCHEMA_VERSION);
     assert!(run.environment.is_none());
     assert!(run.performance_plan.is_none());
     assert!(run.quality_plan.is_none());
     assert!(run.provider_capabilities.is_none());
     assert!(run.model_load_measurements.is_none());
     assert!(run.telemetry_summary.is_none());
+}
+
+#[test]
+fn explicit_new_run_schema_uses_shared_version() {
+    let run = BenchmarkRun {
+        run_id: "new-run".to_string(),
+        created_at: "2026-07-01T12:00:00Z".to_string(),
+        models: vec!["mock-model".to_string()],
+        benchmark_ids: vec!["chat-generation".to_string()],
+        config: HashMap::new(),
+        results: vec![BenchmarkResultRecord {
+            benchmark_id: "chat-generation".to_string(),
+            benchmark_name: "Basic generation latency".to_string(),
+            model: "mock-model".to_string(),
+            run_index: Some(1),
+            prompt_name: Some("short".to_string()),
+            metrics: HashMap::new(),
+            response_preview: None,
+            error: None,
+            metadata: None,
+        }],
+        schema_version: RESULT_SCHEMA_VERSION.to_string(),
+        run_kind: Some(BenchmarkRunKind::Benchmark),
+        environment: None,
+        performance_plan: None,
+        quality_plan: None,
+        provider_capabilities: None,
+        model_load_measurements: None,
+        model_inventory_measurements: None,
+        telemetry_summary: None,
+    };
+
+    let serialized = serde_json::to_value(run).unwrap();
+    assert_eq!(serialized["schema_version"], RESULT_SCHEMA_VERSION);
 }

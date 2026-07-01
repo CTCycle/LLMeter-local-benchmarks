@@ -1,5 +1,5 @@
 # Project index
-Last updated: 2026-06-15
+Last updated: 2026-07-01
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first, then open the smallest topic file that matches the task.
@@ -54,6 +54,8 @@ This file is the root index for `assets/docs`. Read it first, then open the smal
   - Environment variables, CLI overrides, base-URL normalization, and `AppConfig`.
 - `runtime/deployment.md`
   - Source builds, `cargo install`, prebuilt binaries, platforms, and versioning.
+- `runtime/release_checklist.md`
+  - Maintainer checklist for tagging, validation, checksummed artifacts, and release trust model.
 - `runtime/troubleshooting.md`
   - Startup failures, provider connectivity, empty model catalogs, and output-path recovery.
 

@@ -1,5 +1,6 @@
 use llmeter::performance::config::{
     LoadMeasurementMode, PerformancePlan, PerformanceProfile, ReportDetailLevel, TelemetryLevel,
+    DEFAULT_MAX_PERFORMANCE_REQUESTS,
 };
 use llmeter::providers::ProviderKind;
 use serde_json::json;
@@ -29,6 +30,7 @@ fn performance_plan_normalizes_and_validates_csv_values() {
         None,
         false,
         ReportDetailLevel::Detailed,
+        None,
     )
     .unwrap();
 
@@ -60,6 +62,7 @@ fn performance_plan_rejects_oversized_prompt_without_override() {
         None,
         false,
         ReportDetailLevel::Detailed,
+        None,
     )
     .unwrap_err();
 
@@ -89,6 +92,7 @@ fn performance_plan_rejects_oversized_prompt_without_override() {
         None,
         false,
         ReportDetailLevel::Detailed,
+        None,
     )
     .unwrap();
 }
@@ -117,8 +121,102 @@ fn performance_plan_rejects_too_fast_telemetry_sampling() {
         None,
         false,
         ReportDetailLevel::Detailed,
+        None,
     )
     .unwrap_err();
 
     assert!(error.to_string().contains("at least 100 ms"));
+}
+
+#[test]
+fn performance_plan_estimates_request_matrix() {
+    let plan = PerformancePlan::from_cli(
+        ProviderKind::Ollama,
+        vec!["model-a".to_string(), "model-b".to_string()],
+        PerformanceProfile::Sweep,
+        Some("128,512"),
+        Some("64,128"),
+        Some("1,2"),
+        Some(1),
+        Some(3),
+        true,
+        None,
+        HashMap::new(),
+        LoadMeasurementMode::WarmBaseline,
+        2,
+        TelemetryLevel::Standard,
+        1000,
+        None,
+        false,
+        false,
+        None,
+        false,
+        ReportDetailLevel::Detailed,
+        Some(DEFAULT_MAX_PERFORMANCE_REQUESTS),
+    )
+    .unwrap();
+
+    assert_eq!(plan.scenario_count(), 16);
+    assert_eq!(plan.total_warmup_requests(), 16);
+    assert_eq!(plan.total_measured_requests(), 48);
+    assert_eq!(plan.total_requests(), 64);
+}
+
+#[test]
+fn performance_plan_rejects_large_request_matrix_without_override() {
+    let error = PerformancePlan::from_cli(
+        ProviderKind::Ollama,
+        vec!["model-a".to_string(), "model-b".to_string()],
+        PerformanceProfile::Sweep,
+        Some("128,512"),
+        Some("64,128"),
+        Some("1,2"),
+        Some(1),
+        Some(3),
+        true,
+        None,
+        HashMap::new(),
+        LoadMeasurementMode::WarmBaseline,
+        2,
+        TelemetryLevel::Standard,
+        1000,
+        None,
+        false,
+        false,
+        None,
+        false,
+        ReportDetailLevel::Detailed,
+        Some(10),
+    )
+    .unwrap_err();
+
+    assert!(error.to_string().contains("--max-requests 10"));
+
+    let mut params = HashMap::new();
+    params.insert("unsafe_large_matrix".to_string(), json!(true));
+    PerformancePlan::from_cli(
+        ProviderKind::Ollama,
+        vec!["model-a".to_string(), "model-b".to_string()],
+        PerformanceProfile::Sweep,
+        Some("128,512"),
+        Some("64,128"),
+        Some("1,2"),
+        Some(1),
+        Some(3),
+        true,
+        None,
+        params,
+        LoadMeasurementMode::WarmBaseline,
+        2,
+        TelemetryLevel::Standard,
+        1000,
+        None,
+        false,
+        false,
+        None,
+        false,
+        ReportDetailLevel::Detailed,
+        Some(10),
+    )
+    .unwrap();
 }

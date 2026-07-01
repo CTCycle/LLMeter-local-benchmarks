@@ -77,4 +77,3 @@ pub fn error_chain(error: &dyn std::error::Error) -> String {
 
     parts.join(": ")
 }
-

@@ -417,6 +417,7 @@ mod tests {
             None,
             false,
             ReportDetailLevel::Summary,
+            None,
         )
         .unwrap()
     }

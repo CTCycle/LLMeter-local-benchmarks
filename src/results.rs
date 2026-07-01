@@ -15,8 +15,10 @@ use crate::performance::telemetry::TelemetrySummary;
 use crate::quality::manifest::QualityPlan;
 use crate::utils;
 
+pub const RESULT_SCHEMA_VERSION: &str = "2.1";
+
 fn default_schema_version() -> String {
-    "2.1".to_string()
+    RESULT_SCHEMA_VERSION.to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
