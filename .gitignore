@@ -1,12 +1,29 @@
-# Rust
+# Rust build outputs
 target/
 *.rs.bk
 
-# Local benchmark outputs
+# Local benchmark outputs and QA artifacts
 benchmark_results/
 .ollama-bench/
+assets/QA/
+
+# Local environments and runtime files
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage/
+*.log
+*.tmp
+*.sqlite*
+*.db
+.env
+.env.*
+!.env.example
 
 # OS/editor
 .DS_Store
+Thumbs.db
 .idea/
 .vscode/
+.codex/
