@@ -1,6 +1,6 @@
 # LLMeter
 
-[![Rust](https://img.shields.io/badge/rust-2021-orange?logo=rust&logoColor=white)](./Cargo.toml) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](./LICENSE)
+[![CI](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml?query=branch%3Adevelop) [![Rust](https://img.shields.io/badge/rust-2021-orange?logo=rust&logoColor=white)](./Cargo.toml) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](./LICENSE)
 
 ## 1. Project Overview
 LLMeter is a self-contained Rust CLI for benchmarking local OpenAI-compatible LLM providers. It targets local `/v1` endpoints such as Ollama, LM Studio, llama.cpp, and custom OpenAI-compatible servers, and it combines guided terminal flows with scriptable commands for repeatable benchmark runs.
