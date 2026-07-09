@@ -75,6 +75,7 @@ pub struct LatencySummary {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThroughputSummary {
+    pub scenario_wall_time_ms: f64,
     pub output_tokens_per_second: Option<f64>,
     pub input_tokens_per_second: Option<f64>,
     pub requests_per_second: Option<f64>,
@@ -115,7 +116,7 @@ pub fn percentile(values: &[f64], p: f64) -> Option<f64> {
     sorted.get(rank).copied()
 }
 
-pub fn summarize_traces(traces: &[RequestTrace]) -> PerformanceSummary {
+pub fn summarize_traces(traces: &[RequestTrace], scenario_wall_time_ms: f64) -> PerformanceSummary {
     let request_count = traces.len();
     let success_count = traces.iter().filter(|trace| trace.success).count();
     let error_count = request_count.saturating_sub(success_count);
@@ -147,7 +148,6 @@ pub fn summarize_traces(traces: &[RequestTrace]) -> PerformanceSummary {
         .iter()
         .filter_map(|trace| trace.timing.output_tokens_per_second_excluding_ttft)
         .collect();
-    let total_wall_ms = wall.iter().sum::<f64>();
     let total_input_tokens = traces
         .iter()
         .filter_map(|trace| trace.input_tokens)
@@ -192,10 +192,11 @@ pub fn summarize_traces(traces: &[RequestTrace]) -> PerformanceSummary {
             generation_wall_ms_p99: percentile(&generation_wall, 99.0),
         },
         throughput: ThroughputSummary {
-            output_tokens_per_second: rate(total_output_tokens as f64, total_wall_ms),
-            input_tokens_per_second: rate(total_input_tokens as f64, total_wall_ms),
-            requests_per_second: rate(request_count as f64, total_wall_ms),
-            successful_requests_per_second: rate(success_count as f64, total_wall_ms),
+            scenario_wall_time_ms,
+            output_tokens_per_second: rate(total_output_tokens as f64, scenario_wall_time_ms),
+            input_tokens_per_second: rate(total_input_tokens as f64, scenario_wall_time_ms),
+            requests_per_second: rate(request_count as f64, scenario_wall_time_ms),
+            successful_requests_per_second: rate(success_count as f64, scenario_wall_time_ms),
             output_tokens_per_second_including_ttft: mean(&including_ttft_tps),
             output_tokens_per_second_excluding_ttft: mean(&excluding_ttft_tps),
             total_input_tokens,

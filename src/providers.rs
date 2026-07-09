@@ -343,11 +343,16 @@ impl ProviderClient {
         let payload = self
             .get_json("models")
             .map_err(|error| self.provider_failure("list models", error))?;
-        Ok(payload
+        payload
             .get("data")
-            .and_then(|v| v.as_array())
+            .and_then(|value| value.as_array())
             .cloned()
-            .unwrap_or_default())
+            .ok_or_else(|| {
+                self.provider_failure(
+                    "list models",
+                    "provider response must contain a top-level data array",
+                )
+            })
     }
 
     pub fn model_names(&self) -> anyhow::Result<Vec<String>> {
@@ -476,7 +481,12 @@ impl ProviderClient {
         for line_result in reader.lines() {
             let mut line = line_result.context("Failed to read streaming line")?;
             line = line.trim().to_string();
-            if line.is_empty() {
+            if line.is_empty()
+                || line.starts_with(':')
+                || line.starts_with("event:")
+                || line.starts_with("id:")
+                || line.starts_with("retry:")
+            {
                 continue;
             }
             if let Some(data) = line.strip_prefix("data:") {
