@@ -15,7 +15,7 @@ use crate::performance::telemetry::TelemetrySummary;
 use crate::quality::manifest::QualityPlan;
 use crate::utils;
 
-pub const RESULT_SCHEMA_VERSION: &str = "2.1";
+pub const RESULT_SCHEMA_VERSION: &str = "2.2";
 
 fn default_schema_version() -> String {
     RESULT_SCHEMA_VERSION.to_string()
@@ -27,6 +27,16 @@ pub enum BenchmarkRunKind {
     Benchmark,
     Performance,
     QualityPlan,
+}
+
+impl BenchmarkRunKind {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Benchmark => "benchmark",
+            Self::Performance => "performance",
+            Self::QualityPlan => "quality-plan",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -148,7 +158,7 @@ impl ResultStore {
                 run.schema_version.clone(),
                 run.run_kind
                     .as_ref()
-                    .map(|kind| format!("{kind:?}"))
+                    .map(|kind| kind.label().to_string())
                     .unwrap_or_default(),
                 run.config
                     .get("provider")

@@ -49,10 +49,13 @@ fn percentile_sorts_and_picks_requested_rank() {
 
 #[test]
 fn summarize_traces_computes_rates_and_counts() {
-    let summary = summarize_traces(&[
-        trace(1, 100.0, Some(20.0), Some(40)),
-        trace(2, 200.0, Some(30.0), Some(60)),
-    ]);
+    let summary = summarize_traces(
+        &[
+            trace(1, 100.0, Some(20.0), Some(40)),
+            trace(2, 200.0, Some(30.0), Some(60)),
+        ],
+        300.0,
+    );
 
     assert_eq!(summary.latency.request_count, 2);
     assert_eq!(summary.latency.success_count, 2);
@@ -66,4 +69,21 @@ fn summarize_traces_computes_rates_and_counts() {
         .throughput
         .output_tokens_per_second_excluding_ttft
         .is_some());
+}
+
+#[test]
+fn summarize_traces_uses_scenario_wall_time_for_concurrent_throughput() {
+    let summary = summarize_traces(
+        &[
+            trace(1, 1_000.0, Some(100.0), Some(100)),
+            trace(2, 1_000.0, Some(100.0), Some(100)),
+        ],
+        1_000.0,
+    );
+
+    assert_eq!(summary.latency.wall_time_ms_mean, Some(1_000.0));
+    assert_eq!(summary.throughput.scenario_wall_time_ms, 1_000.0);
+    assert_eq!(summary.throughput.output_tokens_per_second, Some(200.0));
+    assert_eq!(summary.throughput.requests_per_second, Some(2.0));
+    assert_eq!(summary.throughput.successful_requests_per_second, Some(2.0));
 }

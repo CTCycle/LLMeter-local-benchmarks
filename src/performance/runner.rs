@@ -1,16 +1,14 @@
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
 use std::time::Instant;
 
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde_json::{json, Value};
-use tokio::sync::Semaphore;
 
 use crate::benchmarks::base::BenchmarkResultRecord;
 use crate::config::AppConfig;
 use crate::errors::LLMeterError;
-use crate::performance::config::{PerformancePlan, TelemetryLevel};
+use crate::performance::config::{PerformancePlan, ReportDetailLevel, TelemetryLevel};
 use crate::performance::load::{measure_model_load_with_progress, planned_load_steps};
 use crate::performance::metrics::{
     summarize_traces, PerformanceSummary, RequestTiming, RequestTrace, TokenTiming,
@@ -126,6 +124,9 @@ pub fn run_performance_plan(
     );
     completed_units += inventory_units;
     let mut telemetry_samples = Vec::new();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
 
     for (model_index, model) in available.iter().enumerate() {
         for prompt in &prompts {
@@ -161,7 +162,9 @@ pub fn run_performance_plan(
                             Some(TelemetrySampler::start(plan.sample_interval_ms))
                         }
                     };
+                    let scenario_started = Instant::now();
                     let traces = run_measured_requests(
+                        &runtime,
                         client,
                         model,
                         prompt,
@@ -169,10 +172,11 @@ pub fn run_performance_plan(
                         concurrency,
                         &plan,
                     )?;
+                    let scenario_wall_time_ms = scenario_started.elapsed().as_secs_f64() * 1000.0;
                     if let Some(sampler) = sampler {
                         telemetry_samples.extend(sampler.stop());
                     }
-                    let summary = summarize_traces(&traces);
+                    let summary = summarize_traces(&traces, scenario_wall_time_ms);
                     results.push(summary_record(
                         model,
                         &scenario_name,
@@ -181,6 +185,7 @@ pub fn run_performance_plan(
                         concurrency,
                         &summary,
                         &traces,
+                        plan.detail,
                     ));
 
                     completed_units += 1;
@@ -285,6 +290,7 @@ fn run_warmup_requests(
 }
 
 fn run_measured_requests(
+    runtime: &tokio::runtime::Runtime,
     client: &ProviderClient,
     model: &str,
     prompt: &PerformancePrompt,
@@ -292,33 +298,27 @@ fn run_measured_requests(
     concurrency: u32,
     plan: &PerformancePlan,
 ) -> anyhow::Result<Vec<RequestTrace>> {
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()?;
     let traces = runtime.block_on(async {
-        let semaphore = Arc::new(Semaphore::new(concurrency as usize));
         let mut futures = FuturesUnordered::new();
         let client = client.clone();
+        let mut next_run_index = 0;
+        let initial_requests = plan.runs.min(concurrency);
 
-        for run_index in 0..plan.runs {
-            let permit = semaphore
-                .clone()
-                .acquire_owned()
-                .await
-                .map_err(|error| anyhow::anyhow!(error_chain(&error)))?;
+        for _ in 0..initial_requests {
             let client = client.clone();
             let prompt = prompt.clone();
             let params = plan.clone();
             let model_name = model.to_string();
+            next_run_index += 1;
+            let run_index = next_run_index;
             futures.push(tokio::task::spawn_blocking(move || {
-                let _permit = permit;
                 execute_request(
                     &client,
                     &model_name,
                     &prompt,
                     output_tokens,
                     concurrency,
-                    run_index + 1,
+                    run_index,
                     &params,
                 )
             }));
@@ -327,12 +327,31 @@ fn run_measured_requests(
         let mut traces = Vec::new();
         while let Some(result) = futures.next().await {
             traces.push(result.map_err(|error| anyhow::anyhow!(error_chain(&error)))??);
+            if next_run_index < plan.runs {
+                let client = client.clone();
+                let prompt = prompt.clone();
+                let params = plan.clone();
+                let model_name = model.to_string();
+                next_run_index += 1;
+                let run_index = next_run_index;
+                futures.push(tokio::task::spawn_blocking(move || {
+                    execute_request(
+                        &client,
+                        &model_name,
+                        &prompt,
+                        output_tokens,
+                        concurrency,
+                        run_index,
+                        &params,
+                    )
+                }));
+            }
         }
+        traces.sort_by_key(|trace| trace.run_index);
         Ok::<Vec<RequestTrace>, anyhow::Error>(traces)
     })?;
     Ok(traces)
 }
-
 fn execute_request(
     client: &ProviderClient,
     model: &str,
@@ -466,6 +485,7 @@ fn average_delta_ms(values: &[u128]) -> Option<f64> {
     Some(deltas.iter().sum::<f64>() / deltas.len() as f64)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn summary_record(
     model: &str,
     scenario_name: &str,
@@ -474,6 +494,7 @@ fn summary_record(
     concurrency: u32,
     summary: &PerformanceSummary,
     traces: &[RequestTrace],
+    detail: ReportDetailLevel,
 ) -> BenchmarkResultRecord {
     let mut metrics = HashMap::new();
     metrics.insert(
@@ -641,14 +662,38 @@ fn summary_record(
         metrics,
         response_preview: None,
         error: summary.errors.error_messages.first().cloned(),
-        metadata: Some(HashMap::from([
-            ("scenario".to_string(), json!(scenario_name)),
-            ("prompt_id".to_string(), json!(prompt.id)),
-            ("request_traces".to_string(), json!(traces)),
-        ])),
+        metadata: Some(performance_metadata(scenario_name, prompt, traces, detail)),
     }
 }
 
+const DETAILED_TRACE_LIMIT: usize = 20;
+
+fn performance_metadata(
+    scenario_name: &str,
+    prompt: &PerformancePrompt,
+    traces: &[RequestTrace],
+    detail: ReportDetailLevel,
+) -> HashMap<String, Value> {
+    let trace_count = traces.len();
+    let mut metadata = HashMap::from([
+        ("scenario".to_string(), json!(scenario_name)),
+        ("prompt_id".to_string(), json!(prompt.id)),
+        ("request_trace_count".to_string(), json!(trace_count)),
+    ]);
+    let persisted = match detail {
+        ReportDetailLevel::Summary => None,
+        ReportDetailLevel::Detailed => Some(&traces[..trace_count.min(DETAILED_TRACE_LIMIT)]),
+        ReportDetailLevel::Full => Some(traces),
+    };
+    if let Some(persisted) = persisted {
+        metadata.insert("request_traces".to_string(), json!(persisted));
+    }
+    metadata.insert(
+        "request_traces_truncated".to_string(),
+        json!(trace_count > persisted.map_or(0, |items| items.len())),
+    );
+    metadata
+}
 fn insert_opt(metrics: &mut HashMap<String, Value>, key: &str, value: Option<f64>) {
     if let Some(value) = value {
         metrics.insert(key.to_string(), json!(value));

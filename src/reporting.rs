@@ -193,7 +193,7 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
     config_keys.sort();
     for key in config_keys {
         if let Some(value) = run.config.get(key) {
-            lines.push(format!("| `{key}` | `{value}` |"));
+            lines.push(format!("| `{}` | `{}` |", md(key), md(&value.to_string())));
         }
     }
     lines.push(String::new());
@@ -278,7 +278,7 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
 
         lines.push("## Performance Summary".to_string());
         lines.push(String::new());
-        lines.push("| Model | Scenario | Concurrency | P50 wall ms | P95 wall ms | P99 wall ms | TTFT p50 | Output tok/s | Req/s | Errors |".to_string());
+        lines.push("| Model | Scenario | Concurrency | P50 wall ms | P95 wall ms | P99 wall ms | TTFT p50 | Scenario output tok/s | Scenario req/s | Errors |".to_string());
         lines.push("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|".to_string());
         for record in run
             .results
@@ -303,7 +303,7 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
         lines.push(String::new());
         lines.push("## Scenario Matrix".to_string());
         lines.push(String::new());
-        lines.push("Recorded scenario summaries include prompt size, requested output size, concurrency, aggregate latency percentiles, throughput, and serialized request traces in the raw JSON output.".to_string());
+        lines.push("Recorded scenario summaries include prompt size, requested output size, concurrency, aggregate latency percentiles, scenario-level throughput, and detail-level-controlled request traces in raw JSON output.".to_string());
         lines.push(String::new());
         lines.push("## Latency Percentiles".to_string());
         lines.push(String::new());
@@ -312,13 +312,13 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
         lines.push("## Throughput".to_string());
         lines.push(String::new());
         lines.push(
-            "Requests per second plus input/output token throughput are recorded per scenario."
+            "Scenario wall-clock time is used for request and input/output token throughput; per-request timing remains latency-only."
                 .to_string(),
         );
         lines.push(String::new());
         lines.push("## Token Timing".to_string());
         lines.push(String::new());
-        lines.push("Per-request token timing samples are stored under each performance record metadata payload.".to_string());
+        lines.push("Request traces are omitted for summary detail, capped at 20 ordered traces for detailed, and complete for full detail.".to_string());
         lines.push(String::new());
         lines.push("## Environment Snapshot".to_string());
         lines.push(String::new());
@@ -657,7 +657,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
   <h2>Performance Summary</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Model</th><th>Scenario</th><th>Concurrency</th><th>P50 wall ms</th><th>P95 wall ms</th><th>P99 wall ms</th><th>TTFT p50</th><th>Output tok/s</th><th>Req/s</th><th>Errors</th></tr></thead>
+      <thead><tr><th>Model</th><th>Scenario</th><th>Concurrency</th><th>P50 wall ms</th><th>P95 wall ms</th><th>P99 wall ms</th><th>TTFT p50</th><th>Scenario output tok/s</th><th>Scenario req/s</th><th>Errors</th></tr></thead>
       <tbody>{rows}</tbody>
     </table>
   </div>
