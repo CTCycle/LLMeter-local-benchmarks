@@ -16,15 +16,8 @@ pub struct BenchmarkContext {
 }
 
 impl BenchmarkContext {
-    pub fn request_options(&self, temperature: Option<f64>, max_tokens: Option<u32>) -> Value {
-        let mut merged = self.options.clone();
-        merged
-            .entry("temperature".to_string())
-            .or_insert_with(|| Value::from(temperature.unwrap_or(self.temperature)));
-        merged
-            .entry("max_tokens".to_string())
-            .or_insert_with(|| Value::from(max_tokens.unwrap_or(self.max_tokens) as i64));
-        serde_json::json!(merged)
+    pub fn request_options(&self, _temperature: Option<f64>, _max_tokens: Option<u32>) -> Value {
+        serde_json::json!(self.options)
     }
 }
 

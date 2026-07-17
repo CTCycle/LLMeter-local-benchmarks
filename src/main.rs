@@ -28,7 +28,7 @@ fn main() {
 }
 
 fn run(cli: Cli) -> anyhow::Result<i32> {
-    let config = AppConfig::from_env(&cli);
+    let config = AppConfig::from_env(&cli)?;
 
     match cli.command {
         None | Some(cli::Commands::Menu) => {
@@ -170,6 +170,8 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     warmup,
                     runs,
                     no_stream,
+                    allow_large_prompt,
+                    allow_large_matrix,
                     ref jsonl,
                     ref export,
                     ref report,
@@ -211,7 +213,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     };
                     let extra_params = cli::parse_params(param)?;
                     let stream_enabled = !*no_stream;
-                    let plan = llmeter::performance::config::PerformancePlan::from_cli(
+                    let plan = llmeter::performance::config::PerformancePlan::from_cli_with_safety(
                         run_config.provider,
                         selected_models,
                         *profile,
@@ -223,6 +225,10 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                         stream_enabled,
                         jsonl.clone(),
                         extra_params,
+                        llmeter::performance::config::PerformanceSafetyOptions {
+                            allow_large_prompt: *allow_large_prompt,
+                            allow_large_matrix: *allow_large_matrix,
+                        },
                         *load_measurement,
                         *load_probe_runs,
                         *telemetry,

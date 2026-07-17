@@ -90,6 +90,12 @@ pub struct WarmupConfig {
     pub requests: u32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct PerformanceSafetyOptions {
+    pub allow_large_prompt: bool,
+    pub allow_large_matrix: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum PerformanceExportRequest {
@@ -112,6 +118,7 @@ pub struct PerformancePlan {
     pub stream: bool,
     pub workload_jsonl: Option<String>,
     pub extra_params: HashMap<String, Value>,
+    pub safety: PerformanceSafetyOptions,
     pub load_measurement: LoadMeasurementMode,
     pub load_probe_runs: u32,
     pub telemetry: TelemetryLevel,
@@ -137,7 +144,7 @@ impl PerformancePlan {
         runs: Option<u32>,
         stream: bool,
         workload_jsonl: Option<String>,
-        extra_params: HashMap<String, Value>,
+        mut extra_params: HashMap<String, Value>,
         load_measurement: LoadMeasurementMode,
         load_probe_runs: u32,
         telemetry: TelemetryLevel,
@@ -150,15 +157,69 @@ impl PerformancePlan {
         detail: ReportDetailLevel,
         max_requests: Option<u32>,
     ) -> anyhow::Result<Self> {
-        let unsafe_large_prompt = extra_params
-            .get("unsafe_large_prompt")
-            .and_then(|value| value.as_bool())
-            .unwrap_or(false);
-        let unsafe_large_matrix = extra_params
-            .get("unsafe_large_matrix")
-            .and_then(|value| value.as_bool())
-            .unwrap_or(false);
+        let safety = PerformanceSafetyOptions {
+            allow_large_prompt: extra_params
+                .remove("unsafe_large_prompt")
+                .and_then(|value| value.as_bool())
+                .unwrap_or(false),
+            allow_large_matrix: extra_params
+                .remove("unsafe_large_matrix")
+                .and_then(|value| value.as_bool())
+                .unwrap_or(false),
+        };
+        Self::from_cli_with_safety(
+            provider,
+            models,
+            profile,
+            prompt_tokens,
+            output_tokens,
+            concurrency,
+            warmup,
+            runs,
+            stream,
+            workload_jsonl,
+            extra_params,
+            safety,
+            load_measurement,
+            load_probe_runs,
+            telemetry,
+            sample_interval_ms,
+            provider_process,
+            probe_capabilities,
+            probe_all_endpoints,
+            model_cache_dir,
+            scan_model_cache,
+            detail,
+            max_requests,
+        )
+    }
 
+    #[allow(clippy::too_many_arguments)]
+    pub fn from_cli_with_safety(
+        provider: ProviderKind,
+        models: Vec<String>,
+        profile: PerformanceProfile,
+        prompt_tokens: Option<&str>,
+        output_tokens: Option<&str>,
+        concurrency: Option<&str>,
+        warmup: Option<u32>,
+        runs: Option<u32>,
+        stream: bool,
+        workload_jsonl: Option<String>,
+        extra_params: HashMap<String, Value>,
+        safety: PerformanceSafetyOptions,
+        load_measurement: LoadMeasurementMode,
+        load_probe_runs: u32,
+        telemetry: TelemetryLevel,
+        sample_interval_ms: u64,
+        provider_process: Option<String>,
+        probe_capabilities: bool,
+        probe_all_endpoints: bool,
+        model_cache_dir: Option<String>,
+        scan_model_cache: bool,
+        detail: ReportDetailLevel,
+        max_requests: Option<u32>,
+    ) -> anyhow::Result<Self> {
         let mut plan = match profile {
             PerformanceProfile::Smoke => Self {
                 provider,
@@ -176,6 +237,7 @@ impl PerformancePlan {
                 stream,
                 workload_jsonl,
                 extra_params,
+                safety: safety.clone(),
                 load_measurement,
                 load_probe_runs,
                 telemetry,
@@ -203,6 +265,7 @@ impl PerformancePlan {
                 stream,
                 workload_jsonl,
                 extra_params,
+                safety: safety.clone(),
                 load_measurement,
                 load_probe_runs,
                 telemetry,
@@ -232,6 +295,7 @@ impl PerformancePlan {
                 stream,
                 workload_jsonl,
                 extra_params,
+                safety: safety.clone(),
                 load_measurement,
                 load_probe_runs,
                 telemetry,
@@ -261,6 +325,7 @@ impl PerformancePlan {
                 stream,
                 workload_jsonl,
                 extra_params,
+                safety: safety.clone(),
                 load_measurement,
                 load_probe_runs,
                 telemetry,
@@ -290,7 +355,11 @@ impl PerformancePlan {
             plan.runs = value;
         }
 
-        plan.validate(unsafe_large_prompt, max_requests, unsafe_large_matrix)?;
+        plan.validate(
+            safety.allow_large_prompt,
+            max_requests,
+            safety.allow_large_matrix,
+        )?;
         Ok(plan)
     }
 
@@ -354,7 +423,7 @@ impl PerformancePlan {
                 .any(|value| *value > DOCUMENTED_MAX_PROMPT_TOKENS)
         {
             return Err(LLMeterError::InvalidOption(format!(
-                "Prompt token values above {DOCUMENTED_MAX_PROMPT_TOKENS} require --param unsafe_large_prompt=true."
+                "Prompt token values above {DOCUMENTED_MAX_PROMPT_TOKENS} require --allow-large-prompt."
             ))
             .into());
         }
@@ -366,14 +435,14 @@ impl PerformancePlan {
                 .any(|value| *value > DOCUMENTED_MAX_OUTPUT_TOKENS)
         {
             return Err(LLMeterError::InvalidOption(format!(
-                "Output token values above {DOCUMENTED_MAX_OUTPUT_TOKENS} require --param unsafe_large_prompt=true."
+                "Output token values above {DOCUMENTED_MAX_OUTPUT_TOKENS} require --allow-large-prompt."
             ))
             .into());
         }
         if let Some(limit) = max_requests {
             if self.total_requests() > limit && !unsafe_large_matrix {
                 return Err(LLMeterError::InvalidOption(format!(
-                    "Performance plan requests {} exceed --max-requests {limit}. Reduce the matrix, raise --max-requests, use --dry-run to inspect it, or pass --param unsafe_large_matrix=true.",
+                    "Performance plan requests {} exceed --max-requests {limit}. Reduce the matrix, raise --max-requests, use --dry-run to inspect it, or pass --allow-large-matrix.",
                     self.total_requests()
                 ))
                 .into());

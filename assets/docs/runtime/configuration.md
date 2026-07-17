@@ -10,12 +10,12 @@
 | `OLLAMA_HOST` | unset | Ollama host compatibility value, mapped to `<OLLAMA_HOST>/v1`. |
 | `LMSTUDIO_BASE_URL` | unset | LM Studio base URL override. |
 | `LLAMA_CPP_BASE_URL` | unset | llama.cpp base URL override. |
-| `LLMETER_TIMEOUT` | `120` | HTTP request timeout in seconds. |
+| `LLMETER_TIMEOUT` | `120` | HTTP request timeout in seconds. Must be finite, greater than zero, and no more than 86400. Invalid values are configuration errors. |
 | `LLMETER_OUTPUT_DIR` | `<LLMETER_HOME>/benchmark_results` | Directory for result and report files. Relative or absolute values are used as provided. |
 | `LLMETER_CONFIG_DIR` | `<LLMETER_HOME>/config` | Override the directory that stores `config.json`. |
-| `LLMETER_RUNS` | `3` | Default repeated runs per benchmark. |
-| `LLMETER_MAX_TOKENS` | `128` | Default generation output token cap. |
-| `LLMETER_TEMPERATURE` | `0.2` | Default sampling temperature. |
+| `LLMETER_RUNS` | `3` | Default repeated runs per benchmark. Must be a positive integer. |
+| `LLMETER_MAX_TOKENS` | `128` | Default generation output token cap. Must be a positive integer. |
+| `LLMETER_TEMPERATURE` | `0.2` | Default sampling temperature. Must be finite and non-negative. |
 
 ## AppConfig struct
 
@@ -43,6 +43,8 @@ Fields:
 
 Use `--provider`, `--base-url`, `--timeout`, `--output-dir`, `--runs`, `--max-tokens`, and `--temperature`.
 
+Performance safety limits use dedicated flags: `--allow-large-prompt` and `--allow-large-matrix`. They cannot be passed through `--param`; internal safety controls are never sent to providers. Provider request parameters also cannot override core fields such as `model`, `messages`, `stream`, or token limits.
+
 Persist a global default provider with:
 
 ```bash
@@ -51,4 +53,4 @@ llmeter providers set ollama
 
 By default this writes `config.json` under `<LLMETER_HOME>/config/`.
 
-Last updated: 2026-06-21
+Last updated: 2026-07-18

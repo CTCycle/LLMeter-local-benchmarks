@@ -242,6 +242,12 @@ pub struct ProviderClient {
 
 impl ProviderClient {
     pub fn new(provider: ProviderKind, base_url: &str, timeout: f64) -> anyhow::Result<Self> {
+        if !timeout.is_finite() || timeout <= 0.0 || timeout > 24.0 * 60.0 * 60.0 {
+            return Err(LLMeterError::InvalidOption(format!(
+                "Invalid request timeout '{timeout}'. Expected a finite value greater than 0 and at most 86400 seconds."
+            ))
+            .into());
+        }
         let client = HttpClient::builder()
             .timeout(std::time::Duration::from_secs_f64(timeout))
             .build()
@@ -399,7 +405,18 @@ impl ProviderClient {
             "max_tokens": max_tokens,
             "stream": stream,
         });
-        merge_object(&mut body, extra);
+        merge_object(
+            &mut body,
+            extra,
+            &[
+                "model",
+                "messages",
+                "stream",
+                "stream_options",
+                "max_tokens",
+                "temperature",
+            ],
+        )?;
         if stream {
             body["stream_options"] = serde_json::json!({"include_usage": true});
             self.post_streaming("chat/completions", &body, StreamKind::Chat)
@@ -422,7 +439,11 @@ impl ProviderClient {
             "temperature": temperature,
             "max_output_tokens": max_tokens,
         });
-        merge_object(&mut body, extra);
+        merge_object(
+            &mut body,
+            extra,
+            &["model", "input", "temperature", "max_output_tokens"],
+        )?;
         self.post_timed("responses", &body, extract_response_text)
     }
 
@@ -544,16 +565,27 @@ pub enum StreamEvent {
     Json(Value),
 }
 
-fn merge_object(body: &mut Value, extra: Option<&Value>) {
+fn merge_object(
+    body: &mut Value,
+    extra: Option<&Value>,
+    reserved_keys: &[&str],
+) -> anyhow::Result<()> {
     let Some(extra) = extra.and_then(|v| v.as_object()) else {
-        return;
+        return Ok(());
     };
     let Some(body_object) = body.as_object_mut() else {
-        return;
+        return Ok(());
     };
     for (key, value) in extra {
+        if reserved_keys.contains(&key.as_str()) {
+            return Err(LLMeterError::InvalidOption(format!(
+                "Provider parameter '{key}' is reserved and cannot override a core request field."
+            ))
+            .into());
+        }
         body_object.insert(key.clone(), value.clone());
     }
+    Ok(())
 }
 
 fn extract_chat_text(payload: &Value) -> String {
@@ -641,5 +673,23 @@ mod tests {
             ))
         );
         assert_eq!(parse_openai_stream_line(""), None);
+    }
+
+    #[test]
+    fn reserved_chat_fields_cannot_be_overridden_by_extra_parameters() {
+        let client =
+            ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 1.0).unwrap();
+        let error = client
+            .chat_completion(
+                "model",
+                json!([{"role": "user", "content": "hi"}]),
+                2,
+                0.0,
+                false,
+                Some(&json!({"model": "attacker"})),
+            )
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("reserved"), "{error}");
     }
 }
