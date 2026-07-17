@@ -309,6 +309,17 @@ fn menu_action_for_key(key: crossterm::event::KeyEvent) -> Option<MenuAction> {
     }
 }
 
+fn move_menu_selection(selected: usize, choices_len: usize, direction: i8) -> usize {
+    if choices_len == 0 {
+        return 0;
+    }
+    match direction {
+        direction if direction < 0 => selected.saturating_sub(1),
+        direction if direction > 0 => selected.saturating_add(1).min(choices_len - 1),
+        _ => selected.min(choices_len - 1),
+    }
+}
+
 pub fn menu(prompt: &str, choices: &[&str]) -> Result<MenuAction> {
     use crossterm::{
         cursor,
@@ -351,16 +362,14 @@ pub fn menu(prompt: &str, choices: &[&str]) -> Result<MenuAction> {
                 kind: KeyEventKind::Press | KeyEventKind::Repeat,
                 ..
             }) => {
-                selected = selected.saturating_sub(1);
+                selected = move_menu_selection(selected, choices.len(), -1);
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Down,
                 kind: KeyEventKind::Press | KeyEventKind::Repeat,
                 ..
             }) => {
-                selected = selected
-                    .saturating_add(1)
-                    .min(choices.len().saturating_sub(1));
+                selected = move_menu_selection(selected, choices.len(), 1);
             }
             Event::Key(key) => match menu_action_for_key(key) {
                 Some(MenuAction::Select(_)) => break MenuAction::Select(selected),
@@ -1342,7 +1351,7 @@ fn fmt_digits(value: Option<f64>, digits: usize) -> String {
 mod tests {
     use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
-    use super::{menu_action_for_key, MenuAction};
+    use super::{menu_action_for_key, move_menu_selection, MenuAction};
 
     #[test]
     fn enter_release_cannot_select_a_menu_item() {
@@ -1364,5 +1373,18 @@ mod tests {
             menu_action_for_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)),
             Some(MenuAction::Exit)
         );
+    }
+
+    #[test]
+    fn navigation_clamps_for_each_workspace_menu_size() {
+        for choices_len in [4, 5, 6, 9] {
+            assert_eq!(move_menu_selection(0, choices_len, -1), 0);
+            assert_eq!(
+                move_menu_selection(choices_len - 1, choices_len, 1),
+                choices_len - 1
+            );
+            assert_eq!(move_menu_selection(0, choices_len, 1), 1);
+        }
+        assert_eq!(move_menu_selection(4, 0, 1), 0);
     }
 }
