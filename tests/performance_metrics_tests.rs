@@ -87,3 +87,22 @@ fn summarize_traces_uses_scenario_wall_time_for_concurrent_throughput() {
     assert_eq!(summary.throughput.requests_per_second, Some(2.0));
     assert_eq!(summary.throughput.successful_requests_per_second, Some(2.0));
 }
+
+#[test]
+fn failures_are_counted_without_polluting_success_latency_or_token_denominators() {
+    let mut failed = trace(2, 9_999.0, None, Some(999));
+    failed.success = false;
+    failed.error = Some("provider timed out".to_string());
+    failed.input_tokens = None;
+
+    let summary = summarize_traces(&[trace(1, 100.0, Some(20.0), Some(10)), failed], 200.0);
+
+    assert_eq!(summary.latency.error_count, 1);
+    assert_eq!(summary.latency.wall_time_ms_mean, Some(100.0));
+    assert_eq!(summary.throughput.total_output_tokens, 10);
+    assert_eq!(
+        summary.throughput.mean_output_tokens_per_request,
+        Some(10.0)
+    );
+    assert_eq!(summary.errors.timeout_count, 1);
+}

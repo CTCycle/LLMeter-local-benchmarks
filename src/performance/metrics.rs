@@ -120,39 +120,42 @@ pub fn summarize_traces(traces: &[RequestTrace], scenario_wall_time_ms: f64) -> 
     let request_count = traces.len();
     let success_count = traces.iter().filter(|trace| trace.success).count();
     let error_count = request_count.saturating_sub(success_count);
-    let wall: Vec<f64> = traces
+    // Latency distributions describe completed requests only. Failed attempts remain
+    // explicitly represented in ErrorSummary and the scenario-wide request rate.
+    let successful: Vec<&RequestTrace> = traces.iter().filter(|trace| trace.success).collect();
+    let wall: Vec<f64> = successful
         .iter()
         .map(|trace| trace.timing.wall_time_ms)
         .collect();
-    let ttft: Vec<f64> = traces
+    let ttft: Vec<f64> = successful
         .iter()
         .filter_map(|trace| trace.timing.ttft_ms)
         .collect();
-    let tpot: Vec<f64> = traces
+    let tpot: Vec<f64> = successful
         .iter()
         .filter_map(|trace| trace.timing.tpot_ms)
         .collect();
-    let itl: Vec<f64> = traces
+    let itl: Vec<f64> = successful
         .iter()
         .filter_map(|trace| trace.timing.itl_ms)
         .collect();
-    let generation_wall: Vec<f64> = traces
+    let generation_wall: Vec<f64> = successful
         .iter()
         .filter_map(|trace| trace.timing.generation_wall_ms)
         .collect();
-    let including_ttft_tps: Vec<f64> = traces
+    let including_ttft_tps: Vec<f64> = successful
         .iter()
         .filter_map(|trace| trace.timing.output_tokens_per_second_including_ttft)
         .collect();
-    let excluding_ttft_tps: Vec<f64> = traces
+    let excluding_ttft_tps: Vec<f64> = successful
         .iter()
         .filter_map(|trace| trace.timing.output_tokens_per_second_excluding_ttft)
         .collect();
-    let total_input_tokens = traces
+    let total_input_tokens = successful
         .iter()
         .filter_map(|trace| trace.input_tokens)
         .sum::<u64>();
-    let total_output_tokens = traces
+    let total_output_tokens = successful
         .iter()
         .filter_map(|trace| trace.output_tokens)
         .sum::<u64>();
@@ -201,15 +204,15 @@ pub fn summarize_traces(traces: &[RequestTrace], scenario_wall_time_ms: f64) -> 
             output_tokens_per_second_excluding_ttft: mean(&excluding_ttft_tps),
             total_input_tokens,
             total_output_tokens,
-            mean_input_tokens_per_request: if request_count == 0 {
+            mean_input_tokens_per_request: if success_count == 0 {
                 None
             } else {
-                Some(total_input_tokens as f64 / request_count as f64)
+                Some(total_input_tokens as f64 / success_count as f64)
             },
-            mean_output_tokens_per_request: if request_count == 0 {
+            mean_output_tokens_per_request: if success_count == 0 {
                 None
             } else {
-                Some(total_output_tokens as f64 / request_count as f64)
+                Some(total_output_tokens as f64 / success_count as f64)
             },
         },
         errors: ErrorSummary {

@@ -257,16 +257,68 @@ pub fn print_terminal_report(markdown: &str) {
     println!("{markdown}");
 }
 
-pub fn menu(prompt: &str, choices: &[&str]) -> Result<usize> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MenuAction {
+    Select(usize),
+    Back,
+    Exit,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PromptOutcome<T> {
+    Selected(T),
+    Back,
+    Exit,
+}
+
+struct RawModeGuard;
+
+impl RawModeGuard {
+    fn enter() -> Result<Self> {
+        crossterm::terminal::enable_raw_mode()?;
+        Ok(Self)
+    }
+}
+
+impl Drop for RawModeGuard {
+    fn drop(&mut self) {
+        let _ = crossterm::terminal::disable_raw_mode();
+    }
+}
+
+fn menu_action_for_key(key: crossterm::event::KeyEvent) -> Option<MenuAction> {
+    use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+    match key {
+        KeyEvent {
+            code: KeyCode::Enter,
+            kind: KeyEventKind::Press,
+            ..
+        } => Some(MenuAction::Select(0)),
+        KeyEvent {
+            code: KeyCode::Left | KeyCode::Esc,
+            kind: KeyEventKind::Press,
+            ..
+        } => Some(MenuAction::Back),
+        KeyEvent {
+            code: KeyCode::Char('c'),
+            modifiers: KeyModifiers::CONTROL,
+            kind: KeyEventKind::Press,
+            ..
+        } => Some(MenuAction::Exit),
+        _ => None,
+    }
+}
+
+pub fn menu(prompt: &str, choices: &[&str]) -> Result<MenuAction> {
     use crossterm::{
         cursor,
         event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
         execute,
-        terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
+        terminal::{Clear, ClearType},
     };
     use std::io::{stdout, Write};
 
-    enable_raw_mode()?;
+    let _raw_mode = RawModeGuard::enter()?;
     let mut stdout = stdout();
     let mut selected = 0usize;
 
@@ -310,19 +362,12 @@ pub fn menu(prompt: &str, choices: &[&str]) -> Result<usize> {
                     .saturating_add(1)
                     .min(choices.len().saturating_sub(1));
             }
-            Event::Key(KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            }) => break selected + 1,
-            Event::Key(KeyEvent {
-                code: KeyCode::Left | KeyCode::Esc,
-                ..
-            }) => {
-                break choices
-                    .iter()
-                    .position(|&c| c == "Back")
-                    .unwrap_or(choices.len());
-            }
+            Event::Key(key) => match menu_action_for_key(key) {
+                Some(MenuAction::Select(_)) => break MenuAction::Select(selected),
+                Some(MenuAction::Back) => break MenuAction::Back,
+                Some(MenuAction::Exit) => break MenuAction::Exit,
+                None => {}
+            },
             _ => {}
         }
     };
@@ -332,7 +377,6 @@ pub fn menu(prompt: &str, choices: &[&str]) -> Result<usize> {
         cursor::MoveTo(0, 0),
         Clear(ClearType::FromCursorDown)
     )?;
-    disable_raw_mode()?;
     Ok(result)
 }
 
@@ -467,15 +511,15 @@ pub fn main_menu(config: &AppConfig, client: &ProviderClient) -> Result<()> {
         )?;
 
         match choice {
-            1 => provider_setup_menu(config, client)?,
-            2 => model_inventory_menu(config, client)?,
-            3 => benchmark_menu(config, client)?,
-            4 => report_menu(config)?,
-            5 => {
+            MenuAction::Select(0) => provider_setup_menu(config, client)?,
+            MenuAction::Select(1) => model_inventory_menu(config, client)?,
+            MenuAction::Select(2) => benchmark_menu(config, client)?,
+            MenuAction::Select(3) => report_menu(config)?,
+            MenuAction::Select(4) => {
                 print_help_topic(None);
                 pause();
             }
-            6 => return Ok(()),
+            MenuAction::Select(5) | MenuAction::Exit => return Ok(()),
             _ => {}
         }
     }
@@ -494,10 +538,10 @@ pub fn provider_setup_menu(config: &AppConfig, client: &ProviderClient) -> Resul
             ],
         )?;
         match choice {
-            1 => print_status_panel(&client.status()),
-            2 => print_provider_catalog(),
-            3 => probe_provider_capabilities_interactive(config, client)?,
-            4 => {
+            MenuAction::Select(0) => print_status_panel(&client.status()),
+            MenuAction::Select(1) => print_provider_catalog(),
+            MenuAction::Select(2) => probe_provider_capabilities_interactive(config, client)?,
+            MenuAction::Select(3) => {
                 let choices = ProviderKind::catalog()
                     .iter()
                     .map(|entry| entry.provider.label().to_string())
@@ -513,7 +557,7 @@ pub fn provider_setup_menu(config: &AppConfig, client: &ProviderClient) -> Resul
                     );
                 }
             }
-            5 => return Ok(()),
+            MenuAction::Back | MenuAction::Exit | MenuAction::Select(4) => return Ok(()),
             _ => {}
         }
         pause();
@@ -532,11 +576,11 @@ pub fn model_inventory_menu(config: &AppConfig, client: &ProviderClient) -> Resu
             ],
         )?;
         match choice {
-            1 => match client.list_models() {
+            MenuAction::Select(0) => match client.list_models() {
                 Ok(models) => print_models(&models, config.provider),
                 Err(error) => println!("{} {error}", "Error:".red()),
             },
-            2 => {
+            MenuAction::Select(1) => {
                 let models = runner::installed_model_names(client)?;
                 let selected = choose_from_menu("Choose model", &models, false, false)?;
                 if let Some(model) = selected.first() {
@@ -546,8 +590,8 @@ pub fn model_inventory_menu(config: &AppConfig, client: &ProviderClient) -> Resu
                     }
                 }
             }
-            3 => estimate_model_inventory_interactive(config, client)?,
-            4 => return Ok(()),
+            MenuAction::Select(2) => estimate_model_inventory_interactive(config, client)?,
+            MenuAction::Back | MenuAction::Exit | MenuAction::Select(3) => return Ok(()),
             _ => {}
         }
         pause();
@@ -573,21 +617,21 @@ pub fn benchmark_menu(config: &AppConfig, client: &ProviderClient) -> Result<()>
         )?;
 
         match choice {
-            1 => guided_quick_benchmark_run(config, client)?,
-            2 => guided_performance_run(config, client)?,
-            3 => guided_standard_llm_run(config, client)?,
-            4 => guided_embeddings_run(config, client)?,
-            5 => guided_quality_plan(),
-            6 => {
+            MenuAction::Select(0) => guided_quick_benchmark_run(config, client)?,
+            MenuAction::Select(1) => guided_performance_run(config, client)?,
+            MenuAction::Select(2) => guided_standard_llm_run(config, client)?,
+            MenuAction::Select(3) => guided_embeddings_run(config, client)?,
+            MenuAction::Select(4) => guided_quality_plan(),
+            MenuAction::Select(5) => {
                 print_benchmark_catalog(None);
                 pause();
             }
-            7 => {
+            MenuAction::Select(6) => {
                 show_latest_report(config);
                 pause();
             }
-            8 => generate_report_interactive(config)?,
-            9 => return Ok(()),
+            MenuAction::Select(7) => generate_report_interactive(config)?,
+            MenuAction::Back | MenuAction::Exit | MenuAction::Select(8) => return Ok(()),
             _ => {}
         }
     }
@@ -1172,22 +1216,22 @@ fn report_menu(config: &AppConfig) -> Result<()> {
         )?;
 
         match choice {
-            1 => {
+            MenuAction::Select(0) => {
                 use crate::results::ResultStore;
                 let store = ResultStore::new(&config.output_dir);
                 print_file_list(&store.latest_json_files(10), "Saved JSON results");
                 print_file_list(&store.latest_report_files(10), "Generated reports");
                 pause();
             }
-            2 => {
+            MenuAction::Select(1) => {
                 show_latest_report(config);
                 pause();
             }
-            3 => {
+            MenuAction::Select(2) => {
                 generate_report_interactive(config)?;
                 pause();
             }
-            4 => return Ok(()),
+            MenuAction::Back | MenuAction::Exit | MenuAction::Select(3) => return Ok(()),
             _ => {}
         }
     }
@@ -1291,5 +1335,34 @@ fn fmt_digits(value: Option<f64>, digits: usize) -> String {
     match value {
         Some(v) if v.is_finite() => format!("{:.digits$}", v),
         _ => String::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+
+    use super::{menu_action_for_key, MenuAction};
+
+    #[test]
+    fn enter_release_cannot_select_a_menu_item() {
+        let release =
+            KeyEvent::new_with_kind(KeyCode::Enter, KeyModifiers::NONE, KeyEventKind::Release);
+        assert_eq!(menu_action_for_key(release), None);
+        let press =
+            KeyEvent::new_with_kind(KeyCode::Enter, KeyModifiers::NONE, KeyEventKind::Press);
+        assert_eq!(menu_action_for_key(press), Some(MenuAction::Select(0)));
+    }
+
+    #[test]
+    fn navigation_back_and_interrupt_are_not_label_dependent() {
+        assert_eq!(
+            menu_action_for_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(MenuAction::Back)
+        );
+        assert_eq!(
+            menu_action_for_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+            Some(MenuAction::Exit)
+        );
     }
 }
