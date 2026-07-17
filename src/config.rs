@@ -10,6 +10,8 @@ const DEFAULT_OUTPUT_DIR: &str = "benchmark_results";
 const CONFIG_FILE_NAME: &str = "config.json";
 const CONFIG_DIR_NAME: &str = "config";
 const DEFAULT_HOME_DIR_NAME: &str = ".llmeter";
+const DEFAULT_TIMEOUT_SECS: f64 = 120.0;
+const MAX_TIMEOUT_SECS: f64 = 24.0 * 60.0 * 60.0;
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
@@ -30,11 +32,14 @@ struct PersistedConfig {
 }
 
 impl AppConfig {
-    pub fn from_env(cli: &Cli) -> Self {
+    pub fn from_env(cli: &Cli) -> anyhow::Result<Self> {
         Self::from_env_with_provider(cli, None)
     }
 
-    pub fn from_env_with_provider(cli: &Cli, provider_override: Option<ProviderKind>) -> Self {
+    pub fn from_env_with_provider(
+        cli: &Cli,
+        provider_override: Option<ProviderKind>,
+    ) -> anyhow::Result<Self> {
         let provider = provider_override
             .or(cli.provider)
             .or_else(provider_from_env)
@@ -49,14 +54,20 @@ impl AppConfig {
             .or_else(|| provider_env_url(provider))
             .unwrap_or_else(|| provider.default_base_url().to_string());
 
-        let timeout = cli
-            .timeout
-            .or_else(|| {
-                std::env::var("LLMETER_TIMEOUT")
-                    .ok()
-                    .and_then(|v| v.parse().ok())
-            })
-            .unwrap_or(120.0);
+        let timeout = match cli.timeout {
+            Some(value) => validate_timeout(value, "--timeout")?,
+            None => match std::env::var("LLMETER_TIMEOUT") {
+                Ok(value) => {
+                    let parsed = value.parse::<f64>().map_err(|_| {
+                        LLMeterError::InvalidOption(format!(
+                            "Invalid LLMETER_TIMEOUT '{value}'. Expected a finite value greater than 0 and at most 86400 seconds."
+                        ))
+                    })?;
+                    validate_timeout(parsed, "LLMETER_TIMEOUT")?
+                }
+                Err(_) => DEFAULT_TIMEOUT_SECS,
+            },
+        };
 
         let output_dir = cli
             .output_dir
@@ -65,22 +76,11 @@ impl AppConfig {
             .map(PathBuf::from)
             .unwrap_or_else(default_output_dir);
 
-        let default_runs = std::env::var("LLMETER_RUNS")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(3);
+        let default_runs = parse_positive_env_u32("LLMETER_RUNS")?.unwrap_or(3);
+        let default_max_tokens = parse_positive_env_u32("LLMETER_MAX_TOKENS")?.unwrap_or(128);
+        let default_temperature = parse_temperature_env("LLMETER_TEMPERATURE")?.unwrap_or(0.2);
 
-        let default_max_tokens = std::env::var("LLMETER_MAX_TOKENS")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(128);
-
-        let default_temperature = std::env::var("LLMETER_TEMPERATURE")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(0.2);
-
-        AppConfig {
+        Ok(AppConfig {
             provider,
             base_url: normalize_base_url(&base_url),
             timeout,
@@ -89,7 +89,7 @@ impl AppConfig {
             default_max_tokens,
             default_temperature,
             explicit_base_url,
-        }
+        })
     }
 
     pub fn with_provider(&self, provider: ProviderKind) -> Self {
@@ -110,6 +110,52 @@ impl AppConfig {
             explicit_base_url: self.explicit_base_url,
         }
     }
+}
+
+fn validate_timeout(value: f64, source: &str) -> anyhow::Result<f64> {
+    if !value.is_finite() || value <= 0.0 || value > MAX_TIMEOUT_SECS {
+        return Err(LLMeterError::InvalidOption(format!(
+            "Invalid {source} '{value}'. Expected a finite value greater than 0 and at most 86400 seconds."
+        ))
+        .into());
+    }
+    Ok(value)
+}
+
+fn parse_positive_env_u32(name: &str) -> anyhow::Result<Option<u32>> {
+    let Ok(value) = std::env::var(name) else {
+        return Ok(None);
+    };
+    let parsed = value.parse::<u32>().map_err(|_| {
+        LLMeterError::InvalidOption(format!(
+            "Invalid {name} '{value}'. Expected a positive integer."
+        ))
+    })?;
+    if parsed == 0 {
+        return Err(LLMeterError::InvalidOption(format!(
+            "Invalid {name} '{value}'. Expected a positive integer."
+        ))
+        .into());
+    }
+    Ok(Some(parsed))
+}
+
+fn parse_temperature_env(name: &str) -> anyhow::Result<Option<f64>> {
+    let Ok(value) = std::env::var(name) else {
+        return Ok(None);
+    };
+    let parsed = value.parse::<f64>().map_err(|_| {
+        LLMeterError::InvalidOption(format!(
+            "Invalid {name} '{value}'. Expected a finite value greater than or equal to 0."
+        ))
+    })?;
+    if !parsed.is_finite() || parsed < 0.0 {
+        return Err(LLMeterError::InvalidOption(format!(
+            "Invalid {name} '{value}'. Expected a finite value greater than or equal to 0."
+        ))
+        .into());
+    }
+    Ok(Some(parsed))
 }
 
 pub fn save_global_provider(provider: ProviderKind) -> anyhow::Result<PathBuf> {
@@ -236,6 +282,10 @@ mod tests {
             "LLAMA_CPP_BASE_URL",
             "LLMETER_CONFIG_DIR",
             "LLMETER_OUTPUT_DIR",
+            "LLMETER_TIMEOUT",
+            "LLMETER_RUNS",
+            "LLMETER_MAX_TOKENS",
+            "LLMETER_TEMPERATURE",
         ] {
             std::env::remove_var(key);
         }
@@ -280,20 +330,20 @@ mod tests {
         save_global_provider_to_path(ProviderKind::LlamaCpp, &path).unwrap();
 
         let cli = Cli::parse_from(["llmeter"]);
-        let config = AppConfig::from_env(&cli);
+        let config = AppConfig::from_env(&cli).unwrap();
         assert_eq!(config.provider, ProviderKind::LlamaCpp);
 
         std::env::set_var("LLMETER_PROVIDER", "lmstudio");
-        let config = AppConfig::from_env(&cli);
+        let config = AppConfig::from_env(&cli).unwrap();
         assert_eq!(config.provider, ProviderKind::Lmstudio);
 
         let cli_override = Cli::parse_from(["llmeter", "--provider", "ollama"]);
-        let config = AppConfig::from_env(&cli_override);
+        let config = AppConfig::from_env(&cli_override).unwrap();
         assert_eq!(config.provider, ProviderKind::Ollama);
 
         clear_env();
         let cli = Cli::parse_from(["llmeter"]);
-        let config = AppConfig::from_env(&cli);
+        let config = AppConfig::from_env(&cli).unwrap();
         assert_eq!(config.provider, ProviderKind::Ollama);
     }
 
@@ -305,7 +355,7 @@ mod tests {
         std::env::set_var("LLMETER_HOME", temp.path());
 
         let cli = Cli::parse_from(["llmeter"]);
-        let config = AppConfig::from_env(&cli);
+        let config = AppConfig::from_env(&cli).unwrap();
 
         assert_eq!(config.output_dir, temp.path().join("benchmark_results"));
     }
@@ -319,9 +369,45 @@ mod tests {
         std::env::set_var("LLMETER_OUTPUT_DIR", "custom-results");
 
         let cli = Cli::parse_from(["llmeter"]);
-        let config = AppConfig::from_env(&cli);
+        let config = AppConfig::from_env(&cli).unwrap();
 
         assert_eq!(config.output_dir, PathBuf::from("custom-results"));
+    }
+
+    #[test]
+    fn invalid_timeout_values_are_reported_instead_of_defaulted() {
+        let _guard = env_lock().lock().unwrap();
+        for value in ["-1", "0", "NaN", "inf", "86401", "not-a-number"] {
+            clear_env();
+            std::env::set_var("LLMETER_TIMEOUT", value);
+            let cli = Cli::parse_from(["llmeter"]);
+            let error = AppConfig::from_env(&cli).unwrap_err().to_string();
+            assert!(error.contains("LLMETER_TIMEOUT"), "{error}");
+        }
+
+        clear_env();
+        let cli = Cli::parse_from(["llmeter", "--timeout=-1"]);
+        let error = AppConfig::from_env(&cli).unwrap_err().to_string();
+        assert!(error.contains("--timeout"), "{error}");
+    }
+
+    #[test]
+    fn invalid_numeric_defaults_are_reported_instead_of_defaulted() {
+        let _guard = env_lock().lock().unwrap();
+        for (name, value) in [
+            ("LLMETER_RUNS", "not-a-number"),
+            ("LLMETER_RUNS", "0"),
+            ("LLMETER_MAX_TOKENS", "0"),
+            ("LLMETER_TEMPERATURE", "NaN"),
+            ("LLMETER_TEMPERATURE", "-1"),
+        ] {
+            clear_env();
+            std::env::set_var(name, value);
+            let cli = Cli::parse_from(["llmeter"]);
+            let error = AppConfig::from_env(&cli).unwrap_err().to_string();
+            assert!(error.contains(name), "{error}");
+        }
+        clear_env();
     }
 
     #[test]
@@ -334,7 +420,7 @@ mod tests {
         save_global_provider(ProviderKind::Lmstudio).unwrap();
 
         let cli = Cli::parse_from(["llmeter"]);
-        let config = AppConfig::from_env(&cli);
+        let config = AppConfig::from_env(&cli).unwrap();
 
         assert_eq!(config.provider, ProviderKind::Lmstudio);
     }
@@ -344,7 +430,9 @@ mod tests {
         let _guard = env_lock().lock().unwrap();
         clear_env();
         let cli = Cli::parse_from(["llmeter"]);
-        let config = AppConfig::from_env(&cli).with_provider(ProviderKind::Lmstudio);
+        let config = AppConfig::from_env(&cli)
+            .unwrap()
+            .with_provider(ProviderKind::Lmstudio);
         assert_eq!(config.provider, ProviderKind::Lmstudio);
         assert_eq!(config.base_url, "http://localhost:1234/v1");
     }
@@ -354,7 +442,9 @@ mod tests {
         let _guard = env_lock().lock().unwrap();
         clear_env();
         let cli = Cli::parse_from(["llmeter", "--base-url", "http://localhost:9999/v1"]);
-        let config = AppConfig::from_env(&cli).with_provider(ProviderKind::Lmstudio);
+        let config = AppConfig::from_env(&cli)
+            .unwrap()
+            .with_provider(ProviderKind::Lmstudio);
         assert_eq!(config.base_url, "http://localhost:9999/v1");
     }
 }

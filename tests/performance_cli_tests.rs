@@ -66,7 +66,7 @@ fn performance_plan_rejects_oversized_prompt_without_override() {
     )
     .unwrap_err();
 
-    assert!(error.to_string().contains("unsafe_large_prompt=true"));
+    assert!(error.to_string().contains("--allow-large-prompt"));
 
     let mut params = HashMap::new();
     params.insert("unsafe_large_prompt".to_string(), json!(true));

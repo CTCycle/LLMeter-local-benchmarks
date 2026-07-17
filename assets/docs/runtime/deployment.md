@@ -115,7 +115,11 @@ Each archive is published with a matching `.sha256` checksum. Verify the checksu
 
 ## Dependencies
 
-- Runtime: **None**. The binary is self-contained.
+- Prebuilt binaries do not require the Rust toolchain.
+- GNU/Linux binaries require a compatible glibc runtime; they are not fully static.
+- Windows and macOS binaries use their normal operating-system runtime environment.
+- Provider servers remain external runtime prerequisites.
+- `nvidia-smi` is optional telemetry integration, not a hard dependency.
 - Build-time: Rust toolchain (stable), listed in `Cargo.toml`.
 
 ## Versioning
@@ -126,6 +130,6 @@ Current version: `0.3.0`. Follows semantic versioning. Defined in `Cargo.toml`.
 
 Cross-platform (Windows, macOS, Linux). Binary naming is `llmeter.exe` on Windows and `llmeter` on Unix.
 
-The binary is compiled with `rustls` (no `openssl`), making it fully statically linkable for musl targets.
+The binary uses `rustls`, so it does not require an OpenSSL runtime dependency. A musl-targeted Linux build is the portable Linux option; the released GNU/Linux artifact still has a glibc compatibility boundary.
 
-Last updated: 2026-07-01
+Last updated: 2026-07-18

@@ -44,7 +44,7 @@ fn sample_run() -> BenchmarkRun {
 #[test]
 fn test_result_store_saves_json_and_csv() {
     let dir = tempfile::tempdir().unwrap();
-    let store = ResultStore::new(&dir.path().to_path_buf());
+    let store = ResultStore::new(dir.path());
     let run = sample_run();
 
     let json_path = store.save_json(&run).unwrap();
@@ -64,7 +64,7 @@ fn test_result_store_saves_json_and_csv() {
 #[test]
 fn test_load_json_roundtrip() {
     let dir = tempfile::tempdir().unwrap();
-    let store = ResultStore::new(&dir.path().to_path_buf());
+    let store = ResultStore::new(dir.path());
     let run = sample_run();
 
     store.save_json(&run).unwrap();

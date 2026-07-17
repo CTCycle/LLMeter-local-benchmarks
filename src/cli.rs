@@ -239,6 +239,12 @@ pub enum BenchCommands {
         #[arg(long, action = clap::ArgAction::SetTrue, help = "Disable streaming requests")]
         no_stream: bool,
 
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Allow prompt/output sizes above documented safety limits")]
+        allow_large_prompt: bool,
+
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Allow performance matrices above the request safety limit")]
+        allow_large_matrix: bool,
+
         #[arg(long, help = "Optional JSONL workload path")]
         jsonl: Option<String>,
 
@@ -361,6 +367,18 @@ pub fn parse_params(values: &[String]) -> anyhow::Result<HashMap<String, Value>>
         if key.is_empty() {
             return Err(LLMeterError::InvalidOption(format!(
                 "Invalid --param '{item}'. Empty key."
+            ))
+            .into());
+        }
+        if matches!(
+            key.as_str(),
+            "unsafe_large_prompt"
+                | "unsafe_large_matrix"
+                | "allow_large_prompt"
+                | "allow_large_matrix"
+        ) {
+            return Err(LLMeterError::InvalidOption(format!(
+                "Invalid --param key '{key}'. Safety controls must use their dedicated CLI flags."
             ))
             .into());
         }
