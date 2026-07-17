@@ -36,10 +36,14 @@ Provider presets carry compatibility tiers: first-class, known OpenAI-compatible
 
 Unsupported provider capabilities are recorded as benchmark error records instead of aborting the entire run.
 
+## Compatibility evidence
+
+The test suite runs the baseline `/v1/models` and streaming Chat Completions contract against every registered preset through deterministic fixtures. This proves LLMeter's request construction, SSE parsing, usage extraction, and diagnostics for all preset names without implying that every server version or model is live-verified. Responses and embeddings remain capability-probed because provider deployments vary.
+
 Performance capability probing checks `/v1/models`, chat completions, optional streaming chat completions, and optionally embeddings and responses. The probe emits per-endpoint progress updates through the shared terminal progress sink so interactive and scriptable runs show visible validation progress before timed scenarios start. Optional endpoint failures are captured in the capability report and do not fail the benchmark by themselves.
 
 ## Lifecycle
 
 LLMeter does not start or stop provider servers. Users start Ollama, LM Studio, llama.cpp, or custom local servers externally and pass provider/base URL settings to LLMeter.
 
-Last updated: 2026-06-22
+Last updated: 2026-07-17
