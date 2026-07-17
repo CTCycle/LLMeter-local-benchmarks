@@ -180,7 +180,7 @@ pub fn save_global_provider_to_path(provider: ProviderKind, path: &Path) -> anyh
         })?;
     }
     let content = serde_json::to_string_pretty(&config)?;
-    std::fs::write(path, content).map_err(|error| {
+    crate::utils::atomic_write(path, content.as_bytes()).map_err(|error| {
         LLMeterError::Io(format!(
             "Failed to write config file {}: {}",
             path.display(),

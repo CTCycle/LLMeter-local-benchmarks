@@ -779,7 +779,7 @@ pub fn save_markdown_report(run: &BenchmarkRun, output_dir: &Path) -> anyhow::Re
         )
     })?;
     let content = render_markdown_report(run);
-    std::fs::write(&path, content)
+    crate::utils::atomic_write(&path, content.as_bytes())
         .with_context(|| format!("Failed to write markdown report: {}", path.display()))?;
     Ok(path)
 }
@@ -793,7 +793,7 @@ pub fn save_html_report(run: &BenchmarkRun, output_dir: &Path) -> anyhow::Result
         )
     })?;
     let content = render_html_report(run);
-    std::fs::write(&path, content)
+    crate::utils::atomic_write(&path, content.as_bytes())
         .with_context(|| format!("Failed to write HTML report: {}", path.display()))?;
     Ok(path)
 }

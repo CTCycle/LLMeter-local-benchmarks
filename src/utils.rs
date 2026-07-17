@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::time::SystemTime;
+use std::{fs, io::Write};
 
 use chrono::{DateTime, Utc};
 
@@ -52,6 +53,41 @@ pub fn ensure_dir(path: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(path)
 }
 
+/// Writes a file through a same-directory temporary file and renames it into place.
+///
+/// Keeping the temporary file beside the destination makes the final rename atomic on
+/// filesystems that support atomic same-volume renames and prevents readers from seeing
+/// partially serialized JSON, CSV, or report output.
+pub fn atomic_write(path: &Path, contents: &[u8]) -> std::io::Result<()> {
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("llmeter-output");
+    let temp_path = parent.join(format!(
+        ".{file_name}.tmp-{}-{}",
+        std::process::id(),
+        utc_now_run_id_stamp().replace(':', "")
+    ));
+
+    let result = (|| {
+        let mut file = fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&temp_path)?;
+        file.write_all(contents)?;
+        file.flush()?;
+        file.sync_all()?;
+        drop(file);
+        fs::rename(&temp_path, path)
+    })();
+
+    if result.is_err() {
+        let _ = fs::remove_file(&temp_path);
+    }
+    result
+}
+
 pub fn preview(text: &str, limit: usize) -> String {
     let compact: String = text.split_whitespace().collect::<Vec<_>>().join(" ");
     if compact.len() <= limit {
@@ -76,4 +112,34 @@ pub fn error_chain(error: &dyn std::error::Error) -> String {
     }
 
     parts.join(": ")
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use tempfile::tempdir;
+
+    use super::atomic_write;
+
+    #[test]
+    fn atomic_write_replaces_complete_content_without_temp_files() {
+        let directory = tempdir().unwrap();
+        let path = directory.path().join("result.json");
+
+        atomic_write(&path, br#"{"version":1}"#).unwrap();
+        atomic_write(&path, br#"{"version":2,"complete":true}"#).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            r#"{"version":2,"complete":true}"#
+        );
+        assert_eq!(
+            fs::read_dir(directory.path())
+                .unwrap()
+                .filter_map(Result::ok)
+                .count(),
+            1
+        );
+    }
 }
