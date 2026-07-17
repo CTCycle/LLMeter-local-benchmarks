@@ -62,6 +62,37 @@ fn test_result_store_saves_json_and_csv() {
 }
 
 #[test]
+fn test_csv_neutralizes_formula_like_text_fields() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = ResultStore::new(dir.path());
+    let mut run = sample_run();
+    run.models = vec!["=MODEL()".to_string()];
+    run.results[0].benchmark_name = "+BENCHMARK()".to_string();
+    run.results[0].model = "-MODEL()".to_string();
+    run.results[0].prompt_name = Some("@PROMPT()".to_string());
+    run.results[0].response_preview = Some("=PREVIEW()".to_string());
+    run.results[0]
+        .metrics
+        .insert("text_metric".to_string(), json!("+METRIC()"));
+
+    let csv_path = store.save_csv(&run).unwrap();
+    let mut reader = csv::Reader::from_path(csv_path).unwrap();
+    let headers = reader.headers().unwrap().clone();
+    let record = reader.records().next().unwrap().unwrap();
+
+    for (column, expected) in [
+        ("benchmark_name", "'+BENCHMARK()"),
+        ("model", "'-MODEL()"),
+        ("prompt_name", "'@PROMPT()"),
+        ("response_preview", "'=PREVIEW()"),
+        ("text_metric", "'+METRIC()"),
+    ] {
+        let index = headers.iter().position(|header| header == column).unwrap();
+        assert_eq!(&record[index], expected, "column {column}");
+    }
+}
+
+#[test]
 fn test_load_json_roundtrip() {
     let dir = tempfile::tempdir().unwrap();
     let store = ResultStore::new(dir.path());

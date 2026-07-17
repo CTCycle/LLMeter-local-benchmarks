@@ -52,6 +52,8 @@ Raw files are saved as JSON and CSV. Formatted reports are generated as Markdown
 
 JSON, CSV, Markdown, HTML, and persisted provider configuration are written through a same-directory temporary file that is flushed, synchronized, and renamed into place. This prevents interrupted serialization from leaving a partially written final artifact.
 
+CSV text cells beginning with `=`, `+`, `-`, or `@` receive a leading apostrophe so spreadsheet applications do not interpret untrusted result text as a formula. Numeric and boolean metric values remain unchanged.
+
 | Format | Extension | Content |
 |---|---|---|
 | JSON | `.json` | Full `BenchmarkRun` serialized via `serde`. |

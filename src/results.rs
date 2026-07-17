@@ -194,14 +194,27 @@ impl ResultStore {
                 run.environment
                     .as_ref()
                     .and_then(|env| env.gpu_probe_output.clone())
+                    .map(|value| sanitize_csv_text(&value))
                     .unwrap_or_default(),
-                record.benchmark_id.clone(),
-                record.benchmark_name.clone(),
-                record.model.clone(),
+                sanitize_csv_text(&record.benchmark_id),
+                sanitize_csv_text(&record.benchmark_name),
+                sanitize_csv_text(&record.model),
                 record.run_index.map(|i| i.to_string()).unwrap_or_default(),
-                record.prompt_name.clone().unwrap_or_default(),
-                record.error.clone().unwrap_or_default(),
-                record.response_preview.clone().unwrap_or_default(),
+                record
+                    .prompt_name
+                    .as_deref()
+                    .map(sanitize_csv_text)
+                    .unwrap_or_default(),
+                record
+                    .error
+                    .as_deref()
+                    .map(sanitize_csv_text)
+                    .unwrap_or_default(),
+                record
+                    .response_preview
+                    .as_deref()
+                    .map(sanitize_csv_text)
+                    .unwrap_or_default(),
             ];
             for key in &metric_keys {
                 let value = record
@@ -301,10 +314,18 @@ impl ResultStore {
 
 fn value_to_cell(value: &Value) -> String {
     match value {
-        Value::String(s) => s.clone(),
+        Value::String(s) => sanitize_csv_text(s),
         Value::Number(n) => n.to_string(),
         Value::Bool(b) => b.to_string(),
-        _ => value.to_string(),
+        _ => sanitize_csv_text(&value.to_string()),
+    }
+}
+
+fn sanitize_csv_text(value: &str) -> String {
+    if matches!(value.as_bytes().first(), Some(b'=' | b'+' | b'-' | b'@')) {
+        format!("'{value}")
+    } else {
+        value.to_string()
     }
 }
 
@@ -325,7 +346,7 @@ fn build_run_id(stamp: &str, pid: u32, models: &[String]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::build_run_id;
+    use super::{build_run_id, sanitize_csv_text};
 
     #[test]
     fn build_run_id_varies_by_process_for_same_timestamp_and_models() {
@@ -336,5 +357,15 @@ mod tests {
         assert_ne!(first, second);
         assert!(first.contains("-p100-"));
         assert!(second.contains("-p101-"));
+    }
+
+    #[test]
+    fn sanitize_csv_text_neutralizes_formula_prefixes_only() {
+        for prefix in ['=', '+', '-', '@'] {
+            let value = format!("{prefix}SUM(A1:A2)");
+            assert_eq!(sanitize_csv_text(&value), format!("'{value}"));
+        }
+        assert_eq!(sanitize_csv_text("42"), "42");
+        assert_eq!(sanitize_csv_text("normal text"), "normal text");
     }
 }
