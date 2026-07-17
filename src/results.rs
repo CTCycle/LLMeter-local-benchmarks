@@ -91,14 +91,12 @@ impl ResultStore {
             )
         })?;
         let content = serde_json::to_string_pretty(run)?;
-        std::fs::write(&path, content)
+        utils::atomic_write(&path, content.as_bytes())
             .with_context(|| format!("Failed to write JSON result: {}", path.display()))?;
         Ok(path)
     }
 
     pub fn save_csv(&self, run: &BenchmarkRun) -> anyhow::Result<PathBuf> {
-        use std::io::Write;
-
         let path = self.output_dir.join(format!("{}.csv", run.run_id));
         utils::ensure_dir(&self.output_dir).with_context(|| {
             format!(
@@ -217,9 +215,7 @@ impl ResultStore {
         }
 
         let csv_content = wtr.into_inner()?;
-        let mut file = std::fs::File::create(&path)
-            .with_context(|| format!("Failed to create CSV file: {}", path.display()))?;
-        file.write_all(&csv_content)
+        utils::atomic_write(&path, &csv_content)
             .with_context(|| format!("Failed to write CSV file: {}", path.display()))?;
 
         Ok(path)

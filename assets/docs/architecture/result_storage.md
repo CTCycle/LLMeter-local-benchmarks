@@ -50,6 +50,8 @@ Performance runs reuse `BenchmarkResultRecord` and place scenario-level request 
 
 Raw files are saved as JSON and CSV. Formatted reports are generated as Markdown and HTML from the same JSON-compatible data model.
 
+JSON, CSV, Markdown, HTML, and persisted provider configuration are written through a same-directory temporary file that is flushed, synchronized, and renamed into place. This prevents interrupted serialization from leaving a partially written final artifact.
+
 | Format | Extension | Content |
 |---|---|---|
 | JSON | `.json` | Full `BenchmarkRun` serialized via `serde`. |
@@ -69,4 +71,4 @@ If `LLMETER_HOME` is unset, the effective home is `%USERPROFILE%\\.llmeter` on W
 
 Overridable via `--output-dir` flag or `LLMETER_OUTPUT_DIR` environment variable.
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18
