@@ -15,7 +15,7 @@ use crate::performance::telemetry::TelemetrySummary;
 use crate::quality::manifest::QualityPlan;
 use crate::utils;
 
-pub const RESULT_SCHEMA_VERSION: &str = "2.2";
+pub const RESULT_SCHEMA_VERSION: &str = "2.3";
 
 fn default_schema_version() -> String {
     RESULT_SCHEMA_VERSION.to_string()

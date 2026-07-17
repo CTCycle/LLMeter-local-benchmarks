@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use serde_json::Value;
 use tempfile::TempDir;
+use llmeter::providers::{ProviderClient, ProviderKind};
 
 struct MockProvider {
     base_url: String,
@@ -247,7 +248,7 @@ fn cli_bench_run_streams_and_generates_report_from_saved_json() {
     assert_eq!(result_files.len(), 1);
     let run: Value =
         serde_json::from_slice(&fs::read(&result_files[0]).expect("read run")).expect("run json");
-    assert_eq!(run["schema_version"], "2.2");
+    assert_eq!(run["schema_version"], "2.3");
     assert_eq!(run["results"][0]["error"], Value::Null);
     assert!(run["results"][0]["response_preview"]
         .as_str()
@@ -315,4 +316,30 @@ fn unsupported_endpoint_benchmark_records_controlled_errors() {
         .as_str()
         .unwrap_or_default()
         .contains("embeddings endpoint unsupported by mock"));
+}
+
+#[test]
+fn every_registered_preset_obeys_the_baseline_openai_contract_fixture() {
+    let provider = MockProvider::start();
+
+    for entry in ProviderKind::catalog() {
+        let client = ProviderClient::new(entry.provider, &provider.base_url, 2.0)
+            .expect("build fixture client");
+        let models = client.list_models().expect("fixture model discovery");
+        assert_eq!(models[0]["id"], "mock-model", "{}", entry.provider);
+
+        let response = client
+            .chat_completion(
+                "mock-model",
+                serde_json::json!([{"role":"user","content":"fixture"}]),
+                8,
+                0.0,
+                true,
+                None,
+            )
+            .expect("fixture streamed chat");
+        assert_eq!(response.response_text, "Hello from mock", "{}", entry.provider);
+        assert_eq!(response.output_tokens(), Some(3), "{}", entry.provider);
+        assert!(response.time_to_first_token_ns.is_some(), "{}", entry.provider);
+    }
 }

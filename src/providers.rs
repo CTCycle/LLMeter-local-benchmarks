@@ -473,7 +473,7 @@ impl ProviderClient {
         }
 
         let mut first_token_at: Option<Instant> = None;
-        let mut chunks = Vec::new();
+        let mut response_text = String::new();
         let mut token_timings_ns = Vec::new();
         let mut final_payload = serde_json::json!({});
         let reader = BufReader::new(response);
@@ -504,7 +504,7 @@ impl ProviderClient {
                         first_token_at = Some(Instant::now());
                     }
                     token_timings_ns.push(Instant::now().duration_since(started).as_nanos());
-                    chunks.push(token);
+                    response_text.push_str(&token);
                 }
             }
             if chunk.get("usage").is_some() {
@@ -518,12 +518,12 @@ impl ProviderClient {
             .map(|o| o.is_empty())
             .unwrap_or(false)
         {
-            final_payload = serde_json::json!({"choices": [], "text": chunks.join("")});
+            final_payload = serde_json::json!({"choices": [], "text": response_text.clone()});
         }
 
         Ok(ApiResult {
             endpoint: format!("/v1/{path}"),
-            response_text: chunks.join(""),
+            response_text,
             raw: final_payload,
             wall_time_ns: ended.duration_since(started).as_nanos(),
             time_to_first_token_ns: first_token_at.map(|t| t.duration_since(started).as_nanos()),

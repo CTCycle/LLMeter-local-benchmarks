@@ -62,6 +62,8 @@ Currently no coverage threshold enforced. Each test file in `tests/` mirrors a s
 | `tests/quality_cli_tests.rs` | `llmeter::quality::*` planning surfaces |
 | `tests/result_schema_tests.rs` | backward-compatible run serialization |
 
+Unit coverage in `src/ui.rs` also locks down menu key normalization so an Enter release cannot leak from a prompt into the next menu selection.
+
 ## Expectations for new benchmark surfaces
 
 - Native performance math must include direct tests for percentile behavior, rates, and aggregate counts.
@@ -69,4 +71,4 @@ Currently no coverage threshold enforced. Each test file in `tests/` mirrors a s
 - Quality adapters must remain dry-run by default and test command preview generation without installing tools or downloading datasets.
 - Result schema changes must preserve old JSON readability when fields are absent.
 
-Last updated: 2026-07-01
+Last updated: 2026-07-17

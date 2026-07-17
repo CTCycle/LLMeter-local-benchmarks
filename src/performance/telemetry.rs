@@ -35,6 +35,8 @@ pub struct TelemetrySampler {
     handle: Option<JoinHandle<()>>,
 }
 
+const MAX_TELEMETRY_SAMPLES: usize = 10_000;
+
 impl TelemetrySampler {
     pub fn start(sample_interval_ms: u64) -> Self {
         let stop = Arc::new(AtomicBool::new(false));
@@ -58,6 +60,10 @@ impl TelemetrySampler {
                 let swap_used_ratio = ratio(system.used_swap(), system.total_swap());
                 let cpu_usage_percent = system.global_cpu_usage();
                 if let Ok(mut locked) = thread_samples.lock() {
+                    if locked.len() == MAX_TELEMETRY_SAMPLES {
+                        // Keep the newest samples without allowing a long-running benchmark to grow unbounded.
+                        locked.remove(0);
+                    }
                     locked.push(SystemSample {
                         elapsed_ms: started.elapsed().as_millis() as u64,
                         memory_used_ratio,
@@ -85,6 +91,15 @@ impl TelemetrySampler {
             .lock()
             .map(|samples| samples.clone())
             .unwrap_or_default()
+    }
+}
+
+impl Drop for TelemetrySampler {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
     }
 }
 

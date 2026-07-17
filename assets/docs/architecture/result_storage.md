@@ -24,7 +24,7 @@ BenchmarkRun {
 }
 ```
 
-`schema_version` is now persisted as `2.1`. Older JSON files that omit the new fields still deserialize because the added fields default to `None`.
+`schema_version` is now persisted as `2.3`. Older JSON files that omit newer fields still deserialize because added fields default to `None`. Performance latency aggregates use successful requests only; failure counts/rates stay explicit in each scenario record.
 
 ## Result records
 
@@ -69,4 +69,4 @@ If `LLMETER_HOME` is unset, the effective home is `%USERPROFILE%\\.llmeter` on W
 
 Overridable via `--output-dir` flag or `LLMETER_OUTPUT_DIR` environment variable.
 
-Last updated: 2026-06-21
+Last updated: 2026-07-17

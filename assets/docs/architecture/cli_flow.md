@@ -30,4 +30,6 @@
 
 `src/runner.rs` owns benchmark orchestration, work-unit planning, and shared progress reporting so interactive and non-interactive benchmark runs use the same terminal progress lifecycle.
 
-Last updated: 2026-06-21
+Interactive menus use explicit `MenuAction` values rather than display labels or one-based numeric contracts. Only an Enter key press selects; Enter releases/repeats are ignored, Escape/Left returns from a workspace, and Ctrl+C restores the terminal before exiting.
+
+Last updated: 2026-07-17
