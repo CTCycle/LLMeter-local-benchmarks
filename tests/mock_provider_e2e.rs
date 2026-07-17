@@ -10,9 +10,9 @@ use std::sync::{
 use std::thread;
 use std::time::Duration;
 
+use llmeter::providers::{ProviderClient, ProviderKind};
 use serde_json::Value;
 use tempfile::TempDir;
-use llmeter::providers::{ProviderClient, ProviderKind};
 
 struct MockProvider {
     base_url: String,
@@ -338,8 +338,16 @@ fn every_registered_preset_obeys_the_baseline_openai_contract_fixture() {
                 None,
             )
             .expect("fixture streamed chat");
-        assert_eq!(response.response_text, "Hello from mock", "{}", entry.provider);
+        assert_eq!(
+            response.response_text, "Hello from mock",
+            "{}",
+            entry.provider
+        );
         assert_eq!(response.output_tokens(), Some(3), "{}", entry.provider);
-        assert!(response.time_to_first_token_ns.is_some(), "{}", entry.provider);
+        assert!(
+            response.time_to_first_token_ns.is_some(),
+            "{}",
+            entry.provider
+        );
     }
 }

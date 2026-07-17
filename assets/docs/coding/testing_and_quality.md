@@ -61,8 +61,11 @@ Currently no coverage threshold enforced. Each test file in `tests/` mirrors a s
 | `tests/performance_metrics_tests.rs` | `llmeter::performance::metrics` |
 | `tests/quality_cli_tests.rs` | `llmeter::quality::*` planning surfaces |
 | `tests/result_schema_tests.rs` | backward-compatible run serialization |
+| `tests/pty_menu_e2e.rs` | Windows ConPTY launch, interruption, and child-process cleanup |
 
 Unit coverage in `src/ui.rs` also locks down menu key normalization so an Enter release cannot leak from a prompt into the next menu selection.
+
+`tests/mock_provider_e2e.rs` runs the shared baseline contract across all registered provider presets. The fixture result is contract evidence only; live-provider certification requires an explicitly supplied server.
 
 ## Expectations for new benchmark surfaces
 
