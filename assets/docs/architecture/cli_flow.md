@@ -2,20 +2,24 @@
 
 ## Main menu
 
-1. List providers.
-2. List models.
+1. Provider setup.
+2. Model inventory.
 3. Benchmark workspace.
-4. Reports.
-5. Help.
+4. Reports and comparisons.
+5. Help and examples.
 6. Exit.
 
 ## Benchmark workspace
 
-1. View available benchmark tests.
-2. Run a guided benchmark that first resolves the provider for that run, then selects the benchmark suite (`llm` or `embeddings`), and then shows only matching models and benchmarks.
-3. View latest result as terminal report.
-4. Generate report from saved result.
-5. Back.
+1. Quick benchmark.
+2. Performance benchmark.
+3. Standard LLM benchmark.
+4. Embeddings benchmark.
+5. Quality benchmark plan.
+6. View benchmark catalog.
+7. View latest result as terminal report.
+8. Generate report from saved result.
+9. Back.
 
 ## Reports workspace
 
