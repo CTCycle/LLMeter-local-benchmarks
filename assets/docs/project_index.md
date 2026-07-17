@@ -56,6 +56,8 @@ This file is the root index for `assets/docs`. Read it first, then open the smal
   - Source builds, `cargo install`, prebuilt binaries, platforms, and versioning.
 - `runtime/release_checklist.md`
   - Maintainer checklist for tagging, validation, checksummed artifacts, and release trust model.
+- `runtime/audit_implementation_plan.md`
+  - Durable implementation roadmap for the Rust/CLI audit, scoped to the local single-user product.
 - `runtime/troubleshooting.md`
   - Startup failures, provider connectivity, empty model catalogs, and output-path recovery.
 
