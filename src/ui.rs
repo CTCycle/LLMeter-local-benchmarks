@@ -777,7 +777,14 @@ fn guided_benchmark_run_inner(config: &AppConfig, suite: BenchmarkSuite) -> Resu
         Some(&mut progress),
     )?;
 
-    let saved = runner::save_outputs(&run_config, &run, &export, &report, Some(&mut progress))?;
+    let saved = runner::save_outputs(
+        &run_config,
+        &run,
+        &export,
+        &report,
+        crate::results::OutputPrivacyPolicy::default(),
+        Some(&mut progress),
+    )?;
     summarize_run(&run);
     print_saved_paths(&saved);
     pause();
@@ -898,7 +905,14 @@ fn guided_performance_run_with_profile(
         plan,
         Some(&mut progress),
     )?;
-    let saved = runner::save_outputs(&run_config, &run, &export, &report, Some(&mut progress))?;
+    let saved = runner::save_outputs(
+        &run_config,
+        &run,
+        &export,
+        &report,
+        crate::results::OutputPrivacyPolicy::default(),
+        Some(&mut progress),
+    )?;
     summarize_run(&run);
     print_saved_paths(&saved);
     pause();
@@ -1206,7 +1220,14 @@ fn generate_report_interactive(config: &AppConfig) -> Result<()> {
 
     let run = store.load_json(&path)?;
     let mut progress = TerminalProgressRenderer::new();
-    let saved = runner::save_outputs(config, &run, "none", &report_format, Some(&mut progress))?;
+    let saved = runner::save_outputs(
+        config,
+        &run,
+        "none",
+        &report_format,
+        crate::results::OutputPrivacyPolicy::default(),
+        Some(&mut progress),
+    )?;
     print_saved_paths(&saved);
     Ok(())
 }

@@ -102,6 +102,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     ref export,
                     ref report,
                     ref param,
+                    include_response_preview,
                 } => {
                     let run_config = match provider {
                         Some(selected) => config.with_provider(*selected)?,
@@ -164,6 +165,10 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                         &run,
                         export.as_str(),
                         report.as_str(),
+                        llmeter::results::OutputPrivacyPolicy {
+                            include_response_preview: *include_response_preview,
+                            redact_sensitive_values: true,
+                        },
                         Some(&mut progress),
                     )?;
                     llmeter::ui::summarize_run(&run);
@@ -185,6 +190,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     ref export,
                     ref report,
                     ref param,
+                    include_response_preview,
                     load_measurement,
                     load_probe_runs,
                     telemetry,
@@ -267,6 +273,10 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                         &run,
                         export.as_str(),
                         report.as_str(),
+                        llmeter::results::OutputPrivacyPolicy {
+                            include_response_preview: *include_response_preview,
+                            redact_sensitive_values: true,
+                        },
                         Some(&mut progress),
                     )?;
                     llmeter::ui::summarize_run(&run);

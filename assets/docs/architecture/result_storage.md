@@ -48,7 +48,9 @@ Performance runs reuse `BenchmarkResultRecord` and place scenario-level request 
 
 ## File formats
 
-Raw files are saved as JSON and CSV. Formatted reports are generated as Markdown and HTML from the same JSON-compatible data model.
+Raw files are saved as JSON and CSV. Formatted reports are generated as Markdown and HTML from the same JSON-compatible data model. Before any artifact is written, LLMeter clones the in-memory run and applies the output privacy policy: response previews are omitted by default, common credential-shaped values are redacted from errors and nested metadata, secret-named provider parameters are replaced, and local process/cache selectors are removed. The in-memory measurement data is not mutated.
+
+Use `--include-response-preview` on benchmark or report-generation commands only when model output is safe to persist. Saved configuration records whether previews were included and whether sensitive-value redaction was applied.
 
 JSON, CSV, Markdown, HTML, and persisted provider configuration are written through a same-directory temporary file that is flushed, synchronized, and renamed into place. This prevents interrupted serialization from leaving a partially written final artifact.
 
@@ -56,7 +58,7 @@ CSV text cells beginning with `=`, `+`, `-`, or `@` receive a leading apostrophe
 
 | Format | Extension | Content |
 |---|---|---|
-| JSON | `.json` | Full `BenchmarkRun` serialized via `serde`. |
+| JSON | `.json` | Privacy-filtered `BenchmarkRun` serialized via `serde`; complete measurement metadata, but response previews only when explicitly requested. |
 | CSV | `.csv` | Flattened result records for spreadsheet analysis. |
 | Markdown | `.report.md` | Human-readable summary with aggregated tables and interpretation notes. |
 | HTML | `.report.html` | Self-contained browser report with summary cards, sortable tables, and dark mode support. |

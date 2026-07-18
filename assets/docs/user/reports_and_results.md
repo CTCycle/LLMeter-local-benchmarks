@@ -22,6 +22,8 @@ Both guided and scriptable benchmark execution can save:
 - raw exports with `json`, `csv`, `both`, or `none`
 - formatted reports with `md`, `html`, `both`, or `none`
 
+Response previews are not persisted by default. Add `--include-response-preview` only for runs whose model output is safe to retain. Credential-shaped values in diagnostic text and secret-named provider parameters are redacted before JSON, CSV, Markdown, or HTML is written.
+
 The terminal prints a saved-file table after the run completes.
 
 ## Report commands
@@ -44,6 +46,7 @@ Generate Markdown and HTML from a saved JSON run:
 ```bash
 llmeter report generate --format both
 llmeter report generate <LLMETER_HOME>/benchmark_results/<run-id>.json --format html
+llmeter report generate <LLMETER_HOME>/benchmark_results/<run-id>.json --format html --include-response-preview
 ```
 
 ## What reports contain
@@ -96,4 +99,4 @@ Environment snapshots record the host OS, CPU count, memory and swap ratios, dis
 - Use CSV when slicing metrics in spreadsheets.
 - Use Markdown or HTML when sharing human-readable summaries.
 
-Last updated: 2026-06-21
+Last updated: 2026-07-18
