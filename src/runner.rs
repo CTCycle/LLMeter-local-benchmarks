@@ -436,7 +436,7 @@ pub fn command_report(config: &AppConfig, report_cmd: &ReportCommands) -> anyhow
             let path = resolve_result_file(config, result.as_deref())?;
             let run = store.load_json(&path)?;
             let mut progress = TerminalProgressRenderer::new();
-            let saved = save_outputs(config, &run, "none", format, Some(&mut progress))?;
+            let saved = save_outputs(config, &run, "none", format.as_str(), Some(&mut progress))?;
             crate::ui::print_saved_paths(&saved);
         }
     }
