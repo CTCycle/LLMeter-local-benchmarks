@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use crate::cli::Cli;
 use crate::errors::LLMeterError;
@@ -40,19 +41,24 @@ impl AppConfig {
         cli: &Cli,
         provider_override: Option<ProviderKind>,
     ) -> anyhow::Result<Self> {
-        let provider = provider_override
-            .or(cli.provider)
-            .or_else(provider_from_env)
-            .or_else(load_persisted_provider)
-            .unwrap_or(ProviderKind::Ollama);
+        let provider = if let Some(provider) = provider_override.or(cli.provider) {
+            provider
+        } else if let Some(provider) = provider_from_env()? {
+            provider
+        } else {
+            load_persisted_provider()?.unwrap_or(ProviderKind::Ollama)
+        };
 
         let explicit_base_url = cli.base_url.is_some();
-        let base_url = cli
-            .base_url
-            .clone()
-            .or_else(|| std::env::var("LLMETER_BASE_URL").ok())
-            .or_else(|| provider_env_url(provider))
-            .unwrap_or_else(|| provider.default_base_url().to_string());
+        let (base_url, base_url_source) = if let Some(value) = cli.base_url.clone() {
+            (value, "--base-url")
+        } else if let Some(value) = read_env("LLMETER_BASE_URL")? {
+            (value, "LLMETER_BASE_URL")
+        } else if let Some((value, source)) = provider_env_url(provider)? {
+            (value, source)
+        } else {
+            (provider.default_base_url().to_string(), "provider default")
+        };
 
         let timeout = match cli.timeout {
             Some(value) => validate_timeout(value, "--timeout")?,
@@ -82,7 +88,7 @@ impl AppConfig {
 
         Ok(AppConfig {
             provider,
-            base_url: normalize_base_url(&base_url),
+            base_url: validate_base_url(&base_url, base_url_source)?,
             timeout,
             output_dir,
             default_runs,
@@ -92,23 +98,25 @@ impl AppConfig {
         })
     }
 
-    pub fn with_provider(&self, provider: ProviderKind) -> Self {
-        let base_url = if self.explicit_base_url {
-            self.base_url.clone()
+    pub fn with_provider(&self, provider: ProviderKind) -> anyhow::Result<Self> {
+        let (base_url, base_url_source) = if self.explicit_base_url {
+            (self.base_url.clone(), "--base-url")
+        } else if let Some((value, source)) = provider_env_url(provider)? {
+            (value, source)
         } else {
-            provider_env_url(provider).unwrap_or_else(|| provider.default_base_url().to_string())
+            (provider.default_base_url().to_string(), "provider default")
         };
 
-        Self {
+        Ok(Self {
             provider,
-            base_url: normalize_base_url(&base_url),
+            base_url: validate_base_url(&base_url, base_url_source)?,
             timeout: self.timeout,
             output_dir: self.output_dir.clone(),
             default_runs: self.default_runs,
             default_max_tokens: self.default_max_tokens,
             default_temperature: self.default_temperature,
             explicit_base_url: self.explicit_base_url,
-        }
+        })
     }
 }
 
@@ -190,15 +198,32 @@ pub fn save_global_provider_to_path(provider: ProviderKind, path: &Path) -> anyh
     Ok(())
 }
 
-fn load_persisted_provider() -> Option<ProviderKind> {
-    let path = default_config_path()?;
+fn load_persisted_provider() -> anyhow::Result<Option<ProviderKind>> {
+    let Some(path) = default_config_path() else {
+        return Ok(None);
+    };
     load_persisted_provider_from_path(&path)
 }
 
-fn load_persisted_provider_from_path(path: &Path) -> Option<ProviderKind> {
-    let content = std::fs::read_to_string(path).ok()?;
-    let config: PersistedConfig = serde_json::from_str(&content).ok()?;
-    config.provider
+fn load_persisted_provider_from_path(path: &Path) -> anyhow::Result<Option<ProviderKind>> {
+    let content = match std::fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(LLMeterError::Configuration(format!(
+                "Failed to read persisted configuration {}: {error}",
+                path.display()
+            ))
+            .into())
+        }
+    };
+    let config: PersistedConfig = serde_json::from_str(&content).map_err(|error| {
+        LLMeterError::Configuration(format!(
+            "Invalid persisted configuration {}: {error}",
+            path.display()
+        ))
+    })?;
+    Ok(config.provider)
 }
 
 fn default_config_path() -> Option<PathBuf> {
@@ -223,38 +248,85 @@ pub fn llmeter_home_dir() -> Option<PathBuf> {
         .or_else(|| dirs::home_dir().map(|dir| dir.join(DEFAULT_HOME_DIR_NAME)))
 }
 
-fn provider_from_env() -> Option<ProviderKind> {
-    std::env::var("LLMETER_PROVIDER")
-        .ok()
-        .and_then(|value| value.parse().ok())
+fn provider_from_env() -> anyhow::Result<Option<ProviderKind>> {
+    let Some(value) = read_env("LLMETER_PROVIDER")? else {
+        return Ok(None);
+    };
+    value.parse().map(Some).map_err(|_| {
+        LLMeterError::Configuration(format!(
+            "Invalid LLMETER_PROVIDER '{value}'. Use `llmeter providers list` for supported presets."
+        ))
+        .into()
+    })
 }
 
-fn provider_env_url(provider: ProviderKind) -> Option<String> {
+fn provider_env_url(provider: ProviderKind) -> anyhow::Result<Option<(String, &'static str)>> {
     match provider {
-        ProviderKind::Ollama => std::env::var("OLLAMA_HOST")
-            .ok()
-            .map(|host| format!("{}/v1", host.trim_end_matches('/'))),
-        ProviderKind::Lmstudio => std::env::var("LMSTUDIO_BASE_URL").ok(),
-        ProviderKind::LlamaCpp => std::env::var("LLAMA_CPP_BASE_URL").ok(),
-        ProviderKind::OpenaiCompatible => None,
-        ProviderKind::Vllm => std::env::var("VLLM_BASE_URL").ok(),
-        ProviderKind::Sglang => std::env::var("SGLANG_BASE_URL").ok(),
-        ProviderKind::Localai => std::env::var("LOCALAI_BASE_URL").ok(),
-        ProviderKind::Litellm => std::env::var("LITELLM_BASE_URL").ok(),
-        ProviderKind::Tgi => std::env::var("TGI_BASE_URL").ok(),
-        ProviderKind::TextGenerationWebui => std::env::var("TEXT_GENERATION_WEBUI_BASE_URL").ok(),
-        ProviderKind::Jan => std::env::var("JAN_BASE_URL").ok(),
-        ProviderKind::MlxLm => std::env::var("MLX_LM_BASE_URL").ok(),
+        ProviderKind::Ollama => provider_url_env("OLLAMA_HOST"),
+        ProviderKind::Lmstudio => provider_url_env("LMSTUDIO_BASE_URL"),
+        ProviderKind::LlamaCpp => provider_url_env("LLAMA_CPP_BASE_URL"),
+        ProviderKind::OpenaiCompatible => Ok(None),
+        ProviderKind::Vllm => provider_url_env("VLLM_BASE_URL"),
+        ProviderKind::Sglang => provider_url_env("SGLANG_BASE_URL"),
+        ProviderKind::Localai => provider_url_env("LOCALAI_BASE_URL"),
+        ProviderKind::Litellm => provider_url_env("LITELLM_BASE_URL"),
+        ProviderKind::Tgi => provider_url_env("TGI_BASE_URL"),
+        ProviderKind::TextGenerationWebui => provider_url_env("TEXT_GENERATION_WEBUI_BASE_URL"),
+        ProviderKind::Jan => provider_url_env("JAN_BASE_URL"),
+        ProviderKind::MlxLm => provider_url_env("MLX_LM_BASE_URL"),
     }
 }
 
-fn normalize_base_url(value: &str) -> String {
-    let trimmed = value.trim_end_matches('/');
-    if trimmed.ends_with("/v1") {
-        trimmed.to_string()
-    } else {
-        format!("{trimmed}/v1")
+fn provider_url_env(name: &'static str) -> anyhow::Result<Option<(String, &'static str)>> {
+    Ok(read_env(name)?.map(|value| (value, name)))
+}
+
+fn read_env(name: &str) -> anyhow::Result<Option<String>> {
+    match std::env::var(name) {
+        Ok(value) => Ok(Some(value)),
+        Err(std::env::VarError::NotPresent) => Ok(None),
+        Err(error) => Err(LLMeterError::Configuration(format!(
+            "Invalid {name} value: {error}. Expected valid Unicode text."
+        ))
+        .into()),
     }
+}
+
+fn validate_base_url(value: &str, source: &str) -> anyhow::Result<String> {
+    let mut url = Url::parse(value).map_err(|error| {
+        LLMeterError::Configuration(format!(
+            "Invalid {source} URL '{value}': {error}. Expected an absolute HTTP or HTTPS URL."
+        ))
+    })?;
+    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+        return Err(LLMeterError::Configuration(format!(
+            "Invalid {source} URL '{value}'. Expected an absolute HTTP or HTTPS URL with a host."
+        ))
+        .into());
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(LLMeterError::Configuration(format!(
+            "Invalid {source} URL. Embedded credentials are not supported."
+        ))
+        .into());
+    }
+    if url.query().is_some() || url.fragment().is_some() {
+        return Err(LLMeterError::Configuration(format!(
+            "Invalid {source} URL. Query strings and fragments are not supported in provider base URLs."
+        ))
+        .into());
+    }
+
+    let path = url.path().trim_end_matches('/');
+    let normalized_path = if path.ends_with("/v1") {
+        path.to_string()
+    } else if path.is_empty() {
+        "/v1".to_string()
+    } else {
+        format!("{path}/v1")
+    };
+    url.set_path(&normalized_path);
+    Ok(url.to_string().trim_end_matches('/').to_string())
 }
 
 #[cfg(test)]
@@ -266,8 +338,8 @@ mod tests {
     use tempfile::tempdir;
 
     use super::{
-        load_persisted_provider_from_path, normalize_base_url, save_global_provider,
-        save_global_provider_to_path, AppConfig,
+        load_persisted_provider_from_path, save_global_provider, save_global_provider_to_path,
+        AppConfig,
     };
     use crate::cli::Cli;
     use crate::providers::ProviderKind;
@@ -297,25 +369,13 @@ mod tests {
     }
 
     #[test]
-    fn normalizes_base_url_to_v1() {
-        assert_eq!(
-            normalize_base_url("http://localhost:1234"),
-            "http://localhost:1234/v1"
-        );
-        assert_eq!(
-            normalize_base_url("http://localhost:1234/v1/"),
-            "http://localhost:1234/v1"
-        );
-    }
-
-    #[test]
     fn persists_global_provider() {
         let _guard = env_lock().lock().unwrap();
         let temp = tempdir().unwrap();
         let path = temp.path().join("config.json");
         save_global_provider_to_path(ProviderKind::Lmstudio, &path).unwrap();
         assert_eq!(
-            load_persisted_provider_from_path(&path),
+            load_persisted_provider_from_path(&path).unwrap(),
             Some(ProviderKind::Lmstudio)
         );
     }
@@ -432,7 +492,8 @@ mod tests {
         let cli = Cli::parse_from(["llmeter"]);
         let config = AppConfig::from_env(&cli)
             .unwrap()
-            .with_provider(ProviderKind::Lmstudio);
+            .with_provider(ProviderKind::Lmstudio)
+            .unwrap();
         assert_eq!(config.provider, ProviderKind::Lmstudio);
         assert_eq!(config.base_url, "http://localhost:1234/v1");
     }
@@ -444,7 +505,87 @@ mod tests {
         let cli = Cli::parse_from(["llmeter", "--base-url", "http://localhost:9999/v1"]);
         let config = AppConfig::from_env(&cli)
             .unwrap()
-            .with_provider(ProviderKind::Lmstudio);
+            .with_provider(ProviderKind::Lmstudio)
+            .unwrap();
         assert_eq!(config.base_url, "http://localhost:9999/v1");
+    }
+
+    #[test]
+    fn malformed_and_unknown_persisted_configuration_are_errors() {
+        let _guard = env_lock().lock().unwrap();
+        clear_env();
+        let temp = tempdir().unwrap();
+        std::env::set_var("LLMETER_CONFIG_DIR", temp.path());
+        let path = temp.path().join("config.json");
+        std::fs::write(&path, "{not-json").unwrap();
+
+        let cli = Cli::parse_from(["llmeter"]);
+        let error = AppConfig::from_env(&cli).unwrap_err().to_string();
+        assert!(error.contains("Invalid persisted configuration"), "{error}");
+        assert!(error.contains(path.to_string_lossy().as_ref()), "{error}");
+
+        std::fs::write(&path, r#"{"provider":"unknown-provider"}"#).unwrap();
+        let error = AppConfig::from_env(&cli).unwrap_err().to_string();
+        assert!(error.contains("unknown-provider"), "{error}");
+        clear_env();
+    }
+
+    #[test]
+    fn invalid_provider_environment_value_is_not_defaulted() {
+        let _guard = env_lock().lock().unwrap();
+        clear_env();
+        std::env::set_var("LLMETER_PROVIDER", "unknown-provider");
+        let cli = Cli::parse_from(["llmeter"]);
+        let error = AppConfig::from_env(&cli).unwrap_err().to_string();
+        assert!(error.contains("LLMETER_PROVIDER"), "{error}");
+        assert!(error.contains("unknown-provider"), "{error}");
+        clear_env();
+    }
+
+    #[test]
+    fn base_urls_are_parsed_normalized_and_source_specific() {
+        let _guard = env_lock().lock().unwrap();
+        clear_env();
+        let cli = Cli::parse_from(["llmeter", "--base-url", "http://localhost:1234/api/"]);
+        let config = AppConfig::from_env(&cli).unwrap();
+        assert_eq!(config.base_url, "http://localhost:1234/api/v1");
+
+        clear_env();
+        std::env::set_var("OLLAMA_HOST", "http://localhost:11434/v1/");
+        let cli = Cli::parse_from(["llmeter"]);
+        let config = AppConfig::from_env(&cli).unwrap();
+        assert_eq!(config.base_url, "http://localhost:11434/v1");
+
+        for value in ["localhost:1234", "file:///tmp/provider"] {
+            clear_env();
+            std::env::set_var("LLMETER_BASE_URL", value);
+            let cli = Cli::parse_from(["llmeter"]);
+            let error = AppConfig::from_env(&cli).unwrap_err().to_string();
+            assert!(error.contains("LLMETER_BASE_URL"), "{error}");
+            assert!(error.contains(value), "{error}");
+        }
+
+        clear_env();
+        std::env::set_var("LLMETER_BASE_URL", "http://host/v1?token=secret");
+        let cli = Cli::parse_from(["llmeter"]);
+        let error = AppConfig::from_env(&cli).unwrap_err().to_string();
+        assert!(error.contains("LLMETER_BASE_URL"), "{error}");
+        assert!(!error.contains("secret"), "{error}");
+        clear_env();
+    }
+
+    #[test]
+    fn provider_switch_validates_provider_specific_url() {
+        let _guard = env_lock().lock().unwrap();
+        clear_env();
+        let cli = Cli::parse_from(["llmeter"]);
+        let config = AppConfig::from_env(&cli).unwrap();
+        std::env::set_var("LMSTUDIO_BASE_URL", "not-a-url");
+        let error = config
+            .with_provider(ProviderKind::Lmstudio)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("LMSTUDIO_BASE_URL"), "{error}");
+        clear_env();
     }
 }

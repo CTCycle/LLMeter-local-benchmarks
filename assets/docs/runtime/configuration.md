@@ -17,6 +17,8 @@
 | `LLMETER_MAX_TOKENS` | `128` | Default generation output token cap. Must be a positive integer. |
 | `LLMETER_TEMPERATURE` | `0.2` | Default sampling temperature. Must be finite and non-negative. |
 
+Malformed persisted JSON, unknown persisted providers, and invalid `LLMETER_PROVIDER` values are configuration errors. A missing `config.json` still uses the normal precedence and built-in default.
+
 ## AppConfig struct
 
 `AppConfig` in `src/config.rs` resolves the effective provider in this order:
@@ -32,7 +34,7 @@ Base URL resolution stays aligned to the resolved provider unless `--base-url` i
 Fields:
 
 - `provider` - selected provider preset.
-- `base_url` - normalized OpenAI-compatible `/v1` base URL.
+- `base_url` - parsed absolute HTTP(S) URL normalized to the OpenAI-compatible `/v1` base path. Embedded credentials, query strings, and fragments are rejected.
 - `timeout` - HTTP timeout in seconds.
 - `output_dir` - directory for results and reports, defaulting to `<LLMETER_HOME>/benchmark_results`.
 - `default_runs` - default repetitions.
