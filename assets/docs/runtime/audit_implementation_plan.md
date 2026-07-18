@@ -39,14 +39,19 @@ Completed in the current source state:
 - `fc6545f` - non-TTY CLI contracts and typed output formats.
 - `1758c01` - private-by-default saved outputs and redaction.
 - `f3d534f` - statistically explicit metrics and bounded telemetry.
+- `6bc563d` - support tiers, native CI, lifecycle policy, ephemeral authentication, and interruption contracts.
 
-The existing validation baseline is green when run with an isolated temporary Cargo target directory:
+Final Windows validation evidence (2026-07-18): all five locked gates passed with an isolated temporary Cargo target directory. The complete all-target/all-feature suite passed 93/93 tests, including CLI output/exit contracts, mock-provider protocol behavior, privacy/redaction, statistical guardrails, telemetry shutdown, and Windows ConPTY interruption.
+
+The validated commands are:
 
 ```powershell
 cargo fmt --all -- --check
-cargo check --target-dir "$env:TEMP\llmeter-codex-check-target" --all-targets --all-features
-cargo clippy --target-dir "$env:TEMP\llmeter-codex-clippy-target" --all-targets --all-features -- -D warnings
-cargo test --target-dir "$env:TEMP\llmeter-codex-test-target" --all-targets --all-features -- --test-threads=1
+cargo check --locked --target-dir "$env:TEMP\llmeter-codex-final-target" --all-targets --all-features
+cargo clippy --locked --target-dir "$env:TEMP\llmeter-codex-final-target" --all-targets --all-features -- -D warnings
+cargo test --locked --target-dir "$env:TEMP\llmeter-codex-final-target" --all-targets --all-features -- --test-threads=1
+$env:RUSTDOCFLAGS = "-D warnings"
+cargo doc --locked --target-dir "$env:TEMP\llmeter-codex-final-target" --no-deps --all-features
 ```
 
 ## Work status convention
