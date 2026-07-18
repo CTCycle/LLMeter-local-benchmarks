@@ -38,6 +38,8 @@ Client construction accepts only absolute HTTP(S) `/v1` URLs without embedded cr
 
 Each `ProviderClient` retains the first validated `/v1/models` response as an immutable command-local catalog snapshot. Model selection, lookup, and capability probing reuse that snapshot rather than repeatedly contacting the provider during a single invocation.
 
+Optional authentication uses only the `LLMETER_API_KEY` process environment variable. The client converts it to a sensitive in-memory `Authorization: Bearer` header. The value is never written to persisted provider configuration, benchmark configuration, results, reports, progress output, or error diagnostics. Empty values mean no authentication header; invalid header values fail without echoing the secret.
+
 Unsupported provider capabilities are recorded as benchmark error records instead of aborting the entire run.
 
 ## Compatibility evidence

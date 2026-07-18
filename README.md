@@ -14,6 +14,8 @@ Key capabilities:
 
 LLMeter does not start or stop provider servers. Start the local provider first, then point LLMeter at its `/v1` base URL.
 
+Windows x86-64 is the primary supported platform, with Ubuntu GNU/Linux covered as a compatibility tier. See [SUPPORTED_PLATFORMS.md](SUPPORTED_PLATFORMS.md) for exact tiers, external prerequisites, and current distribution status.
+
 ## 2. Quick Start
 
 ### 2.1 Build
@@ -61,6 +63,8 @@ llmeter report show
 llmeter help bench
 ```
 
+The managed install/update/uninstall commands only copy or remove local files. They are not a remote self-update system; verify any replacement executable before passing it to `update --source`.
+
 ## 4. Benchmark Progress and Outputs
 Benchmark runs now report:
 - current lifecycle phase
@@ -86,6 +90,7 @@ Run:
 cargo fmt --check
 cargo clippy -- -D warnings
 cargo test -- --test-threads=1
+cargo doc --no-deps --all-features
 ```
 
 Use a single test thread because some configuration tests mutate process environment variables.
@@ -97,6 +102,7 @@ The codebase is organized under:
 
 ## 6. Documentation Map
 - [USER_MANUAL.md](USER_MANUAL.md): end-user installation, commands, provider setup, reports, and troubleshooting.
+- [SUPPORTED_PLATFORMS.md](SUPPORTED_PLATFORMS.md): support tiers, runtime prerequisites, and distribution status.
 - [assets/docs/project_index.md](assets/docs/project_index.md): entry point for the internal documentation tree.
 - [assets/docs/architecture/cli_flow.md](assets/docs/architecture/cli_flow.md): menu structure and execution flow.
 - [assets/docs/user/interactive_usage.md](assets/docs/user/interactive_usage.md): guided menu behavior.
@@ -106,4 +112,4 @@ The codebase is organized under:
 ## 7. License
 Distributed under the MIT License. See [LICENSE](LICENSE).
 
-Last updated: 2026-07-01
+Last updated: 2026-07-18

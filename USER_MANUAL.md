@@ -4,6 +4,8 @@ LLMeter benchmarks local OpenAI-compatible LLM providers through `/v1` APIs. It 
 
 LLMeter does not start or stop provider servers. Start your provider externally, then use LLMeter to check status, list models, run benchmarks, and generate reports.
 
+Windows x86-64 is the primary supported platform. GNU/Linux requires a compatible glibc runtime; public prebuilt binaries are not currently promised. See `SUPPORTED_PLATFORMS.md` for the maintained support tiers.
+
 ## Installation
 
 Build from source:
@@ -38,6 +40,8 @@ Update that managed install from a newer binary:
 ```cmd
 llmeter update --source C:\downloads\llmeter.exe
 ```
+
+The install/update/uninstall commands are local convenience operations. LLMeter does not download or authenticate remote updates; verify the replacement executable yourself before using `update --source`.
 
 Uninstall it:
 
@@ -212,6 +216,7 @@ llmeter --output-dir ./benchmark-runs bench run --models all --benchmarks all
 | `LLMETER_RUNS` | `3` | Default benchmark repetitions. |
 | `LLMETER_MAX_TOKENS` | `128` | Default output token cap. |
 | `LLMETER_TEMPERATURE` | `0.2` | Default sampling temperature. |
+| `LLMETER_API_KEY` | unset | Optional ephemeral bearer token for providers that require authentication. It is never persisted to configuration or results. |
 
 CLI flags override environment variables.
 
@@ -248,4 +253,4 @@ For LM Studio, load a model and start the local server. For llama.cpp, start `ll
 
 Not every provider/model supports every OpenAI-compatible capability. `responses-generation`, `structured-output`, `tool-calling`, and `embeddings` may fail independently. These failures are saved as error records in JSON/CSV and shown in reports.
 
-Last updated: 2026-06-21
+Last updated: 2026-07-18

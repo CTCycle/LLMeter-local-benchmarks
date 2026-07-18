@@ -214,6 +214,7 @@ fn cli_models_json_reads_mock_provider_catalog() {
     );
     let models: Value = serde_json::from_slice(&output_process.stdout).expect("models json");
     assert_eq!(models[0]["id"], "mock-model");
+    assert!(output_process.stderr.is_empty());
     assert!(provider.request_paths().contains(&"/v1/models".to_string()));
 }
 
@@ -239,6 +240,7 @@ fn cli_bench_run_streams_and_generates_report_from_saved_json() {
             "json",
             "--report",
             "md",
+            "--include-response-preview",
         ])
         .output()
         .expect("run llmeter bench");
