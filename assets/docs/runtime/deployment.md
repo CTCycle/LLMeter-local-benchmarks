@@ -28,11 +28,7 @@ copy target\release\llmeter.exe C:\Users\<you>\bin\
 cargo install --path .
 ```
 
-Or directly from a published crate (when available):
-
-```bash
-cargo install llmeter
-```
+The crate is not currently published. Do not use `cargo install llmeter`; public package publication requires a separate owner approval.
 
 To install into a user-owned folder, set `CARGO_INSTALL_ROOT` or pass `--root` directly:
 
@@ -56,7 +52,7 @@ That home folder contains persisted config under `config/` and default benchmark
 
 ### Managed CLI install
 
-LLMeter can also install a managed copy of itself under `<LLMETER_HOME>/bin`:
+LLMeter can also install a managed copy of itself under `<LLMETER_HOME>/bin`. These commands are local convenience file-copy operations, not a secure remote updater or package manager:
 
 ```cmd
 llmeter install
@@ -80,6 +76,8 @@ Update the managed install from a newer executable:
 llmeter update --source C:\path\to\new\llmeter.exe
 ```
 
+Only use a replacement executable that you obtained and verified yourself. LLMeter does not download update metadata, verify signatures, select release channels, or roll back a failed remote update.
+
 Or run the newer executable directly and let it refresh the managed install:
 
 ```cmd
@@ -100,22 +98,10 @@ llmeter uninstall --purge-home
 
 ### Prebuilt binaries
 
-Prebuilt binaries for Linux (x86_64), macOS (x86_64, arm64), and Windows (x86_64) are available from the releases page. These are built with `rustls` — no `openssl` dependency is required.
-
-Release archives are produced by GitHub Actions from release tags:
-
-| Platform | Artifact |
-|---|---|
-| Linux x86_64 | `llmeter-linux-x86_64.tar.gz` |
-| macOS x86_64 | `llmeter-macos-x86_64.tar.gz` |
-| macOS arm64 | `llmeter-macos-aarch64.tar.gz` |
-| Windows x86_64 | `llmeter-windows-x86_64.zip` |
-
-Each archive is published with a matching `.sha256` checksum. Verify the checksum before installing a downloaded binary.
+Public prebuilt binary distribution is not currently approved. Build from source or copy a locally verified binary. If public distribution is approved later, artifact targets and checksum/signing requirements must be implemented and validated before this section claims availability.
 
 ## Dependencies
 
-- Prebuilt binaries do not require the Rust toolchain.
 - GNU/Linux binaries require a compatible glibc runtime; they are not fully static.
 - Windows and macOS binaries use their normal operating-system runtime environment.
 - Provider servers remain external runtime prerequisites.
@@ -128,7 +114,7 @@ Current version: `0.3.0`. Follows semantic versioning. Defined in `Cargo.toml`.
 
 ## Platforms
 
-Cross-platform (Windows, macOS, Linux). Binary naming is `llmeter.exe` on Windows and `llmeter` on Unix.
+Windows x86-64 is Tier 1. Ubuntu GNU/Linux x86-64 is Tier 2 and requires compatible glibc. macOS and musl are source compatibility goals without current native release evidence. See `SUPPORTED_PLATFORMS.md`.
 
 The binary uses `rustls`, so it does not require an OpenSSL runtime dependency. A musl-targeted Linux build is the portable Linux option; the released GNU/Linux artifact still has a glibc compatibility boundary.
 

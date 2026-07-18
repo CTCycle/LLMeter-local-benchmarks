@@ -35,8 +35,10 @@ Completed and pushed:
 
 Completed in the current source state:
 
-- CSV formula-injection mitigation for untrusted text cells.
-- Regression coverage for formula-like CSV values.
+- `77857af` - fallible configuration and bounded provider protocol behavior.
+- `fc6545f` - non-TTY CLI contracts and typed output formats.
+- `1758c01` - private-by-default saved outputs and redaction.
+- `f3d534f` - statistically explicit metrics and bounded telemetry.
 
 The existing validation baseline is green when run with an isolated temporary Cargo target directory:
 
@@ -64,23 +66,14 @@ Status: complete.
 
 ### Completed
 
-- Performance records and report tables show the successful latency sample count.
-- Percentiles use the documented nearest-rank estimator over successful finite non-negative measurements; P95 requires 20 samples and P99 requires 100.
-- Standard deviation is explicitly recorded and documented as population standard deviation.
-- Invalid/NaN measurements and zero-duration rates are filtered, and failures remain outside successful latency/token denominators.
-- Result metadata already records warmups, profile/provider state, telemetry mode, and load-measurement mode.
+- `SUPPORTED_PLATFORMS.md` defines Windows x86-64 Tier 1, Ubuntu GNU/Linux Tier 2, compatibility-only macOS/musl targets, and external runtime prerequisites.
+- README, user manual, deployment, startup, and release guidance explicitly distinguish GNU/glibc from musl and no longer claim unapproved public artifacts.
+- The minimum supported Rust version remains intentionally undeclared until an MSRV support commitment is approved.
+- Public package-manager and binary publication remain explicitly deferred pending an owner decision.
 
 ### Scope
 
 Define what “supported local CLI” means before adding infrastructure. Keep the primary support target Windows x86-64, retain Linux and macOS build/test coverage where runners are available, and describe GNU Linux versus musl accurately.
-
-### Remaining work
-
-- Add or finalize `SUPPORTED_PLATFORMS.md` with Tier 1 and Tier 2 targets.
-- Declare the minimum supported Rust version only when the project is ready to support it.
-- Align README, user manual, deployment, startup, and release-checklist claims.
-- State that provider servers and optional `nvidia-smi` telemetry are external prerequisites.
-- Decide whether public source or binary distribution is approved before adding publication automation.
 
 ### Acceptance
 
@@ -90,7 +83,7 @@ Define what “supported local CLI” means before adding infrastructure. Keep t
 
 ## Phase 1 - Finish configuration and input validation
 
-Status: in progress.
+Status: complete.
 
 ### Completed
 
@@ -101,10 +94,7 @@ Status: in progress.
 
 Validation evidence (2026-07-18): focused configuration tests passed 13/13; `cargo fmt --all -- --check`, all-target/all-feature `cargo check`, Clippy with warnings denied, and the full single-threaded all-target/all-feature test suite passed with isolated target directories.
 
-### Remaining implementation
-
-- Add small validated domain types where they reduce repeated checks: request timeout, positive run count, positive token limit, non-negative finite temperature, and positive concurrency.
-- Keep configuration writes atomic and add failure-path tests for malformed files and invalid values.
+The validation boundaries are centralized rather than wrapped in additional domain types: configuration construction validates timeout, positive runs/tokens, finite non-negative temperature, and performance-plan concurrency before values enter execution. Dedicated wrappers were not added because each value has one construction boundary and wrappers would not remove repeated checks. Configuration writes are atomic, malformed persisted files fail with their path, and atomic rename failure cleanup is tested.
 
 ### Acceptance
 
@@ -119,7 +109,7 @@ Validation evidence (2026-07-18): focused configuration tests passed 13/13; `car
 
 ## Phase 2 - Harden the provider protocol boundary
 
-Status: partially complete.
+Status: complete.
 
 ### Completed
 
@@ -130,10 +120,7 @@ Status: partially complete.
 - Direct provider-client construction validates the base URL, uses a LLMeter user agent, separately bounds connection time, disables redirects and proxy inheritance, and retains the actual successful HTTP status in `ApiResult`.
 - Non-success response diagnostics and streaming lines are bounded; streaming `data:` fields are assembled into protocol-level SSE events.
 - Each provider client caches the first validated `/v1/models` response for the duration of its command, so model selection, lookup, and capability probing share one catalog snapshot.
-
-### Remaining implementation
-
-- Define an explicit policy for optional authentication headers. Keep secrets ephemeral and out of persisted results/logs.
+- Optional provider authentication uses an ephemeral sensitive bearer header sourced only from `LLMETER_API_KEY`; it is never persisted or logged.
 
 ### Acceptance
 
@@ -172,7 +159,7 @@ Failure-path coverage also proves a failed final rename removes the same-directo
 
 ## Phase 4 - Stabilize the CLI runtime contract
 
-Status: in progress.
+Status: complete.
 
 ### Completed
 
@@ -181,6 +168,8 @@ Status: in progress.
 - CLI version output derives from Cargo package metadata.
 - Progress rendering already targets stderr, including non-interactive line-oriented rendering.
 - CLI contract tests cover no-subcommand non-TTY behavior, explicit non-TTY menu behavior, and version output.
+- JSON model output is parseable without stderr decoration; invalid configuration returns documented status 2 without stdout data.
+- Ctrl+C is detected at the raw terminal key boundary, the raw-mode guard restores terminal state, and interactive dispatch returns conventional status 130.
 
 ### Implementation
 
@@ -210,7 +199,15 @@ Shell completions and a man page are useful but not blocking for local developme
 
 ## Phase 5 - Make benchmark results statistically honest
 
-Status: partially complete.
+Status: complete.
+
+### Completed
+
+- Performance records and report tables show the successful latency sample count.
+- Percentiles use the documented nearest-rank estimator over successful finite non-negative measurements; P95 requires 20 samples and P99 requires 100.
+- Standard deviation is explicitly recorded and documented as population standard deviation.
+- Invalid/NaN measurements and zero-duration rates are filtered, and failures remain outside successful latency/token denominators.
+- Result metadata records warmups, profile/provider state, telemetry mode, and load-measurement mode.
 
 ### Implementation
 
@@ -263,7 +260,7 @@ Status: complete.
 
 ## Phase 7 - CI and maintainer validation
 
-Status: Ubuntu-only CI exists; broader validation is pending.
+Status: native Ubuntu and Windows CI implemented.
 
 ### Required local/repository gates
 
@@ -290,6 +287,8 @@ cargo test --target-dir "$env:TEMP\llmeter-codex-test-target" --all-targets --al
 - Add package validation (`cargo package`, extracted-package build) only when crates.io or source packaging is approved.
 - Pin third-party actions to reviewed commit SHAs when public release trust becomes in scope.
 
+Current CI uses a non-fail-fast Ubuntu/Windows matrix with locked all-target/all-feature check, Clippy, tests, and rustdoc. Formatting runs once on Ubuntu. MSRV, packaging, macOS release evidence, and action-SHA pinning remain gated on the corresponding support/distribution decisions.
+
 ### Acceptance
 
 - The supported local platform matrix has native evidence.
@@ -298,7 +297,7 @@ cargo test --target-dir "$env:TEMP\llmeter-codex-test-target" --all-targets --al
 
 ## Phase 8 - Lifecycle and distribution policy
 
-Status: policy decision pending.
+Status: complete for the current local-only policy; public distribution remains owner-gated.
 
 ### Recommended local-single-user policy
 
@@ -321,16 +320,11 @@ Do not implement remote update metadata, rollback, signatures, or release channe
 - No claim suggests the CLI can securely self-update from arbitrary local or remote executables.
 - Public distribution work remains visibly deferred rather than half-implemented.
 
-## Recommended next-session order
+Deployment, README, and user-manual guidance now label lifecycle commands as local convenience file operations, require the user to verify replacement executables, and explicitly state that LLMeter does not download, authenticate, channel-select, or roll back remote updates.
 
-1. Commit and push the current CSV hardening slice.
-2. Finish fallible persisted configuration and URL validation.
-3. Add provider response-size limits and actual HTTP status capture.
-4. Stabilize non-TTY/output contracts.
-5. Add privacy/redaction controls.
-6. Add percentile/sample guardrails.
-7. Refactor telemetry only after measuring its overhead.
-8. Expand native CI and revisit distribution only after the local CLI contract is stable.
+## Remaining closeout
+
+All locally actionable audit phases are implemented. Run the complete locked validation matrix, record the evidence here, commit the support/CI/lifecycle closeout, and push the incremental commits once the configured external GitHub destination is explicitly approved. Public binary/package distribution, MSRV, macOS release evidence, and release-signing controls remain intentionally owner-gated rather than incomplete implementation work.
 
 ## Definition of done for the local CLI
 

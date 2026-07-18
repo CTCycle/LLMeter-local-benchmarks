@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::Result;
 use colored::Colorize;
@@ -21,6 +22,12 @@ use crate::performance::model_inventory::{
 use crate::performance::provider_probe::{
     planned_probe_steps, probe_provider_capabilities_with_progress,
 };
+
+static INTERRUPT_REQUESTED: AtomicBool = AtomicBool::new(false);
+
+pub fn take_interrupt_requested() -> bool {
+    INTERRUPT_REQUESTED.swap(false, Ordering::SeqCst)
+}
 use crate::progress::{
     ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate, TerminalProgressRenderer,
 };
@@ -302,7 +309,10 @@ fn menu_action_for_key(key: crossterm::event::KeyEvent) -> Option<MenuAction> {
         KeyEvent {
             code: KeyCode::Char('c'),
             modifiers: KeyModifiers::CONTROL,
-            kind: KeyEventKind::Press,
+            ..
+        } => Some(MenuAction::Exit),
+        KeyEvent {
+            code: KeyCode::Char('\u{3}'),
             ..
         } => Some(MenuAction::Exit),
         _ => None,
@@ -374,7 +384,10 @@ pub fn menu(prompt: &str, choices: &[&str]) -> Result<MenuAction> {
             Event::Key(key) => match menu_action_for_key(key) {
                 Some(MenuAction::Select(_)) => break MenuAction::Select(selected),
                 Some(MenuAction::Back) => break MenuAction::Back,
-                Some(MenuAction::Exit) => break MenuAction::Exit,
+                Some(MenuAction::Exit) => {
+                    INTERRUPT_REQUESTED.store(true, Ordering::SeqCst);
+                    break MenuAction::Exit;
+                }
                 None => {}
             },
             _ => {}

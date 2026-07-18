@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use anyhow::Context;
 use clap::ValueEnum;
 use reqwest::blocking::{Client as HttpClient, Response};
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use reqwest::{redirect::Policy, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -258,6 +259,19 @@ impl ProviderClient {
             .into());
         }
         let base_url = validate_client_base_url(base_url)?;
+        let mut default_headers = HeaderMap::new();
+        if let Some(api_key) = read_ephemeral_api_key()? {
+            let mut authorization = HeaderValue::from_str(&format!("Bearer {api_key}")).map_err(
+                |_| {
+                    LLMeterError::Configuration(
+                        "Invalid LLMETER_API_KEY. The value cannot be represented as an HTTP Authorization header."
+                            .to_string(),
+                    )
+                },
+            )?;
+            authorization.set_sensitive(true);
+            default_headers.insert(AUTHORIZATION, authorization);
+        }
         let client = HttpClient::builder()
             .timeout(Duration::from_secs_f64(timeout))
             .connect_timeout(Duration::from_secs_f64(
@@ -266,6 +280,7 @@ impl ProviderClient {
             .redirect(Policy::none())
             .no_proxy()
             .user_agent(format!("llmeter/{}", env!("CARGO_PKG_VERSION")))
+            .default_headers(default_headers)
             .build()
             .context("Failed to build HTTP client")?;
 
@@ -609,6 +624,18 @@ impl ProviderClient {
             token_timings_ns,
             http_status: Some(status.as_u16()),
         })
+    }
+}
+
+fn read_ephemeral_api_key() -> anyhow::Result<Option<String>> {
+    match std::env::var("LLMETER_API_KEY") {
+        Ok(value) if value.is_empty() => Ok(None),
+        Ok(value) => Ok(Some(value)),
+        Err(std::env::VarError::NotPresent) => Ok(None),
+        Err(error) => Err(LLMeterError::Configuration(format!(
+            "Invalid LLMETER_API_KEY: {error}. Expected valid Unicode text."
+        ))
+        .into()),
     }
 }
 

@@ -40,11 +40,7 @@ cargo fmt --check
 
 ## CI
 
-GitHub Actions runs on push and pull request. Steps:
-1. Install stable Rust toolchain with clippy.
-2. Run `cargo fmt --check`.
-3. Run `cargo clippy -- -D warnings`.
-4. Run `cargo test -- --test-threads=1`.
+GitHub Actions runs on push and pull request on native Ubuntu and Windows runners. Both platforms use the locked dependency graph and run all-target/all-feature check, Clippy with warnings denied, the serialized test suite, and documentation with rustdoc warnings denied. Formatting is checked once on Ubuntu because it is platform-independent; the Windows job supplies native PTY and primary-platform evidence.
 
 ## Test coverage
 
@@ -74,4 +70,4 @@ Unit coverage in `src/ui.rs` also locks down menu key normalization so an Enter 
 - Quality adapters must remain dry-run by default and test command preview generation without installing tools or downloading datasets.
 - Result schema changes must preserve old JSON readability when fields are absent.
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18

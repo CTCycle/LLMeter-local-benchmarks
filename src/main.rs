@@ -29,9 +29,9 @@ fn main() {
 }
 
 fn run(cli: Cli) -> anyhow::Result<i32> {
-    if matches!(cli.command, None | Some(cli::Commands::Menu))
-        && !(io::stdin().is_terminal() && io::stdout().is_terminal())
-    {
+    let terminal_capable = io::stdin().is_terminal() && io::stdout().is_terminal()
+        || cfg!(windows) && std::env::var_os("LLMETER_CONPTY").is_some();
+    if matches!(cli.command, None | Some(cli::Commands::Menu)) && !terminal_capable {
         Cli::command().print_help()?;
         println!();
         return Ok(2);
@@ -42,7 +42,11 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
         None | Some(cli::Commands::Menu) => {
             let client = ProviderClient::new(config.provider, &config.base_url, config.timeout)?;
             llmeter::ui::main_menu(&config, &client)?;
-            Ok(0)
+            Ok(if llmeter::ui::take_interrupt_requested() {
+                130
+            } else {
+                0
+            })
         }
         Some(cli::Commands::Status) => {
             let client = ProviderClient::new(config.provider, &config.base_url, config.timeout)?;

@@ -21,18 +21,10 @@ cargo build --release --target-dir "$env:TEMP\\llmeter-release-target"
 
 ## Release artifacts
 
-The GitHub Actions release workflow builds and uploads:
-
-- `llmeter-linux-x86_64.tar.gz`
-- `llmeter-macos-x86_64.tar.gz`
-- `llmeter-macos-aarch64.tar.gz`
-- `llmeter-windows-x86_64.zip`
-- one `.sha256` checksum file per archive
-
-Artifacts contain the binary, `README.md`, and `LICENSE`.
+Public binary distribution is not currently approved, and no release workflow is represented as active. When an owner approves distribution, implement tag/version/changelog validation, native artifact smoke tests, checksums, and the trust controls appropriate to the hosting model before publishing.
 
 ## Trust model
 
-Published archives are GitHub Actions build outputs from a release tag. Users should verify the `.sha256` file before installing a downloaded archive.
+Local builds inherit the trust of the checked-out source and Rust dependency resolution. A public archive trust model remains deferred until public binary distribution is approved.
 
-Last updated: 2026-07-01
+Last updated: 2026-07-18
