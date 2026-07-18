@@ -142,4 +142,25 @@ mod tests {
             1
         );
     }
+
+    #[test]
+    fn atomic_write_cleans_temporary_file_when_final_rename_fails() {
+        let directory = tempdir().unwrap();
+        let destination = directory.path().join("occupied");
+        fs::create_dir(&destination).unwrap();
+
+        let error = atomic_write(&destination, b"content").unwrap_err();
+        assert!(matches!(
+            error.kind(),
+            std::io::ErrorKind::PermissionDenied
+                | std::io::ErrorKind::AlreadyExists
+                | std::io::ErrorKind::Other
+        ));
+        let entries = fs::read_dir(directory.path())
+            .unwrap()
+            .filter_map(Result::ok)
+            .collect::<Vec<_>>();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].path(), destination);
+    }
 }

@@ -17,6 +17,21 @@ use crate::utils;
 
 pub const RESULT_SCHEMA_VERSION: &str = "2.3";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OutputPrivacyPolicy {
+    pub include_response_preview: bool,
+    pub redact_sensitive_values: bool,
+}
+
+impl Default for OutputPrivacyPolicy {
+    fn default() -> Self {
+        Self {
+            include_response_preview: false,
+            redact_sensitive_values: true,
+        }
+    }
+}
+
 fn default_schema_version() -> String {
     RESULT_SCHEMA_VERSION.to_string()
 }
@@ -321,6 +336,114 @@ fn value_to_cell(value: &Value) -> String {
     }
 }
 
+pub fn prepare_run_for_output(run: &BenchmarkRun, policy: OutputPrivacyPolicy) -> BenchmarkRun {
+    let mut prepared = run.clone();
+    prepared.config.insert(
+        "response_previews_included".to_string(),
+        Value::Bool(policy.include_response_preview),
+    );
+    prepared.config.insert(
+        "sensitive_values_redacted".to_string(),
+        Value::Bool(policy.redact_sensitive_values),
+    );
+
+    for record in &mut prepared.results {
+        if !policy.include_response_preview {
+            record.response_preview = None;
+        }
+        if policy.redact_sensitive_values {
+            if let Some(error) = &mut record.error {
+                *error = redact_sensitive_text(error);
+            }
+            if let Some(metadata) = &mut record.metadata {
+                redact_map(metadata);
+            }
+        }
+    }
+    if policy.redact_sensitive_values {
+        redact_map(&mut prepared.config);
+        if let Some(plan) = &mut prepared.performance_plan {
+            redact_map(&mut plan.extra_params);
+            plan.provider_process = plan
+                .provider_process
+                .as_ref()
+                .map(|_| "[redacted process selector]".to_string());
+            plan.model_cache_dir = plan
+                .model_cache_dir
+                .as_ref()
+                .map(|_| "[redacted local path]".to_string());
+        }
+        if let Some(capabilities) = &mut prepared.provider_capabilities {
+            for probe in &mut capabilities.endpoints {
+                if let Some(error) = &mut probe.error {
+                    *error = redact_sensitive_text(error);
+                }
+            }
+        }
+    }
+    prepared
+}
+
+fn redact_map(values: &mut HashMap<String, Value>) {
+    for (key, value) in values {
+        if is_sensitive_key(key) {
+            *value = Value::String("[redacted]".to_string());
+        } else {
+            redact_value(value);
+        }
+    }
+}
+
+fn redact_value(value: &mut Value) {
+    match value {
+        Value::String(text) => *text = redact_sensitive_text(text),
+        Value::Array(items) => items.iter_mut().for_each(redact_value),
+        Value::Object(map) => {
+            for (key, value) in map {
+                if is_sensitive_key(key) {
+                    *value = Value::String("[redacted]".to_string());
+                } else {
+                    redact_value(value);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn is_sensitive_key(key: &str) -> bool {
+    let key = key.to_ascii_lowercase().replace('-', "_");
+    [
+        "authorization",
+        "api_key",
+        "apikey",
+        "password",
+        "secret",
+        "token",
+    ]
+    .iter()
+    .any(|needle| key.contains(needle))
+}
+
+pub fn redact_sensitive_text(text: &str) -> String {
+    let mut redacted = text.to_string();
+    for marker in ["Bearer ", "api_key=", "api-key=", "token=", "password="] {
+        let mut search_from = 0;
+        while let Some(relative) = redacted[search_from..]
+            .to_ascii_lowercase()
+            .find(&marker.to_ascii_lowercase())
+        {
+            let start = search_from + relative + marker.len();
+            let end = redacted[start..]
+                .find(|ch: char| ch.is_whitespace() || matches!(ch, '&' | ',' | ';' | '"' | '\''))
+                .map_or(redacted.len(), |offset| start + offset);
+            redacted.replace_range(start..end, "[redacted]");
+            search_from = start + "[redacted]".len();
+        }
+    }
+    redacted
+}
+
 fn sanitize_csv_text(value: &str) -> String {
     if matches!(value.as_bytes().first(), Some(b'=' | b'+' | b'-' | b'@')) {
         format!("'{value}")
@@ -346,7 +469,7 @@ fn build_run_id(stamp: &str, pid: u32, models: &[String]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_run_id, sanitize_csv_text};
+    use super::{build_run_id, redact_sensitive_text, sanitize_csv_text};
 
     #[test]
     fn build_run_id_varies_by_process_for_same_timestamp_and_models() {
@@ -367,5 +490,16 @@ mod tests {
         }
         assert_eq!(sanitize_csv_text("42"), "42");
         assert_eq!(sanitize_csv_text("normal text"), "normal text");
+    }
+
+    #[test]
+    fn diagnostic_redaction_removes_common_secret_shapes() {
+        let redacted = redact_sensitive_text(
+            "request failed: Bearer abc123 token=secret&next=1 password=hunter2",
+        );
+        assert!(!redacted.contains("abc123"));
+        assert!(!redacted.contains("secret"));
+        assert!(!redacted.contains("hunter2"));
+        assert!(redacted.contains("[redacted]"));
     }
 }

@@ -140,20 +140,17 @@ Status: partially complete.
 
 ## Phase 3 - Complete safe output and privacy behavior
 
-Status: atomic persistence complete; CSV formula mitigation pending commit.
+Status: privacy defaults and atomic persistence complete.
 
 ### Completed
 
 - JSON, CSV, Markdown, HTML, and provider configuration writes use same-directory temporary files and rename.
 - CSV formula-like text is neutralized in untrusted text cells.
+- Response previews are omitted from saved machine output and reports unless `--include-response-preview` is supplied.
+- Output preparation redacts credential-shaped diagnostic text, secret-named parameters, nested metadata, and local process/cache selectors without mutating the measured in-memory run.
+- Saved configuration records the applied preview and redaction policy.
 
-### Remaining implementation
-
-- Add explicit output controls such as `--redact` and `--include-response-preview`.
-- Keep response previews opt-in for machine output and reports where practical.
-- Redact secrets from URLs, headers, provider errors, and diagnostic text.
-- Define which fields are safe, sensitive, or environment-specific.
-- Add failure-path tests proving stale temporary files are cleaned up where possible.
+Failure-path coverage also proves a failed final rename removes the same-directory temporary file.
 
 ### Acceptance
 

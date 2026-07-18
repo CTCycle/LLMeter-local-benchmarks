@@ -17,7 +17,10 @@ use crate::progress::TerminalProgressRenderer;
 use crate::progress::{ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate};
 use crate::providers::ProviderClient;
 use crate::reporting::{save_html_report, save_markdown_report};
-use crate::results::{BenchmarkRun, BenchmarkRunKind, ResultStore, RESULT_SCHEMA_VERSION};
+use crate::results::{
+    prepare_run_for_output, BenchmarkRun, BenchmarkRunKind, OutputPrivacyPolicy, ResultStore,
+    RESULT_SCHEMA_VERSION,
+};
 use crate::utils::utc_now_iso;
 
 pub struct BenchmarkRunRequest<'a> {
@@ -312,6 +315,7 @@ pub fn save_outputs(
     run: &BenchmarkRun,
     export: &str,
     report: &str,
+    privacy: OutputPrivacyPolicy,
     progress: Option<&mut dyn ProgressSink>,
 ) -> anyhow::Result<Vec<PathBuf>> {
     validate_output_choice(export, &["json", "csv", "both", "none"], "--export")?;
@@ -324,6 +328,7 @@ pub fn save_outputs(
     };
 
     let store = ResultStore::new(&config.output_dir);
+    let prepared_run = prepare_run_for_output(run, privacy);
     let mut saved: Vec<PathBuf> = Vec::new();
     let benchmark_units = planned_steps_for_run(run);
     let total_units = benchmark_units + 2u32;
@@ -349,10 +354,10 @@ pub fn save_outputs(
     });
 
     if matches!(export, "json" | "both") {
-        saved.push(store.save_json(run)?);
+        saved.push(store.save_json(&prepared_run)?);
     }
     if matches!(export, "csv" | "both") {
-        saved.push(store.save_csv(run)?);
+        saved.push(store.save_csv(&prepared_run)?);
     }
 
     completed_units += 1;
@@ -376,10 +381,10 @@ pub fn save_outputs(
     });
 
     if matches!(report, "md" | "both") {
-        saved.push(save_markdown_report(run, &config.output_dir)?);
+        saved.push(save_markdown_report(&prepared_run, &config.output_dir)?);
     }
     if matches!(report, "html" | "both") {
-        saved.push(save_html_report(run, &config.output_dir)?);
+        saved.push(save_html_report(&prepared_run, &config.output_dir)?);
     }
 
     completed_units += 1;
@@ -432,11 +437,25 @@ pub fn command_report(config: &AppConfig, report_cmd: &ReportCommands) -> anyhow
             let markdown = crate::reporting::render_markdown_report(&run);
             crate::ui::print_terminal_report(&markdown);
         }
-        ReportCommands::Generate { result, format } => {
+        ReportCommands::Generate {
+            result,
+            format,
+            include_response_preview,
+        } => {
             let path = resolve_result_file(config, result.as_deref())?;
             let run = store.load_json(&path)?;
             let mut progress = TerminalProgressRenderer::new();
-            let saved = save_outputs(config, &run, "none", format.as_str(), Some(&mut progress))?;
+            let saved = save_outputs(
+                config,
+                &run,
+                "none",
+                format.as_str(),
+                OutputPrivacyPolicy {
+                    include_response_preview: *include_response_preview,
+                    redact_sensitive_values: true,
+                },
+                Some(&mut progress),
+            )?;
             crate::ui::print_saved_paths(&saved);
         }
     }

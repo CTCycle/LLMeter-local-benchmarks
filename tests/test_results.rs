@@ -1,5 +1,7 @@
 use llmeter::benchmarks::base::BenchmarkResultRecord;
-use llmeter::results::{BenchmarkRun, BenchmarkRunKind, ResultStore};
+use llmeter::results::{
+    prepare_run_for_output, BenchmarkRun, BenchmarkRunKind, OutputPrivacyPolicy, ResultStore,
+};
 use serde_json::json;
 
 fn sample_run() -> BenchmarkRun {
@@ -106,4 +108,39 @@ fn test_load_json_roundtrip() {
     assert_eq!(loaded.models, vec!["llama3"]);
     assert_eq!(loaded.results.len(), 1);
     assert_eq!(loaded.results[0].benchmark_id, "chat-generation");
+}
+
+#[test]
+fn output_privacy_omits_previews_and_redacts_secrets_by_default() {
+    let mut run = sample_run();
+    run.config
+        .insert("api_key".to_string(), json!("super-secret"));
+    run.results[0].error = Some("Bearer abc123 token=query-secret".to_string());
+
+    let prepared = prepare_run_for_output(&run, OutputPrivacyPolicy::default());
+
+    assert_eq!(run.results[0].response_preview.as_deref(), Some("hello"));
+    assert!(prepared.results[0].response_preview.is_none());
+    assert_eq!(prepared.config["api_key"], json!("[redacted]"));
+    let error = prepared.results[0].error.as_deref().unwrap();
+    assert!(!error.contains("abc123"));
+    assert!(!error.contains("query-secret"));
+    assert_eq!(prepared.config["response_previews_included"], json!(false));
+    assert_eq!(prepared.config["sensitive_values_redacted"], json!(true));
+}
+
+#[test]
+fn response_previews_require_explicit_opt_in() {
+    let run = sample_run();
+    let prepared = prepare_run_for_output(
+        &run,
+        OutputPrivacyPolicy {
+            include_response_preview: true,
+            redact_sensitive_values: true,
+        },
+    );
+    assert_eq!(
+        prepared.results[0].response_preview.as_deref(),
+        Some("hello")
+    );
 }

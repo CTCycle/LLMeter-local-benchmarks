@@ -187,6 +187,9 @@ pub enum BenchCommands {
 
         #[arg(long = "param", action = clap::ArgAction::Append, help = "Extra provider request parameter as key=value, repeatable")]
         param: Vec<String>,
+
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Include truncated model response previews in saved outputs and reports")]
+        include_response_preview: bool,
     },
 
     #[command(
@@ -246,6 +249,9 @@ pub enum BenchCommands {
         #[arg(long = "param", action = clap::ArgAction::Append, help = "Extra provider request parameter as key=value, repeatable")]
         param: Vec<String>,
 
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Include truncated model response previews in saved outputs and reports")]
+        include_response_preview: bool,
+
         #[arg(long, value_enum, default_value_t = LoadMeasurementMode::WarmBaseline)]
         load_measurement: LoadMeasurementMode,
 
@@ -301,6 +307,9 @@ pub enum ReportCommands {
 
         #[arg(long, default_value = "both", help = "Report format")]
         format: ReportFormat,
+
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Include response previews already present in the saved result")]
+        include_response_preview: bool,
     },
 }
 
