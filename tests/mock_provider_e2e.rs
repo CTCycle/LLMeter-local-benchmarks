@@ -24,9 +24,6 @@ struct MockProvider {
 impl MockProvider {
     fn start() -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock provider");
-        listener
-            .set_nonblocking(true)
-            .expect("set mock provider nonblocking");
         let port = listener.local_addr().expect("mock provider address").port();
         let requests = Arc::new(Mutex::new(Vec::new()));
         let stop = Arc::new(AtomicBool::new(false));
@@ -36,9 +33,6 @@ impl MockProvider {
             while !thread_stop.load(Ordering::SeqCst) {
                 match listener.accept() {
                     Ok((mut stream, _)) => handle_connection(&mut stream, &thread_requests),
-                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                        thread::sleep(Duration::from_millis(10));
-                    }
                     Err(_) => break,
                 }
             }
@@ -60,7 +54,13 @@ impl MockProvider {
 impl Drop for MockProvider {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::SeqCst);
-        let _ = TcpStream::connect(self.base_url.trim_start_matches("http://"));
+        let address = self
+            .base_url
+            .trim_start_matches("http://")
+            .split('/')
+            .next()
+            .unwrap_or_default();
+        let _ = TcpStream::connect(address);
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
@@ -96,32 +96,36 @@ fn handle_connection(stream: &mut TcpStream, requests: &Arc<Mutex<Vec<String>>>)
         .expect("mock requests")
         .push(path.to_string());
 
-    match (method, path) {
-        ("GET", "/v1/models") => write_json(
+    match method {
+        "GET" if path.ends_with("/v1/models") => write_json(
             stream,
             200,
             r#"{"object":"list","data":[{"id":"mock-model","object":"model","owned_by":"mock"}]}"#,
         ),
-        ("POST", "/v1/chat/completions") if request.contains(r#""stream":true"#) => write_sse(
-            stream,
-            &[
-                r#"data: {"choices":[{"delta":{"content":"Hello"}}]}"#,
-                r#"data: {"choices":[{"delta":{"content":" from mock"}}]}"#,
-                r#"data: {"usage":{"prompt_tokens":4,"completion_tokens":3,"total_tokens":7},"choices":[{"delta":{}}]}"#,
-                "data: [DONE]",
-            ],
-        ),
-        ("POST", "/v1/chat/completions") => write_json(
+        "POST"
+            if path.ends_with("/v1/chat/completions") && request.contains(r#""stream":true"#) =>
+        {
+            write_sse(
+                stream,
+                &[
+                    r#"data: {"choices":[{"delta":{"content":"Hello"}}]}"#,
+                    r#"data: {"choices":[{"delta":{"content":" from mock"}}]}"#,
+                    r#"data: {"usage":{"prompt_tokens":4,"completion_tokens":3,"total_tokens":7},"choices":[{"delta":{}}]}"#,
+                    "data: [DONE]",
+                ],
+            )
+        }
+        "POST" if path.ends_with("/v1/chat/completions") => write_json(
             stream,
             201,
             r#"{"choices":[{"message":{"content":"{\"summary\":\"mock\",\"metrics\":[\"latency\",\"ttft\",\"throughput\"],\"recommendation\":\"ok\"}"}}],"usage":{"prompt_tokens":4,"completion_tokens":5,"total_tokens":9}}"#,
         ),
-        ("POST", "/v1/responses") => write_json(
+        "POST" if path.ends_with("/v1/responses") => write_json(
             stream,
             501,
             r#"{"error":{"message":"responses endpoint unsupported by mock"}}"#,
         ),
-        ("POST", "/v1/embeddings") => write_json(
+        "POST" if path.ends_with("/v1/embeddings") => write_json(
             stream,
             501,
             r#"{"error":{"message":"embeddings endpoint unsupported by mock"}}"#,

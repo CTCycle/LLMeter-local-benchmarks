@@ -911,10 +911,7 @@ mod tests {
         let mut token_timings_ns = Vec::new();
         let mut final_payload = json!({});
 
-        loop {
-            let Some(line) = read_stream_line_limited(&mut reader).unwrap() else {
-                break;
-            };
+        while let Some(line) = read_stream_line_limited(&mut reader).unwrap() {
             let line = std::str::from_utf8(&line).unwrap();
             if line.is_empty() {
                 if process_stream_event(
