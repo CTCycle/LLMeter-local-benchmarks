@@ -1,5 +1,4 @@
-use clap::builder::PossibleValuesParser;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -16,7 +15,7 @@ use crate::quality::catalog::QualityFramework;
 #[command(
     name = "llmeter",
     about = "Benchmark local OpenAI-compatible LLM providers from a modern CLI.",
-    version = "0.3.0",
+    version,
     disable_help_subcommand = true
 )]
 pub struct Cli {
@@ -180,21 +179,11 @@ pub enum BenchCommands {
         #[arg(long, help = "Sampling temperature")]
         temperature: Option<f64>,
 
-        #[arg(
-            long,
-            default_value = "both",
-            value_parser = PossibleValuesParser::new(EXPORT_CHOICES),
-            help = "Raw result export format"
-        )]
-        export: String,
+        #[arg(long, default_value = "both", help = "Raw result export format")]
+        export: ExportFormat,
 
-        #[arg(
-            long,
-            default_value = "both",
-            value_parser = PossibleValuesParser::new(REPORT_CHOICES),
-            help = "Formatted report export format"
-        )]
-        report: String,
+        #[arg(long, default_value = "both", help = "Formatted report export format")]
+        report: ReportFormat,
 
         #[arg(long = "param", action = clap::ArgAction::Append, help = "Extra provider request parameter as key=value, repeatable")]
         param: Vec<String>,
@@ -248,21 +237,11 @@ pub enum BenchCommands {
         #[arg(long, help = "Optional JSONL workload path")]
         jsonl: Option<String>,
 
-        #[arg(
-            long,
-            default_value = "both",
-            value_parser = PossibleValuesParser::new(EXPORT_CHOICES),
-            help = "Raw result export format"
-        )]
-        export: String,
+        #[arg(long, default_value = "both", help = "Raw result export format")]
+        export: ExportFormat,
 
-        #[arg(
-            long,
-            default_value = "both",
-            value_parser = PossibleValuesParser::new(REPORT_CHOICES),
-            help = "Formatted report export format"
-        )]
-        report: String,
+        #[arg(long, default_value = "both", help = "Formatted report export format")]
+        report: ReportFormat,
 
         #[arg(long = "param", action = clap::ArgAction::Append, help = "Extra provider request parameter as key=value, repeatable")]
         param: Vec<String>,
@@ -320,13 +299,8 @@ pub enum ReportCommands {
     Generate {
         result: Option<String>,
 
-        #[arg(
-            long,
-            default_value = "both",
-            value_parser = PossibleValuesParser::new(REPORT_CHOICES),
-            help = "Report format"
-        )]
-        format: String,
+        #[arg(long, default_value = "both", help = "Report format")]
+        format: ReportFormat,
     },
 }
 
@@ -355,6 +329,44 @@ pub enum QualityCommands {
 
 pub const EXPORT_CHOICES: &[&str] = &["json", "csv", "both", "none"];
 pub const REPORT_CHOICES: &[&str] = &["md", "html", "both", "none"];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ExportFormat {
+    Json,
+    Csv,
+    Both,
+    None,
+}
+
+impl ExportFormat {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Json => "json",
+            Self::Csv => "csv",
+            Self::Both => "both",
+            Self::None => "none",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ReportFormat {
+    Md,
+    Html,
+    Both,
+    None,
+}
+
+impl ReportFormat {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Md => "md",
+            Self::Html => "html",
+            Self::Both => "both",
+            Self::None => "none",
+        }
+    }
+}
 
 pub fn parse_params(values: &[String]) -> anyhow::Result<HashMap<String, Value>> {
     let mut parsed: HashMap<String, Value> = HashMap::new();

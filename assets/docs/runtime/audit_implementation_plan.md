@@ -167,7 +167,15 @@ Status: atomic persistence complete; CSV formula mitigation pending commit.
 
 ## Phase 4 - Stabilize the CLI runtime contract
 
-Status: not started.
+Status: in progress.
+
+### Completed
+
+- Interactive dispatch now requires terminal stdin and stdout; piped/CI invocations print help and return usage code 2.
+- Raw export and report formats use typed Clap `ValueEnum` values.
+- CLI version output derives from Cargo package metadata.
+- Progress rendering already targets stderr, including non-interactive line-oriented rendering.
+- CLI contract tests cover no-subcommand non-TTY behavior, explicit non-TTY menu behavior, and version output.
 
 ### Implementation
 

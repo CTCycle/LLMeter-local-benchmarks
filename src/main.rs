@@ -1,6 +1,7 @@
+use std::io::{self, IsTerminal};
 use std::process;
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use colored::Colorize;
 
 use llmeter::cli::{self, Cli};
@@ -28,6 +29,13 @@ fn main() {
 }
 
 fn run(cli: Cli) -> anyhow::Result<i32> {
+    if matches!(cli.command, None | Some(cli::Commands::Menu))
+        && !(io::stdin().is_terminal() && io::stdout().is_terminal())
+    {
+        Cli::command().print_help()?;
+        println!();
+        return Ok(2);
+    }
     let config = AppConfig::from_env(&cli)?;
 
     match cli.command {
@@ -154,8 +162,8 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     let saved = llmeter::runner::save_outputs(
                         &run_config,
                         &run,
-                        export,
-                        report,
+                        export.as_str(),
+                        report.as_str(),
                         Some(&mut progress),
                     )?;
                     llmeter::ui::summarize_run(&run);
@@ -257,8 +265,8 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     let saved = llmeter::runner::save_outputs(
                         &run_config,
                         &run,
-                        export,
-                        report,
+                        export.as_str(),
+                        report.as_str(),
                         Some(&mut progress),
                     )?;
                     llmeter::ui::summarize_run(&run);

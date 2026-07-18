@@ -26,6 +26,8 @@
 
 ## Automation patterns
 
+Running `llmeter` or `llmeter menu` without a terminal is a usage error: the CLI prints help to standard output and exits with code `2`. Scripted callers should always select a subcommand. Benchmark progress is written to standard error so standard output remains separate from progress rendering.
+
 Run everything against all models exposed by Ollama:
 
 ```bash
@@ -144,4 +146,4 @@ Example:
   run: ./llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export json --report md
 ```
 
-Last updated: 2026-07-01
+Last updated: 2026-07-18

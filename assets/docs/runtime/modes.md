@@ -2,7 +2,7 @@
 
 ## Interactive mode
 
-Interactive mode starts when no subcommand is supplied or when `llmeter menu` is used.
+Interactive mode starts when no subcommand is supplied or when `llmeter menu` is used, but only when both standard input and standard output are terminals. A piped or CI invocation prints command help and exits with usage status `2` instead of opening a menu.
 
 Primary characteristics:
 
@@ -34,6 +34,7 @@ Primary characteristics:
 - explicit flags and subcommands
 - automation-friendly exit codes
 - repeatable output generation for CI or local batch runs
+- benchmark progress and diagnostics on standard error, leaving standard output available for command data
 
 ## Report-only workflows
 
@@ -53,4 +54,4 @@ All modes assume:
 - the selected provider exposes an OpenAI-compatible `/v1` API
 - results and reports are stored under the configured output directory
 
-Last updated: 2026-06-15
+Last updated: 2026-07-18
