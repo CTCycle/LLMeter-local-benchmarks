@@ -15,6 +15,9 @@ pub enum LLMeterError {
     InvalidOption(String),
 
     #[error("{0}")]
+    Configuration(String),
+
+    #[error("{0}")]
     Io(String),
 }
 

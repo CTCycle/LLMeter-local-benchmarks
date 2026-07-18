@@ -95,9 +95,10 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     ref report,
                     ref param,
                 } => {
-                    let run_config = provider
-                        .map(|selected| config.with_provider(selected))
-                        .unwrap_or_else(|| config.clone());
+                    let run_config = match provider {
+                        Some(selected) => config.with_provider(*selected)?,
+                        None => config.clone(),
+                    };
                     let client = ProviderClient::new(
                         run_config.provider,
                         &run_config.base_url,
@@ -189,9 +190,10 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     dry_run,
                     max_requests,
                 } => {
-                    let run_config = provider
-                        .map(|selected| config.with_provider(selected))
-                        .unwrap_or_else(|| config.clone());
+                    let run_config = match provider {
+                        Some(selected) => config.with_provider(*selected)?,
+                        None => config.clone(),
+                    };
                     let client = ProviderClient::new(
                         run_config.provider,
                         &run_config.base_url,

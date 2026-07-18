@@ -1,15 +1,23 @@
 use std::fmt;
-use std::io::{BufRead, BufReader};
-use std::time::Instant;
+use std::io::{BufRead, BufReader, Read};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use clap::ValueEnum;
 use reqwest::blocking::{Client as HttpClient, Response};
+use reqwest::{redirect::Policy, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use url::Url;
 
 use crate::errors::LLMeterError;
 use crate::utils::error_chain;
+
+const MAX_ERROR_BODY_BYTES: usize = 64 * 1024;
+const MAX_JSON_RESPONSE_BYTES: usize = 10 * 1024 * 1024;
+const MAX_STREAM_EVENT_BYTES: usize = 1024 * 1024;
+const CONNECT_TIMEOUT_CAP_SECS: f64 = 10.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
 #[serde(rename_all = "kebab-case")]
@@ -238,6 +246,7 @@ pub struct ProviderClient {
     provider: ProviderKind,
     base_url: String,
     client: HttpClient,
+    model_catalog: Arc<Mutex<Option<Vec<Value>>>>,
 }
 
 impl ProviderClient {
@@ -248,15 +257,23 @@ impl ProviderClient {
             ))
             .into());
         }
+        let base_url = validate_client_base_url(base_url)?;
         let client = HttpClient::builder()
-            .timeout(std::time::Duration::from_secs_f64(timeout))
+            .timeout(Duration::from_secs_f64(timeout))
+            .connect_timeout(Duration::from_secs_f64(
+                timeout.min(CONNECT_TIMEOUT_CAP_SECS),
+            ))
+            .redirect(Policy::none())
+            .no_proxy()
+            .user_agent(format!("llmeter/{}", env!("CARGO_PKG_VERSION")))
             .build()
             .context("Failed to build HTTP client")?;
 
         Ok(ProviderClient {
             provider,
-            base_url: base_url.trim_end_matches('/').to_string(),
+            base_url,
             client,
+            model_catalog: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -275,8 +292,16 @@ impl ProviderClient {
 
     fn decode_error(response: Response) -> String {
         let status = response.status();
-        let body = response.text().unwrap_or_default();
-        format!("HTTP {}: {}", status.as_u16(), body)
+        match read_response_body(response, MAX_ERROR_BODY_BYTES) {
+            Ok((body, truncated)) => {
+                let suffix = if truncated { " [body truncated]" } else { "" };
+                format!("HTTP {}: {}{suffix}", status.as_u16(), body)
+            }
+            Err(error) => format!(
+                "HTTP {}: unable to read error body: {error}",
+                status.as_u16()
+            ),
+        }
     }
 
     fn provider_failure(&self, action: &str, detail: impl fmt::Display) -> anyhow::Error {
@@ -289,7 +314,7 @@ impl ProviderClient {
         .into()
     }
 
-    pub fn get_json(&self, path: &str) -> anyhow::Result<Value> {
+    fn get_json(&self, path: &str) -> anyhow::Result<(Value, StatusCode)> {
         let response = self
             .client
             .get(self.url(path))
@@ -300,12 +325,21 @@ impl ProviderClient {
             return Err(LLMeterError::Provider(Self::decode_error(response)).into());
         }
 
-        response
-            .json()
-            .with_context(|| format!("Invalid JSON from GET {path}"))
+        let status = response.status();
+        let (body, truncated) = read_response_body(response, MAX_JSON_RESPONSE_BYTES)?;
+        if truncated {
+            return Err(LLMeterError::Provider(format!(
+                "GET {path} response exceeded the {} byte limit.",
+                MAX_JSON_RESPONSE_BYTES
+            ))
+            .into());
+        }
+        let payload =
+            serde_json::from_str(&body).with_context(|| format!("Invalid JSON from GET {path}"))?;
+        Ok((payload, status))
     }
 
-    pub fn post_json(&self, path: &str, payload: &Value) -> anyhow::Result<Value> {
+    fn post_json(&self, path: &str, payload: &Value) -> anyhow::Result<(Value, StatusCode)> {
         let response = self
             .client
             .post(self.url(path))
@@ -317,9 +351,18 @@ impl ProviderClient {
             return Err(LLMeterError::Provider(Self::decode_error(response)).into());
         }
 
-        response
-            .json()
-            .with_context(|| format!("Invalid JSON from POST {path}"))
+        let status = response.status();
+        let (body, truncated) = read_response_body(response, MAX_JSON_RESPONSE_BYTES)?;
+        if truncated {
+            return Err(LLMeterError::Provider(format!(
+                "POST {path} response exceeded the {} byte limit.",
+                MAX_JSON_RESPONSE_BYTES
+            ))
+            .into());
+        }
+        let payload = serde_json::from_str(&body)
+            .with_context(|| format!("Invalid JSON from POST {path}"))?;
+        Ok((payload, status))
     }
 
     pub fn status(&self) -> ProviderStatus {
@@ -346,10 +389,21 @@ impl ProviderClient {
     }
 
     pub fn list_models(&self) -> anyhow::Result<Vec<Value>> {
-        let payload = self
+        if let Some(models) = self
+            .model_catalog
+            .lock()
+            .map_err(|_| {
+                LLMeterError::Provider("Model catalog cache lock was poisoned.".to_string())
+            })?
+            .clone()
+        {
+            return Ok(models);
+        }
+
+        let (payload, _) = self
             .get_json("models")
             .map_err(|error| self.provider_failure("list models", error))?;
-        payload
+        let models = payload
             .get("data")
             .and_then(|value| value.as_array())
             .cloned()
@@ -358,7 +412,11 @@ impl ProviderClient {
                     "list models",
                     "provider response must contain a top-level data array",
                 )
-            })
+            })?;
+        *self.model_catalog.lock().map_err(|_| {
+            LLMeterError::Provider("Model catalog cache lock was poisoned.".to_string())
+        })? = Some(models.clone());
+        Ok(models)
     }
 
     pub fn model_names(&self) -> anyhow::Result<Vec<String>> {
@@ -462,7 +520,7 @@ impl ProviderClient {
         extract_text: fn(&Value) -> String,
     ) -> anyhow::Result<ApiResult> {
         let started = Instant::now();
-        let payload = self.post_json(path, body)?;
+        let (payload, status) = self.post_json(path, body)?;
         let ended = Instant::now();
         Ok(ApiResult {
             endpoint: format!("/v1/{path}"),
@@ -471,7 +529,7 @@ impl ProviderClient {
             wall_time_ns: ended.duration_since(started).as_nanos(),
             time_to_first_token_ns: None,
             token_timings_ns: Vec::new(),
-            http_status: Some(200),
+            http_status: Some(status.as_u16()),
         })
     }
 
@@ -489,7 +547,8 @@ impl ProviderClient {
             .send()
             .with_context(|| format!("POST {} (stream) failed", path))?;
 
-        if !response.status().is_success() {
+        let status = response.status();
+        if !status.is_success() {
             return Err(LLMeterError::Provider(Self::decode_error(response)).into());
         }
 
@@ -497,40 +556,39 @@ impl ProviderClient {
         let mut response_text = String::new();
         let mut token_timings_ns = Vec::new();
         let mut final_payload = serde_json::json!({});
-        let reader = BufReader::new(response);
+        let mut reader = BufReader::new(response);
 
-        for line_result in reader.lines() {
-            let mut line = line_result.context("Failed to read streaming line")?;
-            line = line.trim().to_string();
-            if line.is_empty()
-                || line.starts_with(':')
-                || line.starts_with("event:")
-                || line.starts_with("id:")
-                || line.starts_with("retry:")
-            {
+        let mut event_data = Vec::new();
+        while let Some(line) = read_stream_line_limited(reader.by_ref())? {
+            let line = std::str::from_utf8(&line).context("Streaming event was not valid UTF-8")?;
+            if line.is_empty() {
+                if process_stream_event(
+                    &mut event_data,
+                    kind,
+                    started,
+                    &mut first_token_at,
+                    &mut response_text,
+                    &mut token_timings_ns,
+                    &mut final_payload,
+                )? {
+                    break;
+                }
                 continue;
             }
             if let Some(data) = line.strip_prefix("data:") {
-                line = data.trim().to_string();
+                event_data.push(data.trim_start().to_string());
             }
-            if line == "[DONE]" {
-                break;
-            }
-
-            let chunk: Value =
-                serde_json::from_str(&line).context("Invalid streaming JSON chunk")?;
-            if let Some(token) = extract_stream_delta(&chunk, kind) {
-                if !token.is_empty() {
-                    if first_token_at.is_none() {
-                        first_token_at = Some(Instant::now());
-                    }
-                    token_timings_ns.push(Instant::now().duration_since(started).as_nanos());
-                    response_text.push_str(&token);
-                }
-            }
-            if chunk.get("usage").is_some() {
-                final_payload = chunk;
-            }
+        }
+        if !event_data.is_empty() {
+            let _ = process_stream_event(
+                &mut event_data,
+                kind,
+                started,
+                &mut first_token_at,
+                &mut response_text,
+                &mut token_timings_ns,
+                &mut final_payload,
+            )?;
         }
 
         let ended = Instant::now();
@@ -549,9 +607,107 @@ impl ProviderClient {
             wall_time_ns: ended.duration_since(started).as_nanos(),
             time_to_first_token_ns: first_token_at.map(|t| t.duration_since(started).as_nanos()),
             token_timings_ns,
-            http_status: Some(200),
+            http_status: Some(status.as_u16()),
         })
     }
+}
+
+fn validate_client_base_url(value: &str) -> anyhow::Result<String> {
+    let url = Url::parse(value).map_err(|error| {
+        LLMeterError::InvalidOption(format!(
+            "Invalid provider base URL '{value}': {error}. Expected an absolute HTTP or HTTPS /v1 URL."
+        ))
+    })?;
+    if !matches!(url.scheme(), "http" | "https")
+        || url.host_str().is_none()
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.query().is_some()
+        || url.fragment().is_some()
+        || url.path().trim_end_matches('/') != "/v1"
+    {
+        return Err(LLMeterError::InvalidOption(format!(
+            "Invalid provider base URL '{value}'. Expected an absolute HTTP or HTTPS /v1 URL without credentials, query strings, or fragments."
+        ))
+        .into());
+    }
+    Ok(url.to_string().trim_end_matches('/').to_string())
+}
+
+fn read_response_body(mut response: Response, limit: usize) -> anyhow::Result<(String, bool)> {
+    let mut bytes = Vec::with_capacity(limit.min(8192));
+    let mut limited = response.by_ref().take((limit + 1) as u64);
+    limited
+        .read_to_end(&mut bytes)
+        .context("Failed to read HTTP response body")?;
+    let truncated = bytes.len() > limit;
+    if truncated {
+        bytes.truncate(limit);
+    }
+    Ok((String::from_utf8_lossy(&bytes).into_owned(), truncated))
+}
+
+fn read_stream_line_limited<R: BufRead>(reader: &mut R) -> anyhow::Result<Option<Vec<u8>>> {
+    let mut line = Vec::new();
+    loop {
+        let buffer = reader.fill_buf().context("Failed to read streaming line")?;
+        if buffer.is_empty() {
+            return if line.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(line))
+            };
+        }
+        let newline_at = buffer.iter().position(|byte| *byte == b'\n');
+        let take = newline_at.map_or(buffer.len(), |index| index + 1);
+        if line.len() + take > MAX_STREAM_EVENT_BYTES {
+            return Err(LLMeterError::Provider(format!(
+                "Streaming event line exceeded the {} byte limit.",
+                MAX_STREAM_EVENT_BYTES
+            ))
+            .into());
+        }
+        line.extend_from_slice(&buffer[..take]);
+        reader.consume(take);
+        if newline_at.is_some() {
+            while matches!(line.last(), Some(b'\n' | b'\r')) {
+                line.pop();
+            }
+            return Ok(Some(line));
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn process_stream_event(
+    event_data: &mut Vec<String>,
+    kind: StreamKind,
+    started: Instant,
+    first_token_at: &mut Option<Instant>,
+    response_text: &mut String,
+    token_timings_ns: &mut Vec<u128>,
+    final_payload: &mut Value,
+) -> anyhow::Result<bool> {
+    if event_data.is_empty() {
+        return Ok(false);
+    }
+    let payload = std::mem::take(event_data).join("\n");
+    if payload == "[DONE]" {
+        return Ok(true);
+    }
+    let chunk: Value = serde_json::from_str(&payload).context("Invalid streaming JSON event")?;
+    if let Some(token) = extract_stream_delta(&chunk, kind).filter(|token| !token.is_empty()) {
+        let now = Instant::now();
+        if first_token_at.is_none() {
+            *first_token_at = Some(now);
+        }
+        token_timings_ns.push(now.duration_since(started).as_nanos());
+        response_text.push_str(&token);
+    }
+    if chunk.get("usage").is_some() {
+        *final_payload = chunk;
+    }
+    Ok(false)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -647,9 +803,15 @@ pub fn parse_openai_stream_line(line: &str) -> Option<StreamEvent> {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+    use std::time::Instant;
+
     use serde_json::json;
 
-    use super::{parse_openai_stream_line, ProviderClient, ProviderKind, StreamEvent};
+    use super::{
+        parse_openai_stream_line, process_stream_event, read_stream_line_limited, ProviderClient,
+        ProviderKind, StreamEvent, StreamKind,
+    };
 
     #[test]
     fn list_models_returns_friendly_provider_error() {
@@ -691,5 +853,63 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.contains("reserved"), "{error}");
+    }
+
+    #[test]
+    fn client_rejects_untrusted_base_url_shapes() {
+        for value in [
+            "localhost:1234/v1",
+            "file:///tmp/v1",
+            "http://user:secret@localhost:1234/v1",
+            "http://localhost:1234/v1?token=secret",
+            "http://localhost:1234/api",
+        ] {
+            let error = ProviderClient::new(ProviderKind::Ollama, value, 1.0)
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains("Invalid provider base URL"), "{error}");
+        }
+    }
+
+    #[test]
+    fn streaming_reader_preserves_multiline_data_events_and_ignores_metadata() {
+        let mut reader = Cursor::new(
+            b": heartbeat\nretry: 1000\ndata: {\"choices\":[\ndata: {\"delta\":{\"content\":\"hello\"}}]}\n\ndata: [DONE]\n\n"
+                .as_slice(),
+        );
+        let started = Instant::now();
+        let mut event_data = Vec::new();
+        let mut first_token_at = None;
+        let mut response_text = String::new();
+        let mut token_timings_ns = Vec::new();
+        let mut final_payload = json!({});
+
+        loop {
+            let Some(line) = read_stream_line_limited(&mut reader).unwrap() else {
+                break;
+            };
+            let line = std::str::from_utf8(&line).unwrap();
+            if line.is_empty() {
+                if process_stream_event(
+                    &mut event_data,
+                    StreamKind::Chat,
+                    started,
+                    &mut first_token_at,
+                    &mut response_text,
+                    &mut token_timings_ns,
+                    &mut final_payload,
+                )
+                .unwrap()
+                {
+                    break;
+                }
+            } else if let Some(data) = line.strip_prefix("data:") {
+                event_data.push(data.trim_start().to_string());
+            }
+        }
+
+        assert_eq!(response_text, "hello");
+        assert_eq!(token_timings_ns.len(), 1);
+        assert!(first_token_at.is_some());
     }
 }

@@ -692,7 +692,7 @@ fn guided_benchmark_run_inner(config: &AppConfig, suite: BenchmarkSuite) -> Resu
         config.provider.label(),
     )?;
     let provider = provider_choice.parse().unwrap_or(config.provider);
-    let run_config = config.with_provider(provider);
+    let run_config = config.with_provider(provider)?;
     let run_client = match ProviderClient::new(
         run_config.provider,
         &run_config.base_url,
@@ -804,7 +804,7 @@ fn guided_performance_run_with_profile(
         config.provider.label(),
     )?;
     let provider = provider_choice.parse().unwrap_or(config.provider);
-    let run_config = config.with_provider(provider);
+    let run_config = config.with_provider(provider)?;
     let run_client = match ProviderClient::new(
         run_config.provider,
         &run_config.base_url,

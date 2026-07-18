@@ -84,13 +84,18 @@ Define what “supported local CLI” means before adding infrastructure. Keep t
 
 Status: in progress.
 
+### Completed
+
+- Persisted configuration loading is fallible: missing files use defaults, while read failures, malformed JSON, and unknown providers identify the source path.
+- Provider base URLs use parsed `url::Url` validation and preserve the OpenAI-compatible `/v1` contract.
+- Invalid `LLMETER_PROVIDER` values are rejected instead of silently selecting Ollama.
+- CLI, environment, provider-specific environment, and persisted-file diagnostics identify their configuration source.
+
+Validation evidence (2026-07-18): focused configuration tests passed 13/13; `cargo fmt --all -- --check`, all-target/all-feature `cargo check`, Clippy with warnings denied, and the full single-threaded all-target/all-feature test suite passed with isolated target directories.
+
 ### Remaining implementation
 
-- Make persisted configuration loading fallible. A missing file may use defaults; malformed JSON or an unknown provider must produce a source-specific configuration error.
-- Replace string URL normalization with parsed `url::Url` validation while preserving the OpenAI-compatible `/v1` contract.
 - Add small validated domain types where they reduce repeated checks: request timeout, positive run count, positive token limit, non-negative finite temperature, and positive concurrency.
-- Reject invalid provider environment values instead of silently selecting the default.
-- Preserve CLI source context in every configuration diagnostic.
 - Keep configuration writes atomic and add failure-path tests for malformed files and invalid values.
 
 ### Acceptance
@@ -114,17 +119,13 @@ Status: partially complete.
 - Internal performance safety controls are separate from provider options.
 - Timeout construction is validated.
 - Provider model catalog shape and basic SSE metadata handling are tested.
+- Direct provider-client construction validates the base URL, uses a LLMeter user agent, separately bounds connection time, disables redirects and proxy inheritance, and retains the actual successful HTTP status in `ApiResult`.
+- Non-success response diagnostics and streaming lines are bounded; streaming `data:` fields are assembled into protocol-level SSE events.
+- Each provider client caches the first validated `/v1/models` response for the duration of its command, so model selection, lookup, and capability probing share one catalog snapshot.
 
 ### Remaining implementation
 
-- Cap non-success error-body size and streaming line/event size.
-- Preserve the actual successful HTTP status in `ApiResult`.
-- Add a clear LLMeter user agent.
-- Add separate connect and total request timeouts.
-- Parse and validate the base URL before constructing a client.
-- Define an explicit policy for redirects, proxies, and optional authentication headers. Keep secrets ephemeral and out of persisted results/logs.
-- Assemble multi-line SSE events according to the protocol rather than treating every line as a complete event.
-- Avoid duplicate `/v1/models` calls within one command by reusing a catalog snapshot.
+- Define an explicit policy for optional authentication headers. Keep secrets ephemeral and out of persisted results/logs.
 
 ### Acceptance
 

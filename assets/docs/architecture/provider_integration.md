@@ -34,6 +34,10 @@ Provider presets carry compatibility tiers: first-class, known OpenAI-compatible
 | `POST /v1/responses` | Responses API benchmark when supported. |
 | `POST /v1/embeddings` | Embeddings latency and vector dimension benchmark. |
 
+Client construction accepts only absolute HTTP(S) `/v1` URLs without embedded credentials, queries, or fragments. Requests identify LLMeter with its Cargo-derived user agent, use a separately bounded connection timeout, do not follow redirects, and do not inherit proxy settings. Non-success response bodies are capped before diagnostics are rendered; streaming lines are bounded and multi-line SSE `data:` fields are assembled as one event.
+
+Each `ProviderClient` retains the first validated `/v1/models` response as an immutable command-local catalog snapshot. Model selection, lookup, and capability probing reuse that snapshot rather than repeatedly contacting the provider during a single invocation.
+
 Unsupported provider capabilities are recorded as benchmark error records instead of aborting the entire run.
 
 ## Compatibility evidence
@@ -46,4 +50,4 @@ Performance capability probing checks `/v1/models`, chat completions, optional s
 
 LLMeter does not start or stop provider servers. Users start Ollama, LM Studio, llama.cpp, or custom local servers externally and pass provider/base URL settings to LLMeter.
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18

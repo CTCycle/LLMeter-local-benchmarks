@@ -113,7 +113,7 @@ fn handle_connection(stream: &mut TcpStream, requests: &Arc<Mutex<Vec<String>>>)
         ),
         ("POST", "/v1/chat/completions") => write_json(
             stream,
-            200,
+            201,
             r#"{"choices":[{"message":{"content":"{\"summary\":\"mock\",\"metrics\":[\"latency\",\"ttft\",\"throughput\"],\"recommendation\":\"ok\"}"}}],"usage":{"prompt_tokens":4,"completion_tokens":5,"total_tokens":9}}"#,
         ),
         ("POST", "/v1/responses") => write_json(
@@ -148,7 +148,11 @@ fn request_complete(buffer: &[u8]) -> bool {
 }
 
 fn write_json(stream: &mut TcpStream, status: u16, body: &str) {
-    let status_text = if status == 200 { "OK" } else { "Error" };
+    let status_text = match status {
+        200 => "OK",
+        201 => "Created",
+        _ => "Error",
+    };
     let response = format!(
         "HTTP/1.1 {status} {status_text}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
         body.len()
@@ -319,6 +323,29 @@ fn unsupported_endpoint_benchmark_records_controlled_errors() {
 }
 
 #[test]
+fn provider_client_reuses_a_model_catalog_snapshot() {
+    let provider = MockProvider::start();
+    let client = ProviderClient::new(ProviderKind::OpenaiCompatible, &provider.base_url, 2.0)
+        .expect("build fixture client");
+
+    let names = client.model_names().expect("fixture model names");
+    let model = client
+        .show_model("mock-model")
+        .expect("fixture model lookup");
+
+    assert_eq!(names, vec!["mock-model"]);
+    assert_eq!(model["id"], "mock-model");
+    assert_eq!(
+        provider
+            .request_paths()
+            .iter()
+            .filter(|path| path.as_str() == "/v1/models")
+            .count(),
+        1
+    );
+}
+
+#[test]
 fn every_registered_preset_obeys_the_baseline_openai_contract_fixture() {
     let provider = MockProvider::start();
 
@@ -349,5 +376,18 @@ fn every_registered_preset_obeys_the_baseline_openai_contract_fixture() {
             "{}",
             entry.provider
         );
+        assert_eq!(response.http_status, Some(200), "{}", entry.provider);
+
+        let non_streaming = client
+            .chat_completion(
+                "mock-model",
+                serde_json::json!([{"role":"user","content":"fixture"}]),
+                8,
+                0.0,
+                false,
+                None,
+            )
+            .expect("fixture non-streamed chat");
+        assert_eq!(non_streaming.http_status, Some(201), "{}", entry.provider);
     }
 }
