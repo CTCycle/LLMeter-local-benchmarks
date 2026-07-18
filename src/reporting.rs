@@ -278,8 +278,8 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
 
         lines.push("## Performance Summary".to_string());
         lines.push(String::new());
-        lines.push("| Model | Scenario | Concurrency | P50 wall ms | P95 wall ms | P99 wall ms | TTFT p50 | Scenario output tok/s | Scenario req/s | Errors |".to_string());
-        lines.push("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|".to_string());
+        lines.push("| Model | Scenario | Concurrency | Successful samples | P50 wall ms | P95 wall ms | P99 wall ms | TTFT p50 | Scenario output tok/s | Scenario req/s | Errors |".to_string());
+        lines.push("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|".to_string());
         for record in run
             .results
             .iter()
@@ -287,10 +287,11 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
         {
             let metrics = &record.metrics;
             lines.push(format!(
-                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
+                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
                 md(&record.model),
                 md(record.prompt_name.as_deref().unwrap_or("")),
                 md(&metric_display(metrics, "concurrency")),
+                md(&metric_display(metrics, "successful_latency_sample_count")),
                 md(&metric_display(metrics, "wall_time_ms_p50")),
                 md(&metric_display(metrics, "wall_time_ms_p95")),
                 md(&metric_display(metrics, "wall_time_ms_p99")),
@@ -307,7 +308,7 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
         lines.push(String::new());
         lines.push("## Latency Percentiles".to_string());
         lines.push(String::new());
-        lines.push("P50/P95/P99 wall time and TTFT appear in the performance summary table and raw records.".to_string());
+        lines.push("Percentiles use the nearest-rank estimator over successful finite non-negative measurements. P95 is omitted below 20 samples and P99 below 100 samples; standard deviation is population standard deviation.".to_string());
         lines.push(String::new());
         lines.push("## Throughput".to_string());
         lines.push(String::new());
@@ -637,10 +638,11 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
             .filter(|record| record.benchmark_id == "performance-scenario")
             .map(|record| {
                 format!(
-                    "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
                     escape(&record.model),
                     escape(record.prompt_name.as_deref().unwrap_or("")),
                     escape(&metric_display(&record.metrics, "concurrency")),
+                    escape(&metric_display(&record.metrics, "successful_latency_sample_count")),
                     escape(&metric_display(&record.metrics, "wall_time_ms_p50")),
                     escape(&metric_display(&record.metrics, "wall_time_ms_p95")),
                     escape(&metric_display(&record.metrics, "wall_time_ms_p99")),
@@ -657,7 +659,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
   <h2>Performance Summary</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Model</th><th>Scenario</th><th>Concurrency</th><th>P50 wall ms</th><th>P95 wall ms</th><th>P99 wall ms</th><th>TTFT p50</th><th>Scenario output tok/s</th><th>Scenario req/s</th><th>Errors</th></tr></thead>
+      <thead><tr><th>Model</th><th>Scenario</th><th>Concurrency</th><th>Successful samples</th><th>P50 wall ms</th><th>P95 wall ms</th><th>P99 wall ms</th><th>TTFT p50</th><th>Scenario output tok/s</th><th>Scenario req/s</th><th>Errors</th></tr></thead>
       <tbody>{rows}</tbody>
     </table>
   </div>
@@ -740,6 +742,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
   <ul>
     <li>Wall time is measured by the CLI around the request.</li>
     <li>Time to first token is measured only for streaming benchmark calls.</li>
+    <li>Percentiles use nearest-rank successful samples; P95 is omitted below 20 samples and P99 below 100. Standard deviation is population standard deviation.</li>
     <li>Token counts and endpoint-specific fields are reported only when the provider returns them.</li>
     <li>Structured output, tool calling, responses, and embeddings may be unsupported by some local servers or models.</li>
     <li>Results are local-machine specific. Compare runs from the same host for useful conclusions.</li>

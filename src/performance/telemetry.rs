@@ -1,7 +1,5 @@
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
-};
+use std::collections::VecDeque;
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -30,8 +28,8 @@ pub struct TelemetrySummary {
 }
 
 pub struct TelemetrySampler {
-    stop: Arc<AtomicBool>,
-    samples: Arc<Mutex<Vec<SystemSample>>>,
+    stop: Option<mpsc::Sender<()>>,
+    samples: Arc<Mutex<VecDeque<SystemSample>>>,
     handle: Option<JoinHandle<()>>,
 }
 
@@ -39,15 +37,14 @@ const MAX_TELEMETRY_SAMPLES: usize = 10_000;
 
 impl TelemetrySampler {
     pub fn start(sample_interval_ms: u64) -> Self {
-        let stop = Arc::new(AtomicBool::new(false));
-        let samples = Arc::new(Mutex::new(Vec::new()));
-        let thread_stop = Arc::clone(&stop);
+        let (stop, thread_stop) = mpsc::channel();
+        let samples = Arc::new(Mutex::new(VecDeque::new()));
         let thread_samples = Arc::clone(&samples);
         let interval = Duration::from_millis(sample_interval_ms.max(100));
         let handle = thread::spawn(move || {
             let started = Instant::now();
             let mut system = System::new_all();
-            while !thread_stop.load(Ordering::Relaxed) {
+            loop {
                 system.refresh_memory();
                 system.refresh_cpu_usage();
                 system.refresh_processes(ProcessesToUpdate::All, true);
@@ -62,9 +59,9 @@ impl TelemetrySampler {
                 if let Ok(mut locked) = thread_samples.lock() {
                     if locked.len() == MAX_TELEMETRY_SAMPLES {
                         // Keep the newest samples without allowing a long-running benchmark to grow unbounded.
-                        locked.remove(0);
+                        locked.pop_front();
                     }
-                    locked.push(SystemSample {
+                    locked.push_back(SystemSample {
                         elapsed_ms: started.elapsed().as_millis() as u64,
                         memory_used_ratio,
                         swap_used_ratio,
@@ -72,31 +69,38 @@ impl TelemetrySampler {
                         cpu_usage_percent,
                     });
                 }
-                thread::sleep(interval);
+                match thread_stop.recv_timeout(interval) {
+                    Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                    Err(mpsc::RecvTimeoutError::Timeout) => {}
+                }
             }
         });
         Self {
-            stop,
+            stop: Some(stop),
             samples,
             handle: Some(handle),
         }
     }
 
     pub fn stop(mut self) -> Vec<SystemSample> {
-        self.stop.store(true, Ordering::Relaxed);
+        if let Some(stop) = self.stop.take() {
+            let _ = stop.send(());
+        }
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
         self.samples
             .lock()
-            .map(|samples| samples.clone())
+            .map(|samples| samples.iter().cloned().collect())
             .unwrap_or_default()
     }
 }
 
 impl Drop for TelemetrySampler {
     fn drop(&mut self) {
-        self.stop.store(true, Ordering::Relaxed);
+        if let Some(stop) = self.stop.take() {
+            let _ = stop.send(());
+        }
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
@@ -141,5 +145,20 @@ fn ratio(used: u64, total: u64) -> f64 {
         0.0
     } else {
         used as f64 / total as f64
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::{Duration, Instant};
+
+    use super::TelemetrySampler;
+
+    #[test]
+    fn sampler_shutdown_does_not_wait_for_the_sampling_interval() {
+        let sampler = TelemetrySampler::start(30_000);
+        let started = Instant::now();
+        let _ = sampler.stop();
+        assert!(started.elapsed() < Duration::from_secs(5));
     }
 }

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Instant;
 
 use futures_util::stream::{FuturesUnordered, StreamExt};
@@ -157,8 +158,8 @@ pub fn run_performance_plan(
 
                     run_warmup_requests(client, model, prompt, output_tokens, &plan)?;
                     let sampler = match plan.telemetry {
-                        TelemetryLevel::Standard => None,
-                        TelemetryLevel::Detailed | TelemetryLevel::Full => {
+                        TelemetryLevel::Off => None,
+                        TelemetryLevel::Standard | TelemetryLevel::Detailed => {
                             Some(TelemetrySampler::start(plan.sample_interval_ms))
                         }
                     };
@@ -301,13 +302,14 @@ fn run_measured_requests(
     let traces = runtime.block_on(async {
         let mut futures = FuturesUnordered::new();
         let client = client.clone();
+        let shared_plan = Arc::new(plan.clone());
         let mut next_run_index = 0;
         let initial_requests = plan.runs.min(concurrency);
 
         for _ in 0..initial_requests {
             let client = client.clone();
             let prompt = prompt.clone();
-            let params = plan.clone();
+            let params = Arc::clone(&shared_plan);
             let model_name = model.to_string();
             next_run_index += 1;
             let run_index = next_run_index;
@@ -330,7 +332,7 @@ fn run_measured_requests(
             if next_run_index < plan.runs {
                 let client = client.clone();
                 let prompt = prompt.clone();
-                let params = plan.clone();
+                let params = Arc::clone(&shared_plan);
                 let model_name = model.to_string();
                 next_run_index += 1;
                 let run_index = next_run_index;
@@ -510,6 +512,18 @@ fn summary_record(
         json!(summary.latency.error_count),
     );
     metrics.insert("error_rate".to_string(), json!(summary.latency.error_rate));
+    metrics.insert(
+        "successful_latency_sample_count".to_string(),
+        json!(summary.latency.successful_latency_sample_count),
+    );
+    metrics.insert(
+        "percentile_estimator".to_string(),
+        json!(summary.latency.percentile_estimator),
+    );
+    metrics.insert(
+        "standard_deviation_kind".to_string(),
+        json!(summary.latency.standard_deviation_kind),
+    );
     insert_opt(
         &mut metrics,
         "wall_time_ms_min",

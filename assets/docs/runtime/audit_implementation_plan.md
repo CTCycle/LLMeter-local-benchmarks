@@ -60,7 +60,15 @@ At the beginning of each continuation:
 
 ## Phase 0 - Maintain the release and support contract
 
-Status: partially complete.
+Status: complete.
+
+### Completed
+
+- Performance records and report tables show the successful latency sample count.
+- Percentiles use the documented nearest-rank estimator over successful finite non-negative measurements; P95 requires 20 samples and P99 requires 100.
+- Standard deviation is explicitly recorded and documented as population standard deviation.
+- Invalid/NaN measurements and zero-duration rates are filtered, and failures remain outside successful latency/token denominators.
+- Result metadata already records warmups, profile/provider state, telemetry mode, and load-measurement mode.
 
 ### Scope
 
@@ -225,7 +233,14 @@ Status: partially complete.
 
 ## Phase 6 - Control telemetry and concurrency overhead
 
-Status: not started.
+Status: complete.
+
+### Completed
+
+- Telemetry modes are explicitly `off`, `standard` (default), and `detailed`.
+- The bounded sample buffer uses `VecDeque` and drops the oldest sample in constant time.
+- Sampler shutdown uses an interruptible channel timeout, so stop/drop does not wait for the configured interval.
+- Performance request scheduling remains bounded to the configured concurrency, and spawned requests share one immutable `Arc<PerformancePlan>` per scenario instead of cloning the plan for every request.
 
 ### Implementation
 

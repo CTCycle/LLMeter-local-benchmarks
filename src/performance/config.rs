@@ -32,9 +32,9 @@ pub enum LoadMeasurementMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
 #[serde(rename_all = "kebab-case")]
 pub enum TelemetryLevel {
+    Off,
     Standard,
     Detailed,
-    Full,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]

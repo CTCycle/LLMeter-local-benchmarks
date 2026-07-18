@@ -1297,7 +1297,7 @@ pub fn print_help_topic(topic: Option<&str>) {
             );
             println!("  llmeter bench perf --models all --profile smoke --export json --report md");
             println!(
-                "  llmeter bench performance --models all --profile latency --probe-capabilities --telemetry full"
+                "  llmeter bench performance --models all --profile latency --probe-capabilities --telemetry detailed"
             );
         }
         "reports" => {

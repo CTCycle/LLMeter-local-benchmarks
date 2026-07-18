@@ -106,3 +106,31 @@ fn failures_are_counted_without_polluting_success_latency_or_token_denominators(
     );
     assert_eq!(summary.errors.timeout_count, 1);
 }
+
+#[test]
+fn small_samples_do_not_claim_high_percentiles() {
+    let traces = (1..=19)
+        .map(|index| trace(index, index as f64, Some(index as f64), Some(1)))
+        .collect::<Vec<_>>();
+    let summary = summarize_traces(&traces, 100.0);
+
+    assert_eq!(summary.latency.successful_latency_sample_count, 19);
+    assert_eq!(summary.latency.percentile_estimator, "nearest-rank");
+    assert_eq!(summary.latency.standard_deviation_kind, "population");
+    assert!(summary.latency.wall_time_ms_p50.is_some());
+    assert!(summary.latency.wall_time_ms_p95.is_none());
+    assert!(summary.latency.wall_time_ms_p99.is_none());
+}
+
+#[test]
+fn invalid_measurements_are_filtered_and_zero_duration_has_no_rate() {
+    let mut invalid = trace(2, f64::NAN, Some(f64::INFINITY), Some(10));
+    invalid.timing.generation_wall_ms = Some(-1.0);
+    let summary = summarize_traces(&[trace(1, 100.0, Some(20.0), Some(10)), invalid], 0.0);
+
+    assert_eq!(summary.latency.successful_latency_sample_count, 1);
+    assert_eq!(summary.latency.wall_time_ms_mean, Some(100.0));
+    assert_eq!(summary.latency.ttft_ms_mean, Some(20.0));
+    assert!(summary.throughput.requests_per_second.is_none());
+    assert!(summary.throughput.output_tokens_per_second.is_none());
+}
