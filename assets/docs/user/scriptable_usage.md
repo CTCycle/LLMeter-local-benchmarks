@@ -98,7 +98,7 @@ llmeter --provider ollama bench perf --models all --profile smoke --runs 1 --no-
 Add capability probing, client-side load overhead estimation, and detailed telemetry:
 
 ```bash
-llmeter --provider ollama bench performance --models all --profile latency --runs 3 --warmup 1 --probe-capabilities --load-measurement cold-warm-estimate --telemetry full --report both --export both
+llmeter --provider ollama bench performance --models all --profile latency --runs 3 --warmup 1 --probe-capabilities --load-measurement cold-warm-estimate --telemetry detailed --report both --export both
 ```
 
 When capability probing is enabled, LLMeter reports each validation step before timed scenarios begin so long provider checks remain visible in terminal output.

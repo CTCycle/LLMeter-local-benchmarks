@@ -48,6 +48,9 @@ pub struct LatencySummary {
     pub success_count: usize,
     pub error_count: usize,
     pub error_rate: f64,
+    pub successful_latency_sample_count: usize,
+    pub percentile_estimator: String,
+    pub standard_deviation_kind: String,
     pub wall_time_ms_min: Option<f64>,
     pub wall_time_ms_mean: Option<f64>,
     pub wall_time_ms_max: Option<f64>,
@@ -105,15 +108,35 @@ pub struct PerformanceSummary {
 }
 
 pub fn percentile(values: &[f64], p: f64) -> Option<f64> {
-    if values.is_empty() {
+    if values.is_empty() || !p.is_finite() || !(0.0..=100.0).contains(&p) {
         return None;
     }
-    let mut sorted = values.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let mut sorted = values
+        .iter()
+        .copied()
+        .filter(|value| value.is_finite() && *value >= 0.0)
+        .collect::<Vec<_>>();
+    if sorted.is_empty() {
+        return None;
+    }
+    sorted.sort_by(f64::total_cmp);
     let rank = (((p / 100.0) * sorted.len() as f64).ceil() as usize)
         .saturating_sub(1)
         .min(sorted.len().saturating_sub(1));
     sorted.get(rank).copied()
+}
+
+fn percentile_if_supported(values: &[f64], p: f64) -> Option<f64> {
+    let minimum_samples = if p >= 99.0 {
+        100
+    } else if p >= 95.0 {
+        20
+    } else {
+        1
+    };
+    (values.len() >= minimum_samples)
+        .then(|| percentile(values, p))
+        .flatten()
 }
 
 pub fn summarize_traces(traces: &[RequestTrace], scenario_wall_time_ms: f64) -> PerformanceSummary {
@@ -126,22 +149,27 @@ pub fn summarize_traces(traces: &[RequestTrace], scenario_wall_time_ms: f64) -> 
     let wall: Vec<f64> = successful
         .iter()
         .map(|trace| trace.timing.wall_time_ms)
+        .filter(|value| value.is_finite() && *value >= 0.0)
         .collect();
     let ttft: Vec<f64> = successful
         .iter()
         .filter_map(|trace| trace.timing.ttft_ms)
+        .filter(|value| value.is_finite() && *value >= 0.0)
         .collect();
     let tpot: Vec<f64> = successful
         .iter()
         .filter_map(|trace| trace.timing.tpot_ms)
+        .filter(|value| value.is_finite() && *value >= 0.0)
         .collect();
     let itl: Vec<f64> = successful
         .iter()
         .filter_map(|trace| trace.timing.itl_ms)
+        .filter(|value| value.is_finite() && *value >= 0.0)
         .collect();
     let generation_wall: Vec<f64> = successful
         .iter()
         .filter_map(|trace| trace.timing.generation_wall_ms)
+        .filter(|value| value.is_finite() && *value >= 0.0)
         .collect();
     let including_ttft_tps: Vec<f64> = successful
         .iter()
@@ -170,29 +198,32 @@ pub fn summarize_traces(traces: &[RequestTrace], scenario_wall_time_ms: f64) -> 
             } else {
                 error_count as f64 / request_count as f64
             },
+            successful_latency_sample_count: wall.len(),
+            percentile_estimator: "nearest-rank".to_string(),
+            standard_deviation_kind: "population".to_string(),
             wall_time_ms_min: wall.iter().copied().reduce(f64::min),
             wall_time_ms_mean: mean(&wall),
             wall_time_ms_max: wall.iter().copied().reduce(f64::max),
             wall_time_ms_stddev: stddev(&wall),
             wall_time_ms_p50: percentile(&wall, 50.0),
             wall_time_ms_p90: percentile(&wall, 90.0),
-            wall_time_ms_p95: percentile(&wall, 95.0),
-            wall_time_ms_p99: percentile(&wall, 99.0),
+            wall_time_ms_p95: percentile_if_supported(&wall, 95.0),
+            wall_time_ms_p99: percentile_if_supported(&wall, 99.0),
             ttft_ms_mean: mean(&ttft),
             ttft_ms_min: ttft.iter().copied().reduce(f64::min),
             ttft_ms_max: ttft.iter().copied().reduce(f64::max),
             ttft_ms_p50: percentile(&ttft, 50.0),
-            ttft_ms_p95: percentile(&ttft, 95.0),
-            ttft_ms_p99: percentile(&ttft, 99.0),
+            ttft_ms_p95: percentile_if_supported(&ttft, 95.0),
+            ttft_ms_p99: percentile_if_supported(&ttft, 99.0),
             tpot_ms_p50: percentile(&tpot, 50.0),
-            tpot_ms_p95: percentile(&tpot, 95.0),
+            tpot_ms_p95: percentile_if_supported(&tpot, 95.0),
             itl_ms_p50: percentile(&itl, 50.0),
             itl_ms_p90: percentile(&itl, 90.0),
-            itl_ms_p95: percentile(&itl, 95.0),
-            itl_ms_p99: percentile(&itl, 99.0),
+            itl_ms_p95: percentile_if_supported(&itl, 95.0),
+            itl_ms_p99: percentile_if_supported(&itl, 99.0),
             generation_wall_ms_p50: percentile(&generation_wall, 50.0),
-            generation_wall_ms_p95: percentile(&generation_wall, 95.0),
-            generation_wall_ms_p99: percentile(&generation_wall, 99.0),
+            generation_wall_ms_p95: percentile_if_supported(&generation_wall, 95.0),
+            generation_wall_ms_p99: percentile_if_supported(&generation_wall, 99.0),
         },
         throughput: ThroughputSummary {
             scenario_wall_time_ms,
@@ -240,10 +271,15 @@ pub fn summarize_traces(traces: &[RequestTrace], scenario_wall_time_ms: f64) -> 
 }
 
 fn mean(values: &[f64]) -> Option<f64> {
-    if values.is_empty() {
+    let valid = values
+        .iter()
+        .copied()
+        .filter(|value| value.is_finite() && *value >= 0.0)
+        .collect::<Vec<_>>();
+    if valid.is_empty() {
         None
     } else {
-        Some(values.iter().sum::<f64>() / values.len() as f64)
+        Some(valid.iter().sum::<f64>() / valid.len() as f64)
     }
 }
 
@@ -271,7 +307,7 @@ fn count_errors(traces: &[RequestTrace], needle: &str) -> usize {
 }
 
 fn rate(units: f64, wall_time_ms: f64) -> Option<f64> {
-    if wall_time_ms <= 0.0 {
+    if !units.is_finite() || !wall_time_ms.is_finite() || wall_time_ms <= 0.0 {
         None
     } else {
         Some(units / (wall_time_ms / 1000.0))

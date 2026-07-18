@@ -88,6 +88,8 @@ Performance runs add dedicated sections for:
 - `error_rate` - failed request count divided by total request count
 - `estimated_load_overhead_ms` - client-side first-probe minus warm-probe estimate, clamped at zero
 
+Latency percentiles use the nearest-rank estimator over successful, finite, non-negative samples. Every performance summary shows the successful latency sample count. P95 is omitted when fewer than 20 samples are available and P99 when fewer than 100 are available. `wall_time_ms_stddev` is population standard deviation. Smoke profiles are exploratory checks; use larger deliberate run counts for statistical interpretation.
+
 Environment snapshots record the host OS, CPU count, memory and swap ratios, disk availability, provider endpoint, LLMeter version, provider-process candidates, and optional `nvidia-smi` output or probe error.
 
 ## Reading results correctly

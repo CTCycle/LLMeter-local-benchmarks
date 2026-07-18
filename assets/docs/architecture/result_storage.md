@@ -24,7 +24,7 @@ BenchmarkRun {
 }
 ```
 
-`schema_version` is now persisted as `2.3`. Older JSON files that omit newer fields still deserialize because added fields default to `None`. Performance latency aggregates use successful requests only; failure counts/rates stay explicit in each scenario record.
+`schema_version` is now persisted as `2.3`. Older JSON files that omit newer fields still deserialize because added fields default to `None`. Performance latency aggregates use successful requests only; failure counts/rates stay explicit in each scenario record. Scenario metrics persist the successful latency sample count, nearest-rank percentile estimator, and population-standard-deviation label. Unsupported high percentiles are omitted rather than repeated from undersized samples.
 
 ## Result records
 

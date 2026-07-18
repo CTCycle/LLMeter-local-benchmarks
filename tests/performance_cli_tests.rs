@@ -113,7 +113,7 @@ fn performance_plan_rejects_too_fast_telemetry_sampling() {
         HashMap::new(),
         LoadMeasurementMode::WarmBaseline,
         2,
-        TelemetryLevel::Full,
+        TelemetryLevel::Detailed,
         50,
         None,
         false,
