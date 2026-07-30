@@ -24,7 +24,7 @@ impl Benchmark for PromptSizePerformanceBenchmark {
     }
 
     fn description(&self) -> &str {
-        "Runs short, medium, and long prompts to compare prompt processing and generation timing."
+        "Runs short, medium, and long prompts to compare client-observed end-to-end timing and generation metrics. Prompt-processing time is not measured independently."
     }
 
     fn suite(&self) -> BenchmarkSuite {

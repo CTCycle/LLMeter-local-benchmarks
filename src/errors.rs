@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum LLMeterError {
     #[error("{0}")]
     Provider(String),
@@ -19,6 +19,12 @@ pub enum LLMeterError {
 
     #[error("{0}")]
     Io(String),
+
+    #[error("Operation interrupted by the user.")]
+    Interrupted,
+
+    #[error("Operation canceled by the user.")]
+    Canceled,
 }
 
 impl From<std::io::Error> for LLMeterError {

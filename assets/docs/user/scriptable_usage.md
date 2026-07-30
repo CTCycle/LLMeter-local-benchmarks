@@ -98,14 +98,14 @@ llmeter --provider ollama bench perf --models all --profile smoke --runs 1 --no-
 Add capability probing, client-side load overhead estimation, and detailed telemetry:
 
 ```bash
-llmeter --provider ollama bench performance --models all --profile latency --runs 3 --warmup 1 --probe-capabilities --load-measurement cold-warm-estimate --telemetry detailed --report both --export both
+llmeter --provider ollama bench performance --models all --profile latency --runs 3 --warmup 1 --probe-capabilities --load-measurement first-request-estimate --telemetry detailed --report both --export both
 ```
 
 When capability probing is enabled, LLMeter reports each validation step before timed scenarios begin so long provider checks remain visible in terminal output.
 
 Load-estimate probes, model inventory metadata/cache scans, and `llmeter report generate ...` now also emit progress updates instead of staying silent until completion.
 
-Load overhead is reported as an estimate unless provider-native telemetry is available. Model cache scanning is opt-in with `--scan-model-cache` and never downloads or mutates model files.
+Load overhead is always reported as an explicitly client-observed first-request versus warm-request estimate in this release; LLMeter does not infer provider-native lifecycle telemetry. Model cache scanning is opt-in with `--scan-model-cache` and never downloads or mutates model files.
 
 Run an explicit latency profile on Windows PowerShell:
 
@@ -146,4 +146,4 @@ Example:
   run: ./llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export json --report md
 ```
 
-Last updated: 2026-07-18
+Last updated: 2026-07-30

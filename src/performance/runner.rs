@@ -12,7 +12,8 @@ use crate::errors::LLMeterError;
 use crate::performance::config::{PerformancePlan, ReportDetailLevel, TelemetryLevel};
 use crate::performance::load::{measure_model_load_with_progress, planned_load_steps};
 use crate::performance::metrics::{
-    summarize_traces, PerformanceSummary, RequestTiming, RequestTrace, TokenTiming,
+    inter_token_latency_ms, summarize_traces, ChunkTiming, PerformanceSummary, RequestTiming,
+    RequestTrace,
 };
 use crate::performance::model_inventory::{
     measure_model_inventory_with_progress, planned_inventory_steps,
@@ -93,6 +94,15 @@ pub fn run_performance_plan(
     let mut results = Vec::new();
     let mut completed_units = 0u32;
     let process_memory_before = current_process_memory();
+    let model_load_measurements = measure_model_load_with_progress(
+        client,
+        &available,
+        &plan,
+        sink,
+        completed_units,
+        total_units,
+    );
+    completed_units += load_units;
     let provider_capabilities = if plan.probe_capabilities || plan.probe_all_endpoints {
         let report = probe_provider_capabilities_with_progress(
             client,
@@ -106,15 +116,6 @@ pub fn run_performance_plan(
     } else {
         None
     };
-    let model_load_measurements = measure_model_load_with_progress(
-        client,
-        &available,
-        &plan,
-        sink,
-        completed_units,
-        total_units,
-    );
-    completed_units += load_units;
     let model_inventory_measurements = measure_model_inventory_with_progress(
         client,
         &available,
@@ -379,8 +380,8 @@ fn execute_request(
         extra.as_ref(),
     ) {
         Ok(result) => {
-            let token_timings = result
-                .token_timings_ns
+            let chunk_timings = result
+                .chunk_timings_ns
                 .iter()
                 .enumerate()
                 .map(|(index, value)| {
@@ -389,10 +390,10 @@ fn execute_request(
                         None
                     } else {
                         ns_to_ms(Some(
-                            value.saturating_sub(result.token_timings_ns[index - 1]),
+                            value.saturating_sub(result.chunk_timings_ns[index - 1]),
                         ))
                     };
-                    TokenTiming {
+                    ChunkTiming {
                         index,
                         since_start_ms,
                         delta_ms,
@@ -407,6 +408,8 @@ fn execute_request(
             let including_ttft = actual_output_tokens.and_then(|tokens| rate(tokens, wall_time_ms));
             let excluding_ttft = actual_output_tokens
                 .and_then(|tokens| generation_wall_ms.and_then(|wall| rate(tokens, wall)));
+            let itl_ms =
+                inter_token_latency_ms(wall_time_ms, ttft_ms, actual_output_tokens, plan.stream);
 
             Ok(RequestTrace {
                 request_id,
@@ -428,12 +431,12 @@ fn execute_request(
                     .or_else(|| result.raw.pointer("/usage/input_tokens"))
                     .and_then(|value| value.as_u64()),
                 output_tokens: actual_output_tokens,
-                token_timings,
+                chunk_timings,
                 timing: RequestTiming {
                     wall_time_ms,
                     ttft_ms,
-                    tpot_ms: average_delta_ms(&result.token_timings_ns),
-                    itl_ms: average_delta_ms(&result.token_timings_ns),
+                    itl_ms,
+                    inter_chunk_latency_ms: average_delta_ms(&result.chunk_timings_ns),
                     generation_wall_ms,
                     output_tokens_per_second_including_ttft: including_ttft,
                     output_tokens_per_second_excluding_ttft: excluding_ttft,
@@ -461,12 +464,12 @@ fn execute_request(
             http_status: None,
             input_tokens: None,
             output_tokens: None,
-            token_timings: Vec::new(),
+            chunk_timings: Vec::new(),
             timing: RequestTiming {
                 wall_time_ms: started.elapsed().as_secs_f64() * 1000.0,
                 ttft_ms: None,
-                tpot_ms: None,
                 itl_ms: None,
+                inter_chunk_latency_ms: None,
                 generation_wall_ms: None,
                 output_tokens_per_second_including_ttft: None,
                 output_tokens_per_second_excluding_ttft: None,
@@ -512,6 +515,10 @@ fn summary_record(
         json!(summary.latency.error_count),
     );
     metrics.insert("error_rate".to_string(), json!(summary.latency.error_rate));
+    metrics.insert(
+        "partial_failure".to_string(),
+        json!(summary.latency.error_count > 0 && summary.latency.success_count > 0),
+    );
     metrics.insert(
         "successful_latency_sample_count".to_string(),
         json!(summary.latency.successful_latency_sample_count),
@@ -575,12 +582,15 @@ fn summary_record(
     insert_opt(&mut metrics, "ttft_ms_max", summary.latency.ttft_ms_max);
     insert_opt(&mut metrics, "ttft_ms_p95", summary.latency.ttft_ms_p95);
     insert_opt(&mut metrics, "ttft_ms_p99", summary.latency.ttft_ms_p99);
-    insert_opt(&mut metrics, "tpot_ms_p50", summary.latency.tpot_ms_p50);
-    insert_opt(&mut metrics, "tpot_ms_p95", summary.latency.tpot_ms_p95);
     insert_opt(&mut metrics, "itl_ms_p50", summary.latency.itl_ms_p50);
     insert_opt(&mut metrics, "itl_ms_p90", summary.latency.itl_ms_p90);
     insert_opt(&mut metrics, "itl_ms_p95", summary.latency.itl_ms_p95);
     insert_opt(&mut metrics, "itl_ms_p99", summary.latency.itl_ms_p99);
+    insert_opt(
+        &mut metrics,
+        "inter_chunk_latency_ms_p50",
+        summary.latency.inter_chunk_latency_ms_p50,
+    );
     insert_opt(
         &mut metrics,
         "generation_wall_ms_p50",
@@ -645,6 +655,22 @@ fn summary_record(
         json!(summary.throughput.total_output_tokens),
     );
     metrics.insert(
+        "input_token_sample_count".to_string(),
+        json!(summary.throughput.input_token_sample_count),
+    );
+    metrics.insert(
+        "output_token_sample_count".to_string(),
+        json!(summary.throughput.output_token_sample_count),
+    );
+    metrics.insert(
+        "input_token_coverage".to_string(),
+        json!(summary.throughput.input_token_coverage),
+    );
+    metrics.insert(
+        "output_token_coverage".to_string(),
+        json!(summary.throughput.output_token_coverage),
+    );
+    metrics.insert(
         "estimated_prompt_tokens".to_string(),
         json!(prompt.estimated_prompt_tokens),
     );
@@ -675,7 +701,9 @@ fn summary_record(
         prompt_name: Some(scenario_name.to_string()),
         metrics,
         response_preview: None,
-        error: summary.errors.error_messages.first().cloned(),
+        error: (summary.latency.success_count == 0)
+            .then(|| summary.errors.error_messages.first().cloned())
+            .flatten(),
         metadata: Some(performance_metadata(scenario_name, prompt, traces, detail)),
     }
 }
@@ -699,13 +727,17 @@ fn performance_metadata(
         ReportDetailLevel::Detailed => Some(&traces[..trace_count.min(DETAILED_TRACE_LIMIT)]),
         ReportDetailLevel::Full => Some(traces),
     };
+    let traces_omitted = matches!(detail, ReportDetailLevel::Summary);
+    let traces_truncated =
+        matches!(detail, ReportDetailLevel::Detailed) && trace_count > DETAILED_TRACE_LIMIT;
     if let Some(persisted) = persisted {
         metadata.insert("request_traces".to_string(), json!(persisted));
     }
     metadata.insert(
         "request_traces_truncated".to_string(),
-        json!(trace_count > persisted.map_or(0, |items| items.len())),
+        json!(traces_truncated),
     );
+    metadata.insert("request_traces_omitted".to_string(), json!(traces_omitted));
     metadata
 }
 fn insert_opt(metrics: &mut HashMap<String, Value>, key: &str, value: Option<f64>) {
@@ -727,4 +759,73 @@ fn current_process_memory() -> Option<u64> {
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
     let process_id = sysinfo::Pid::from_u32(std::process::id());
     system.process(process_id).map(|process| process.memory())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::performance_metadata;
+    use crate::performance::config::ReportDetailLevel;
+    use crate::performance::metrics::{RequestTiming, RequestTrace};
+    use crate::performance::workload::PerformancePrompt;
+    use crate::providers::ProviderKind;
+
+    fn prompt() -> PerformancePrompt {
+        PerformancePrompt {
+            id: "test-prompt".to_string(),
+            prompt: "hello".to_string(),
+            tags: Vec::new(),
+            estimated_prompt_tokens: 1,
+        }
+    }
+
+    fn trace(index: u32) -> RequestTrace {
+        RequestTrace {
+            request_id: format!("request-{index}"),
+            model: "model".to_string(),
+            provider: ProviderKind::Ollama,
+            prompt_id: "test-prompt".to_string(),
+            estimated_prompt_tokens: 1,
+            requested_output_tokens: 1,
+            concurrency: 1,
+            run_index: index,
+            stream: true,
+            success: true,
+            error: None,
+            endpoint: "/v1/chat/completions".to_string(),
+            http_status: Some(200),
+            input_tokens: Some(1),
+            output_tokens: Some(1),
+            chunk_timings: Vec::new(),
+            timing: RequestTiming {
+                wall_time_ms: 1.0,
+                ttft_ms: Some(1.0),
+                itl_ms: None,
+                inter_chunk_latency_ms: None,
+                generation_wall_ms: Some(0.0),
+                output_tokens_per_second_including_ttft: Some(1_000.0),
+                output_tokens_per_second_excluding_ttft: None,
+                ttlt_ms: Some(1.0),
+            },
+        }
+    }
+
+    #[test]
+    fn trace_detail_distinguishes_omission_from_truncation() {
+        let empty = Vec::new();
+        let summary =
+            performance_metadata("scenario", &prompt(), &empty, ReportDetailLevel::Summary);
+        assert_eq!(summary["request_traces_omitted"], true);
+        assert_eq!(summary["request_traces_truncated"], false);
+
+        let detailed =
+            performance_metadata("scenario", &prompt(), &empty, ReportDetailLevel::Detailed);
+        assert_eq!(detailed["request_traces_omitted"], false);
+        assert_eq!(detailed["request_traces_truncated"], false);
+
+        let traces = (0..21).map(trace).collect::<Vec<_>>();
+        let truncated =
+            performance_metadata("scenario", &prompt(), &traces, ReportDetailLevel::Detailed);
+        assert_eq!(truncated["request_traces_omitted"], false);
+        assert_eq!(truncated["request_traces_truncated"], true);
+    }
 }

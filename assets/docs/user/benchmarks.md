@@ -13,7 +13,7 @@ LLMeter currently exposes three benchmark families:
 | `chat-generation` | Basic generation latency | Streams `/v1/chat/completions` and measures wall time, TTFT, usage, and throughput. |
 | `responses-generation` | Responses API generation | Calls `/v1/responses` when supported. |
 | `consistency` | Response consistency | Repeats a prompt and reports exact-match ratio and pairwise text similarity. |
-| `prompt-sizes` | Performance across prompt sizes | Runs short, medium, and long prompts. |
+| `prompt-sizes` | Performance across prompt sizes | Runs short, medium, and long prompts and compares client-observed end-to-end timing; prompt-processing time is not measured independently. |
 | `structured-output` | Structured JSON output | Requests JSON schema output and validates required keys. |
 | `tool-calling` | Function/tool calling | Requests a tool call and validates function name and arguments. |
 | `embeddings` | Embeddings API | Calls `/v1/embeddings` and reports latency and vector dimensions. |
@@ -33,15 +33,17 @@ Native performance runs record:
 - wall time min, mean, max, standard deviation, and p50, p90, p95, and p99
 - TTFT min, mean, max, p50, p95, and p99 when streaming is enabled
 - generation wall-time percentiles when TTFT exists
-- TPOT and ITL percentiles when token timing is available
+- inter-chunk latency percentiles from streamed response chunks
+- ITL percentiles only when streaming TTFT and provider-reported output usage for at least two tokens are available
 - requests per second, successful requests per second, and input/output token throughput
 - output tokens per second including TTFT and excluding TTFT when generation timing exists
+- performance scenario output throughput is aggregate across the scenario wall time and is shown in the dedicated Performance Summary, not the standard per-request summary column
 - timeout, HTTP error, provider error, and empty-response counts
 - per-request traces, capability probes, load estimates, model inventory, telemetry summaries, and environment snapshots in JSON output
 
 Synthetic prompt sizes are estimates. Provider usage fields remain authoritative when available.
 
-Load overhead is reported as an estimate unless provider-native telemetry exists. Do not interpret it as true model-load time. Non-streaming runs do not report TTFT unless a provider supplies native timing.
+Load overhead is always a client-observed first-request versus warm-request estimate in this release. It does not measure provider restart, cache eviction, model loading, or native lifecycle telemetry. Non-streaming runs do not report TTFT.
 
 ## Quality preparation
 
@@ -95,4 +97,4 @@ Key types:
 
 The benchmark appears in both interactive and scriptable flows.
 
-Last updated: 2026-06-18
+Last updated: 2026-07-30

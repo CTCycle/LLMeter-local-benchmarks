@@ -59,8 +59,7 @@ pub fn build_summary_rows(run: &BenchmarkRun) -> Vec<SummaryRow> {
             avg_time_to_first_token_ms: metric_mean(&records, "time_to_first_token_ms")
                 .or_else(|| metric_mean(&records, "ttft_ms_p50")),
             avg_tokens_per_second: metric_mean(&records, "tokens_per_second")
-                .or_else(|| metric_mean(&records, "mean_tokens_per_second"))
-                .or_else(|| metric_mean(&records, "output_tokens_per_second")),
+                .or_else(|| metric_mean(&records, "mean_tokens_per_second")),
             avg_input_tokens: metric_mean(&records, "input_tokens"),
             avg_output_tokens: metric_mean(&records, "output_tokens"),
             avg_embedding_dimensions: metric_mean(&records, "embedding_dimensions"),
@@ -86,6 +85,12 @@ fn metric_mean(
     }
     let mean = values.iter().sum::<f64>() / values.len() as f64;
     Some((mean * 10000.0).round() / 10000.0)
+}
+
+fn standard_output_tps(metrics: &std::collections::HashMap<String, Value>) -> Option<f64> {
+    metric_value_as_f64(metrics.get("tokens_per_second"))
+        .or_else(|| metric_value_as_f64(metrics.get("mean_tokens_per_second")))
+        .or_else(|| metric_value_as_f64(metrics.get("output_tokens_per_second_including_ttft")))
 }
 
 fn metric_success_ratio(
@@ -169,7 +174,7 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
     lines.push(format!("- Error records: {}", error_records.len()));
     if let Some(best) = best_tps {
         lines.push(format!(
-            "- Best average throughput: **{} tok/s** on `{}` for `{}`",
+            "- Best per-request output throughput: **{} tok/s** on `{}` for `{}`",
             fmt(best.avg_tokens_per_second),
             best.model,
             best.benchmark_id
@@ -200,7 +205,7 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
 
     lines.push("## Aggregated benchmark results".to_string());
     lines.push(String::new());
-    lines.push("| Model | Benchmark | Prompt | Records | Errors | Avg wall ms | Avg TTFT ms | Avg tok/s | Input tok | Output tok | Embed dims | Similarity | Schema ok | Tool ok |".to_string());
+    lines.push("| Model | Benchmark | Prompt | Records | Errors | Avg wall ms | Avg TTFT ms | Avg output tok/s per request | Input tok | Output tok | Embed dims | Similarity | Schema ok | Tool ok |".to_string());
     lines.push("|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|".to_string());
     for row in &rows {
         lines.push(format!(
@@ -230,7 +235,7 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
             "- Provider status latency is the measured `GET /v1/models` duration.".to_string(),
         );
         lines.push("- Load overhead is an estimate from first-probe minus warm-probe timing, clamped at zero.".to_string());
-        lines.push("- TTFT is client-side streaming time to first token and includes provider scheduling and prompt processing.".to_string());
+        lines.push("- TTFT is client-side streaming time to the first non-empty content chunk and includes provider scheduling and prompt processing; it is not tokenizer-confirmed.".to_string());
         lines.push(
             "- Generation wall time is wall time minus TTFT when streaming timing exists."
                 .to_string(),
@@ -317,7 +322,9 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
                 .to_string(),
         );
         lines.push(String::new());
-        lines.push("## Token Timing".to_string());
+        lines.push("## Chunk and Token Timing".to_string());
+        lines.push(String::new());
+        lines.push("ITL is reported only for streamed requests with TTFT and at least two provider-reported output tokens; inter-chunk latency is reported separately and must not be interpreted as token timing.".to_string());
         lines.push(String::new());
         lines.push("Request traces are omitted for summary detail, capped at 20 ordered traces for detailed, and complete for full detail.".to_string());
         lines.push(String::new());
@@ -376,8 +383,10 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
         if let Some(inventory) = &run.model_inventory_measurements {
             lines.push("## Model cache and metadata".to_string());
             lines.push(String::new());
-            lines
-                .push("| Model | Metadata ms | Metadata bytes | Cache bytes | Notes |".to_string());
+            lines.push(
+                "| Model | Metadata ms | Metadata bytes | Provider cache total bytes | Notes |"
+                    .to_string(),
+            );
             lines.push("|---|---:|---:|---:|---|".to_string());
             for item in inventory {
                 lines.push(format!(
@@ -411,7 +420,7 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
     lines.push("## Detailed records".to_string());
     lines.push(String::new());
     lines.push(
-        "| Model | Benchmark | Prompt | Run | Wall ms | TTFT ms | Tok/s | Status | Preview |"
+        "| Model | Benchmark | Prompt | Run | Wall ms | TTFT ms | Output tok/s per request | Status | Preview |"
             .to_string(),
     );
     lines.push("|---|---|---|---:|---:|---:|---:|---|---|".to_string());
@@ -421,12 +430,7 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
         let wall = wall.or_else(|| metric_value_as_f64(metrics.get("wall_time_ms_p50")));
         let ttft = metric_value_as_f64(metrics.get("time_to_first_token_ms"))
             .or_else(|| metric_value_as_f64(metrics.get("ttft_ms_p50")));
-        let tps = metric_value_as_f64(metrics.get("tokens_per_second"))
-            .or_else(|| metric_value_as_f64(metrics.get("mean_tokens_per_second")))
-            .or_else(|| metric_value_as_f64(metrics.get("output_tokens_per_second")))
-            .or_else(|| {
-                metric_value_as_f64(metrics.get("output_tokens_per_second_including_ttft"))
-            });
+        let tps = standard_output_tps(metrics);
         lines.push(format!(
             "| {} | {} | {} | {} | {} | {} | {} | {} | {} |",
             md(&record.model),
@@ -466,7 +470,7 @@ pub fn render_markdown_report(run: &BenchmarkRun) -> String {
     lines.push("## Interpretation notes".to_string());
     lines.push(String::new());
     lines.push("- Wall time is measured by the CLI around the request.".to_string());
-    lines.push("- Time to first token is measured only for streaming benchmark calls.".to_string());
+    lines.push("- TTFT is measured only for streaming benchmark calls and means time to the first non-empty content chunk, not a tokenizer-confirmed token.".to_string());
     lines.push("- Token counts and endpoint-specific fields are reported only when the provider returns them.".to_string());
     lines.push("- Structured output, tool calling, responses, and embeddings may be unsupported by some local servers or models.".to_string());
     lines.push("- Results are local-machine specific. Compare runs from the same host for useful conclusions.".to_string());
@@ -495,7 +499,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
     summary_items.push(("Error records", error_records.len().to_string()));
     if let Some(best) = best_tps {
         summary_items.push((
-            "Best average throughput",
+            "Best per-request output throughput",
             format!(
                 "{} tok/s on {} for {}",
                 fmt(best.avg_tokens_per_second),
@@ -576,12 +580,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
                 .or_else(|| metric_value_as_f64(metrics.get("wall_time_ms_p50")));
             let ttft = metric_value_as_f64(metrics.get("time_to_first_token_ms"))
                 .or_else(|| metric_value_as_f64(metrics.get("ttft_ms_p50")));
-            let tps = metric_value_as_f64(metrics.get("tokens_per_second"))
-                .or_else(|| metric_value_as_f64(metrics.get("mean_tokens_per_second")))
-                .or_else(|| metric_value_as_f64(metrics.get("output_tokens_per_second")))
-                .or_else(|| {
-                    metric_value_as_f64(metrics.get("output_tokens_per_second_including_ttft"))
-                });
+            let tps = standard_output_tps(metrics);
             let status = if record.error.is_some() {
                 "ERROR"
             } else {
@@ -721,7 +720,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
   <h2>Aggregated benchmark results</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Model</th><th>Benchmark</th><th>Prompt</th><th>Records</th><th>Errors</th><th>Avg wall ms</th><th>Avg TTFT ms</th><th>Avg tok/s</th><th>Input tok</th><th>Output tok</th><th>Embed dims</th><th>Similarity</th><th>Schema ok</th><th>Tool ok</th></tr></thead>
+      <thead><tr><th>Model</th><th>Benchmark</th><th>Prompt</th><th>Records</th><th>Errors</th><th>Avg wall ms</th><th>Avg TTFT ms</th><th>Avg output tok/s per request</th><th>Input tok</th><th>Output tok</th><th>Embed dims</th><th>Similarity</th><th>Schema ok</th><th>Tool ok</th></tr></thead>
       <tbody>{aggregate_rows}</tbody>
     </table>
   </div>
@@ -731,7 +730,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
   <h2>Detailed records</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Model</th><th>Benchmark</th><th>Prompt</th><th>Run</th><th>Wall ms</th><th>TTFT ms</th><th>Tok/s</th><th>Status</th><th>Preview</th></tr></thead>
+      <thead><tr><th>Model</th><th>Benchmark</th><th>Prompt</th><th>Run</th><th>Wall ms</th><th>TTFT ms</th><th>Output tok/s per request</th><th>Status</th><th>Preview</th></tr></thead>
       <tbody>{detail_rows}</tbody>
     </table>
   </div>
@@ -741,7 +740,7 @@ pub fn render_html_report(run: &BenchmarkRun) -> String {
   <h2>Interpretation notes</h2>
   <ul>
     <li>Wall time is measured by the CLI around the request.</li>
-    <li>Time to first token is measured only for streaming benchmark calls.</li>
+  <li>TTFT is measured only for streaming benchmark calls and means time to the first non-empty content chunk, not a tokenizer-confirmed token.</li>
     <li>Percentiles use nearest-rank successful samples; P95 is omitted below 20 samples and P99 below 100. Standard deviation is population standard deviation.</li>
     <li>Token counts and endpoint-specific fields are reported only when the provider returns them.</li>
     <li>Structured output, tool calling, responses, and embeddings may be unsupported by some local servers or models.</li>

@@ -12,7 +12,6 @@ use crate::utils::{error_chain, ns_to_ms};
 pub enum LoadOverheadConfidence {
     Unavailable,
     Estimated,
-    ProviderNative,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,7 +88,9 @@ fn measure_one_model(
     progress: &mut LoadProgress<'_>,
 ) -> ModelLoadMeasurement {
     let mut notes = vec![
-        "Load overhead is estimated from client-side probe timing, not true model-load telemetry."
+        "First-request overhead is estimated from client-observed timing versus warm requests."
+            .to_string(),
+        "This does not measure provider restart, cache eviction, model loading, or native lifecycle telemetry."
             .to_string(),
     ];
 
@@ -99,7 +100,7 @@ fn measure_one_model(
         model,
         model_index,
     );
-    let status_latency = match client.list_models() {
+    let status_latency = match client.list_models_fresh() {
         Ok(_) => Some(status_started.elapsed().as_secs_f64() * 1000.0),
         Err(error) => {
             notes.push(format!(
@@ -306,7 +307,7 @@ mod tests {
             true,
             None,
             HashMap::new(),
-            LoadMeasurementMode::WarmBaseline,
+            LoadMeasurementMode::FirstRequestEstimate,
             3,
             TelemetryLevel::Standard,
             1000,

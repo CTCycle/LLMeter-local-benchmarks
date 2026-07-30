@@ -90,18 +90,11 @@ impl Benchmark for ResponseConsistencyBenchmark {
 
         let ended = Instant::now();
         let scores = pairwise_similarity(&responses);
-        let unique_count = {
-            let set: std::collections::HashSet<&str> =
-                responses.iter().map(|s| s.as_str()).collect();
-            set.len()
-        };
-        let exact_match_ratio = if responses.len() <= 1 {
-            1.0
-        } else {
-            let ratio =
-                1.0 - ((unique_count as f64 - 1.0) / (responses.len() as f64 - 1.0).max(1.0));
-            (ratio * 1000.0).round() / 1000.0
-        };
+        let unique_count = responses
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+        let exact_match_ratio = exact_match_ratio(&responses);
 
         let output_token_rates: Vec<f64> = per_run_metrics_list
             .iter()
@@ -128,10 +121,9 @@ impl Benchmark for ResponseConsistencyBenchmark {
             "unique_responses".to_string(),
             Value::from(unique_count as u64),
         );
-        metrics.insert(
-            "exact_match_ratio".to_string(),
-            Value::from(exact_match_ratio),
-        );
+        if let Some(ratio) = exact_match_ratio {
+            metrics.insert("exact_match_ratio".to_string(), Value::from(ratio));
+        }
 
         if !scores.is_empty() {
             let mean = scores.iter().sum::<f64>() / scores.len() as f64;
@@ -188,5 +180,39 @@ impl Benchmark for ResponseConsistencyBenchmark {
                 m
             }),
         }]
+    }
+}
+
+pub fn exact_match_ratio(responses: &[String]) -> Option<f64> {
+    if responses.len() < 2 {
+        return None;
+    }
+    let mut frequencies = HashMap::<&str, u64>::new();
+    for response in responses {
+        *frequencies.entry(response.as_str()).or_default() += 1;
+    }
+    let matching_pairs = frequencies
+        .values()
+        .map(|count| count.saturating_mul(count.saturating_sub(1)) / 2)
+        .sum::<u64>();
+    let total_pairs = (responses.len() as u64).saturating_mul((responses.len() - 1) as u64) / 2;
+    Some((matching_pairs as f64 / total_pairs as f64 * 1000.0).round() / 1000.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::exact_match_ratio;
+
+    fn responses(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| (*value).to_string()).collect()
+    }
+
+    #[test]
+    fn exact_match_ratio_uses_matching_response_pairs() {
+        assert_eq!(exact_match_ratio(&responses(&["A", "A", "A"])), Some(1.0));
+        assert_eq!(exact_match_ratio(&responses(&["A", "B", "C"])), Some(0.0));
+        assert_eq!(exact_match_ratio(&responses(&["A", "A", "B"])), Some(0.333));
+        assert_eq!(exact_match_ratio(&responses(&[])), None);
+        assert_eq!(exact_match_ratio(&responses(&["A"])), None);
     }
 }

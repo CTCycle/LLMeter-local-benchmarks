@@ -8,6 +8,8 @@ use crate::progress::{ProgressEventKind, ProgressPhase, ProgressSink, ProgressUp
 use crate::providers::{ProviderClient, ProviderKind};
 use crate::utils::error_chain;
 
+const MAX_CACHE_SCAN_ENTRIES: usize = 100_000;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelInventoryMeasurement {
     pub model: String,
@@ -16,12 +18,12 @@ pub struct ModelInventoryMeasurement {
     pub metadata_payload_bytes: Option<u64>,
     pub cache_dir: Option<String>,
     pub cache_bytes: Option<u64>,
+    pub cache_scope: Option<String>,
     pub notes: Vec<String>,
 }
 
 pub fn planned_inventory_steps(plan: &PerformancePlan, models_len: usize) -> u32 {
-    let per_model = if plan.scan_model_cache { 2 } else { 1 };
-    models_len as u32 * per_model
+    models_len as u32 + u32::from(plan.scan_model_cache)
 }
 
 pub fn measure_model_inventory(
@@ -56,10 +58,41 @@ pub fn measure_model_inventory_with_progress(
         total_steps,
         models.len(),
     );
+    let (cache_bytes, cache_error) = if plan.scan_model_cache {
+        progress.start("Scanning provider model cache", "all models", 0);
+        let result = plan
+            .model_cache_dir
+            .as_deref()
+            .map(Path::new)
+            .ok_or_else(|| "No model cache directory was configured".to_string())
+            .and_then(directory_size);
+        progress.finish("Scanned provider model cache", "all models", 0);
+        match result {
+            Ok(size) => (Some(size), None),
+            Err(error) => (None, Some(error)),
+        }
+    } else {
+        (None, None)
+    };
+
     models
         .iter()
         .enumerate()
-        .map(|(index, model)| measure_one_model(client, model, plan, index, &mut progress))
+        .map(|(index, model)| {
+            measure_one_model(
+                client,
+                model,
+                plan,
+                index,
+                &mut progress,
+                if index == 0 { cache_bytes } else { None },
+                if index == 0 {
+                    cache_error.as_deref()
+                } else {
+                    None
+                },
+            )
+        })
         .collect()
 }
 
@@ -69,6 +102,8 @@ fn measure_one_model(
     plan: &PerformancePlan,
     model_index: usize,
     progress: &mut InventoryProgress<'_>,
+    cache_bytes: Option<u64>,
+    cache_error: Option<&str>,
 ) -> ModelInventoryMeasurement {
     let mut notes = Vec::new();
     let started = Instant::now();
@@ -91,24 +126,17 @@ fn measure_one_model(
     progress.finish("Fetched model metadata", model, model_index);
 
     let cache_dir = plan.model_cache_dir.clone();
-    let cache_bytes = if plan.scan_model_cache {
-        progress.start("Scanning local model cache", model, model_index);
-        cache_dir
-            .as_deref()
-            .map(Path::new)
-            .and_then(|path| match directory_size(path) {
-                Ok(size) => Some(size),
-                Err(error) => {
-                    notes.push(format!("Cache scan failed: {error}"));
-                    None
-                }
-            })
-            .tap(|_| progress.finish("Scanned local model cache", model, model_index))
-    } else {
+    if let Some(error) = cache_error {
+        notes.push(format!("Provider cache scan failed: {error}"));
+    } else if plan.scan_model_cache && cache_bytes.is_some() && model_index == 0 {
+        notes.push(
+            "Cache size is the provider-wide directory total, not model-attributed storage."
+                .to_string(),
+        );
+    } else if !plan.scan_model_cache {
         notes
             .push("Skipped — enter a model cache directory path to measure disk usage".to_string());
-        None
-    };
+    }
 
     ModelInventoryMeasurement {
         model: model.to_string(),
@@ -117,6 +145,7 @@ fn measure_one_model(
         metadata_payload_bytes,
         cache_dir,
         cache_bytes,
+        cache_scope: cache_bytes.map(|_| "provider-cache-directory".to_string()),
         notes,
     }
 }
@@ -127,10 +156,27 @@ fn directory_size(path: &Path) -> Result<u64, String> {
     }
     let mut total = 0u64;
     let mut stack = vec![PathBuf::from(path)];
+    let mut visited = std::collections::HashSet::new();
+    let mut scanned_entries = 0usize;
     while let Some(current) = stack.pop() {
+        let current = std::fs::canonicalize(&current).map_err(|error| error.to_string())?;
+        if !visited.insert(current.clone()) {
+            continue;
+        }
         let entries = std::fs::read_dir(&current).map_err(|error| error.to_string())?;
         for entry in entries {
+            scanned_entries = scanned_entries.saturating_add(1);
+            if scanned_entries > MAX_CACHE_SCAN_ENTRIES {
+                return Err(format!(
+                    "cache scan exceeded the {} entry limit",
+                    MAX_CACHE_SCAN_ENTRIES
+                ));
+            }
             let entry = entry.map_err(|error| error.to_string())?;
+            let file_type = entry.file_type().map_err(|error| error.to_string())?;
+            if file_type.is_symlink() {
+                continue;
+            }
             let metadata = entry.metadata().map_err(|error| error.to_string())?;
             if metadata.is_dir() {
                 stack.push(entry.path());
@@ -213,18 +259,9 @@ impl<'a> InventoryProgress<'a> {
     }
 }
 
-trait Tap: Sized {
-    fn tap<F: FnOnce(&Self)>(self, f: F) -> Self {
-        f(&self);
-        self
-    }
-}
-
-impl<T> Tap for T {}
-
 #[cfg(test)]
 mod tests {
-    use super::planned_inventory_steps;
+    use super::{directory_size, planned_inventory_steps};
     use crate::performance::config::{
         LoadMeasurementMode, PerformancePlan, PerformanceProfile, ReportDetailLevel, TelemetryLevel,
     };
@@ -286,5 +323,32 @@ mod tests {
 
         assert_eq!(planned_inventory_steps(&base, 1), 1);
         assert_eq!(planned_inventory_steps(&with_scan, 1), 2);
+    }
+
+    #[test]
+    fn directory_size_scans_nested_files_once() {
+        let root = tempfile::tempdir().expect("temporary cache directory");
+        std::fs::create_dir(root.path().join("nested")).expect("nested directory");
+        std::fs::write(root.path().join("one.bin"), [0u8; 3]).expect("first cache file");
+        std::fs::write(root.path().join("nested").join("two.bin"), [0u8; 5])
+            .expect("second cache file");
+
+        assert_eq!(directory_size(root.path()), Ok(8));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn directory_size_skips_symlinked_directories() {
+        use std::os::unix::fs::symlink;
+
+        let root = tempfile::tempdir().expect("temporary cache directory");
+        let linked_target = tempfile::tempdir().expect("symlink target directory");
+        std::fs::write(linked_target.path().join("linked.bin"), [0u8; 13])
+            .expect("linked cache file");
+        std::fs::write(root.path().join("direct.bin"), [0u8; 2]).expect("direct cache file");
+        symlink(linked_target.path(), root.path().join("linked-directory"))
+            .expect("create directory symlink");
+
+        assert_eq!(directory_size(root.path()), Ok(2));
     }
 }

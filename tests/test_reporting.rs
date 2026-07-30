@@ -120,6 +120,33 @@ fn test_error_records_section_appears_in_markdown() {
 }
 
 #[test]
+fn performance_scenario_throughput_is_not_merged_into_standard_summary_tps() {
+    let mut run = sample_run();
+    run.results.push(BenchmarkResultRecord {
+        benchmark_id: "performance-scenario".to_string(),
+        benchmark_name: "Performance scenario".to_string(),
+        model: "llama3".to_string(),
+        run_index: None,
+        prompt_name: Some("128p-64o-c1".to_string()),
+        metrics: {
+            let mut m = std::collections::HashMap::new();
+            m.insert("output_tokens_per_second".to_string(), json!(999.0));
+            m
+        },
+        response_preview: None,
+        error: None,
+        metadata: None,
+    });
+
+    let rows = build_summary_rows(&run);
+    let performance = rows
+        .iter()
+        .find(|row| row.benchmark_id == "performance-scenario")
+        .expect("performance summary row");
+    assert!(performance.avg_tokens_per_second.is_none());
+}
+
+#[test]
 fn test_performance_report_sections_appear_when_plan_is_present() {
     let mut run = sample_run();
     run.performance_plan = Some(PerformancePlan {
@@ -139,7 +166,7 @@ fn test_performance_report_sections_appear_when_plan_is_present() {
         workload_jsonl: None,
         extra_params: std::collections::HashMap::new(),
         safety: Default::default(),
-        load_measurement: LoadMeasurementMode::WarmBaseline,
+        load_measurement: LoadMeasurementMode::FirstRequestEstimate,
         load_probe_runs: 2,
         telemetry: TelemetryLevel::Standard,
         sample_interval_ms: 1000,
@@ -215,7 +242,7 @@ fn test_reports_escape_adversarial_table_and_html_values() {
         workload_jsonl: None,
         extra_params: std::collections::HashMap::new(),
         safety: Default::default(),
-        load_measurement: LoadMeasurementMode::WarmBaseline,
+        load_measurement: LoadMeasurementMode::FirstRequestEstimate,
         load_probe_runs: 2,
         telemetry: TelemetryLevel::Standard,
         sample_interval_ms: 1000,

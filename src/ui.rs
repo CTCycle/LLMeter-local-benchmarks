@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::Result;
 use colored::Colorize;
-use inquire::{CustomType, MultiSelect, Select, Text};
+use inquire::{CustomType, InquireError, MultiSelect, Select, Text};
 use serde_json::Value;
 use tabled::{
     builder::Builder,
@@ -11,8 +11,9 @@ use tabled::{
 };
 
 use crate::benchmarks::registry::{default_registry, BenchmarkSuite};
-use crate::cli::{EXPORT_CHOICES, REPORT_CHOICES};
+use crate::cli::{parse_temperature, EXPORT_CHOICES, REPORT_CHOICES};
 use crate::config::AppConfig;
+use crate::errors::LLMeterError;
 use crate::performance::config::{
     LoadMeasurementMode, PerformancePlan, PerformanceProfile, ReportDetailLevel, TelemetryLevel,
 };
@@ -77,7 +78,7 @@ pub fn print_provider_catalog() {
         ]);
     }
     let mut table = builder.build();
-    table.with(Panel::header("Supported providers"));
+    table.with(Panel::header("Provider presets and compatibility tiers"));
     table.with(Style::rounded());
     println!("{table}");
 }
@@ -219,7 +220,7 @@ pub fn summarize_run(run: &BenchmarkRun) {
         "Errors",
         "Avg wall ms",
         "Avg TTFT ms",
-        "Avg tok/s",
+        "Avg output tok/s per request",
         "Similarity",
     ]);
 
@@ -273,9 +274,39 @@ pub enum MenuAction {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PromptOutcome<T> {
-    Selected(T),
+    Value(T),
     Back,
-    Exit,
+    Interrupted,
+}
+
+pub fn prompt_outcome<T>(result: std::result::Result<T, InquireError>) -> Result<PromptOutcome<T>> {
+    match result {
+        Ok(value) => Ok(PromptOutcome::Value(value)),
+        Err(inquire::InquireError::OperationCanceled) => Ok(PromptOutcome::Back),
+        Err(inquire::InquireError::OperationInterrupted) => {
+            INTERRUPT_REQUESTED.store(true, Ordering::SeqCst);
+            Ok(PromptOutcome::Interrupted)
+        }
+        Err(error) => Err(anyhow::anyhow!(error)),
+    }
+}
+
+fn prompt_value<T>(result: std::result::Result<T, InquireError>) -> Result<T> {
+    match prompt_outcome(result)? {
+        PromptOutcome::Value(value) => Ok(value),
+        PromptOutcome::Back => Err(LLMeterError::Canceled.into()),
+        PromptOutcome::Interrupted => Err(LLMeterError::Interrupted.into()),
+    }
+}
+
+fn return_to_menu_on_prompt_cancel(result: Result<()>) -> Result<()> {
+    match result {
+        Ok(()) => Ok(()),
+        Err(error) if error.downcast_ref::<LLMeterError>() == Some(&LLMeterError::Canceled) => {
+            Ok(())
+        }
+        Err(error) => Err(error),
+    }
 }
 
 struct RawModeGuard;
@@ -309,6 +340,15 @@ fn menu_action_for_key(key: crossterm::event::KeyEvent) -> Option<MenuAction> {
         KeyEvent {
             code: KeyCode::Char('c'),
             modifiers: KeyModifiers::CONTROL,
+            ..
+        } => Some(MenuAction::Exit),
+        KeyEvent {
+            code: KeyCode::Char('d'),
+            modifiers: KeyModifiers::CONTROL,
+            ..
+        }
+        | KeyEvent {
+            code: KeyCode::Char('\u{4}'),
             ..
         } => Some(MenuAction::Exit),
         KeyEvent {
@@ -418,17 +458,13 @@ pub fn choose_from_menu(
     }
 
     if multi {
-        let selected = MultiSelect::new(prompt, values)
-            .prompt()
-            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        let selected = prompt_value(MultiSelect::new(prompt, values).prompt())?;
         if selected.iter().any(|s| s == "all") {
             return Ok(choices.to_vec());
         }
         Ok(selected)
     } else {
-        let selected = Select::new(prompt, values)
-            .prompt()
-            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        let selected = prompt_value(Select::new(prompt, values).prompt())?;
         if selected == "all" {
             Ok(choices.to_vec())
         } else {
@@ -438,37 +474,42 @@ pub fn choose_from_menu(
 }
 
 pub fn choose_number(prompt: &str, default: u32, min: u32, max: Option<u32>) -> Result<u32> {
-    CustomType::<u32>::new(prompt)
-        .with_default(default)
-        .with_validator(move |value: &u32| {
-            if *value < min {
-                return Ok(inquire::validator::Validation::Invalid(
-                    format!("Must be at least {min}.").into(),
-                ));
-            }
-            if let Some(max_value) = max {
-                if *value > max_value {
+    prompt_value(
+        CustomType::<u32>::new(prompt)
+            .with_default(default)
+            .with_validator(move |value: &u32| {
+                if *value < min {
                     return Ok(inquire::validator::Validation::Invalid(
-                        format!("Must be at most {max_value}.").into(),
+                        format!("Must be at least {min}.").into(),
                     ));
                 }
-            }
-            Ok(inquire::validator::Validation::Valid)
-        })
-        .prompt()
-        .map_err(|e| anyhow::anyhow!("{e}"))
+                if let Some(max_value) = max {
+                    if *value > max_value {
+                        return Ok(inquire::validator::Validation::Invalid(
+                            format!("Must be at most {max_value}.").into(),
+                        ));
+                    }
+                }
+                Ok(inquire::validator::Validation::Valid)
+            })
+            .prompt(),
+    )
 }
 
 pub fn ask_choice(prompt: &str, choices: &[&str], default: &str) -> Result<String> {
-    Select::new(prompt, choices.to_vec())
-        .with_starting_cursor(choices.iter().position(|&c| c == default).unwrap_or(0))
-        .prompt()
-        .map_err(|e| anyhow::anyhow!("{e}"))
-        .map(|s| s.to_string())
+    prompt_value(
+        Select::new(prompt, choices.to_vec())
+            .with_starting_cursor(choices.iter().position(|&c| c == default).unwrap_or(0))
+            .prompt(),
+    )
+    .map(|s| s.to_string())
 }
 
-pub fn pause() {
-    let _ = Text::new("Press Enter to continue").prompt();
+pub fn pause() -> Result<()> {
+    match prompt_outcome(Text::new("Press Enter to continue").prompt())? {
+        PromptOutcome::Value(_) | PromptOutcome::Back => Ok(()),
+        PromptOutcome::Interrupted => Err(LLMeterError::Interrupted.into()),
+    }
 }
 
 pub fn print_saved_paths(paths: &[PathBuf]) {
@@ -533,13 +574,19 @@ pub fn main_menu(config: &AppConfig, client: &ProviderClient) -> Result<()> {
         )?;
 
         match choice {
-            MenuAction::Select(0) => provider_setup_menu(config, client)?,
-            MenuAction::Select(1) => model_inventory_menu(config, client)?,
-            MenuAction::Select(2) => benchmark_menu(config, client)?,
-            MenuAction::Select(3) => report_menu(config)?,
+            MenuAction::Select(0) => {
+                return_to_menu_on_prompt_cancel(provider_setup_menu(config, client))?
+            }
+            MenuAction::Select(1) => {
+                return_to_menu_on_prompt_cancel(model_inventory_menu(config, client))?
+            }
+            MenuAction::Select(2) => {
+                return_to_menu_on_prompt_cancel(benchmark_menu(config, client))?
+            }
+            MenuAction::Select(3) => return_to_menu_on_prompt_cancel(report_menu(config))?,
             MenuAction::Select(4) => {
                 print_help_topic(None);
-                pause();
+                pause()?;
             }
             MenuAction::Select(5) | MenuAction::Exit => return Ok(()),
             _ => {}
@@ -553,7 +600,7 @@ pub fn provider_setup_menu(config: &AppConfig, client: &ProviderClient) -> Resul
             "Provider setup",
             &[
                 "Show current provider status",
-                "List supported provider presets",
+                "List provider presets and compatibility tiers",
                 "Probe provider capabilities",
                 "Set default provider",
                 "Back",
@@ -582,7 +629,7 @@ pub fn provider_setup_menu(config: &AppConfig, client: &ProviderClient) -> Resul
             MenuAction::Back | MenuAction::Exit | MenuAction::Select(4) => return Ok(()),
             _ => {}
         }
-        pause();
+        pause()?;
     }
 }
 
@@ -592,17 +639,22 @@ pub fn model_inventory_menu(config: &AppConfig, client: &ProviderClient) -> Resu
             "Model inventory",
             &[
                 "List exposed models",
+                "Refresh exposed models",
                 "Show raw model metadata",
                 "Estimate model cache footprint",
                 "Back",
             ],
         )?;
         match choice {
-            MenuAction::Select(0) => match client.list_models() {
+            MenuAction::Select(0) => match client.list_models_cached() {
                 Ok(models) => print_models(&models, config.provider),
                 Err(error) => println!("{} {error}", "Error:".red()),
             },
-            MenuAction::Select(1) => {
+            MenuAction::Select(1) => match client.refresh_model_catalog() {
+                Ok(models) => print_models(&models, config.provider),
+                Err(error) => println!("{} {error}", "Error:".red()),
+            },
+            MenuAction::Select(2) => {
                 let models = runner::installed_model_names(client)?;
                 let selected = choose_from_menu("Choose model", &models, false, false)?;
                 if let Some(model) = selected.first() {
@@ -612,11 +664,11 @@ pub fn model_inventory_menu(config: &AppConfig, client: &ProviderClient) -> Resu
                     }
                 }
             }
-            MenuAction::Select(2) => estimate_model_inventory_interactive(config, client)?,
-            MenuAction::Back | MenuAction::Exit | MenuAction::Select(3) => return Ok(()),
+            MenuAction::Select(3) => estimate_model_inventory_interactive(config, client)?,
+            MenuAction::Back | MenuAction::Exit | MenuAction::Select(4) => return Ok(()),
             _ => {}
         }
-        pause();
+        pause()?;
     }
 }
 
@@ -643,14 +695,14 @@ pub fn benchmark_menu(config: &AppConfig, client: &ProviderClient) -> Result<()>
             MenuAction::Select(1) => guided_performance_run(config, client)?,
             MenuAction::Select(2) => guided_standard_llm_run(config, client)?,
             MenuAction::Select(3) => guided_embeddings_run(config, client)?,
-            MenuAction::Select(4) => guided_quality_plan(),
+            MenuAction::Select(4) => guided_quality_plan()?,
             MenuAction::Select(5) => {
                 print_benchmark_catalog(None);
-                pause();
+                pause()?;
             }
             MenuAction::Select(6) => {
-                show_latest_report(config);
-                pause();
+                show_latest_report(config)?;
+                pause()?;
             }
             MenuAction::Select(7) => generate_report_interactive(config)?,
             MenuAction::Back | MenuAction::Exit | MenuAction::Select(8) => return Ok(()),
@@ -678,12 +730,12 @@ fn guided_embeddings_run(config: &AppConfig, client: &ProviderClient) -> Result<
     guided_benchmark_run_for_suite(config, client, BenchmarkSuite::Embeddings)
 }
 
-fn guided_quality_plan() {
+fn guided_quality_plan() -> Result<()> {
     print_quality_catalog();
     println!(
         "Use `llmeter quality plan --framework <name> --task <task> --model <model>` to build an executable dry-run plan."
     );
-    pause();
+    pause()
 }
 
 fn guided_benchmark_run_for_suite(
@@ -754,13 +806,16 @@ fn guided_benchmark_run_inner(config: &AppConfig, suite: BenchmarkSuite) -> Resu
 
     let runs = choose_number("Runs per benchmark", config.default_runs, 1, None)?;
     let max_tokens = choose_number("Max output tokens", config.default_max_tokens, 1, None)?;
+    let default_temperature = config.default_temperature.to_string();
     let raw_temperature = Text::new("temperature")
-        .with_default(&config.default_temperature.to_string())
-        .prompt()
-        .map_err(|e| anyhow::anyhow!("{e}"))?;
-    let temperature: f64 = raw_temperature
-        .parse()
-        .unwrap_or(config.default_temperature);
+        .with_default(&default_temperature)
+        .with_validator(|value: &str| match parse_temperature(value) {
+            Ok(_) => Ok(inquire::validator::Validation::Valid),
+            Err(error) => Ok(inquire::validator::Validation::Invalid(error.into())),
+        });
+    let raw_temperature = prompt_value(raw_temperature.prompt())?;
+    let temperature =
+        parse_temperature(&raw_temperature).map_err(|error| anyhow::anyhow!(error))?;
 
     let export = ask_choice("Save raw results", EXPORT_CHOICES, "both")?;
     let report = ask_choice("Generate formatted report", REPORT_CHOICES, "both")?;
@@ -800,7 +855,7 @@ fn guided_benchmark_run_inner(config: &AppConfig, suite: BenchmarkSuite) -> Resu
     )?;
     summarize_run(&run);
     print_saved_paths(&saved);
-    pause();
+    pause()?;
     Ok(())
 }
 
@@ -892,7 +947,7 @@ fn guided_performance_run_with_profile(
         stream_choice == "yes",
         None,
         std::collections::HashMap::new(),
-        LoadMeasurementMode::WarmBaseline,
+        LoadMeasurementMode::FirstRequestEstimate,
         2,
         TelemetryLevel::Standard,
         1000,
@@ -928,7 +983,7 @@ fn guided_performance_run_with_profile(
     )?;
     summarize_run(&run);
     print_saved_paths(&saved);
-    pause();
+    pause()?;
     Ok(())
 }
 
@@ -1071,10 +1126,7 @@ fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderCli
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_default();
     let hint = "Model cache directory to scan (leave empty to skip)";
-    let cache_dir = Text::new(hint)
-        .with_default(&default_path)
-        .prompt()
-        .map_err(|error| anyhow::anyhow!("{error}"))?;
+    let cache_dir = prompt_value(Text::new(hint).with_default(&default_path).prompt())?;
     let scan = !cache_dir.trim().is_empty();
     let plan = PerformancePlan::from_cli(
         config.provider,
@@ -1133,7 +1185,7 @@ fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderCli
         "Model",
         "Metadata ms",
         "Metadata bytes",
-        "Cache",
+        "Provider cache total",
         "Notes",
     ]);
     for item in measurements {
@@ -1170,13 +1222,13 @@ fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderCli
     Ok(())
 }
 
-fn show_latest_report(config: &AppConfig) {
+fn show_latest_report(config: &AppConfig) -> Result<()> {
     use crate::results::ResultStore;
     let store = ResultStore::new(&config.output_dir);
-    let files = store.latest_json_files(10);
+    let files = store.latest_json_files(10)?;
     if files.is_empty() {
         println!("{} No JSON benchmark result files found.", "Info:".dimmed());
-        return;
+        return Ok(());
     }
     let selected = choose_from_menu(
         "Select a result file",
@@ -1200,12 +1252,13 @@ fn show_latest_report(config: &AppConfig) {
         }
         _ => {}
     }
+    Ok(())
 }
 
 fn generate_report_interactive(config: &AppConfig) -> Result<()> {
     use crate::results::ResultStore;
     let store = ResultStore::new(&config.output_dir);
-    let files = store.latest_json_files(10);
+    let files = store.latest_json_files(10)?;
     if files.is_empty() {
         println!("{} No JSON benchmark result files found.", "Info:".dimmed());
         return Ok(());
@@ -1262,17 +1315,17 @@ fn report_menu(config: &AppConfig) -> Result<()> {
             MenuAction::Select(0) => {
                 use crate::results::ResultStore;
                 let store = ResultStore::new(&config.output_dir);
-                print_file_list(&store.latest_json_files(10), "Saved JSON results");
-                print_file_list(&store.latest_report_files(10), "Generated reports");
-                pause();
+                print_file_list(&store.latest_json_files(10)?, "Saved JSON results");
+                print_file_list(&store.latest_report_files(10)?, "Generated reports");
+                pause()?;
             }
             MenuAction::Select(1) => {
-                show_latest_report(config);
-                pause();
+                show_latest_report(config)?;
+                pause()?;
             }
             MenuAction::Select(2) => {
                 generate_report_interactive(config)?;
-                pause();
+                pause()?;
             }
             MenuAction::Back | MenuAction::Exit | MenuAction::Select(3) => return Ok(()),
             _ => {}
@@ -1283,7 +1336,7 @@ fn report_menu(config: &AppConfig) -> Result<()> {
 pub fn print_help_topic(topic: Option<&str>) {
     match topic.unwrap_or("overview").to_ascii_lowercase().as_str() {
         "providers" => {
-            println!("Providers — Supported OpenAI-compatible LLM backends:");
+            println!("Providers — OpenAI-compatible provider presets:");
             println!(
                 "  Use `llmeter providers list` for the full catalog with compatibility tiers"
             );
@@ -1385,7 +1438,10 @@ fn fmt_digits(value: Option<f64>, digits: usize) -> String {
 mod tests {
     use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
-    use super::{menu_action_for_key, move_menu_selection, MenuAction};
+    use super::{
+        menu_action_for_key, move_menu_selection, prompt_outcome, take_interrupt_requested,
+        MenuAction, PromptOutcome,
+    };
 
     #[test]
     fn enter_release_cannot_select_a_menu_item() {
@@ -1407,6 +1463,10 @@ mod tests {
             menu_action_for_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)),
             Some(MenuAction::Exit)
         );
+        assert_eq!(
+            menu_action_for_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL)),
+            Some(MenuAction::Exit)
+        );
     }
 
     #[test]
@@ -1420,5 +1480,18 @@ mod tests {
             assert_eq!(move_menu_selection(0, choices_len, 1), 1);
         }
         assert_eq!(move_menu_selection(4, 0, 1), 0);
+    }
+
+    #[test]
+    fn inquire_cancel_and_interrupt_map_to_shared_prompt_outcomes() {
+        assert_eq!(
+            prompt_outcome::<u8>(Err(inquire::InquireError::OperationCanceled)).unwrap(),
+            PromptOutcome::Back
+        );
+        assert_eq!(
+            prompt_outcome::<u8>(Err(inquire::InquireError::OperationInterrupted)).unwrap(),
+            PromptOutcome::Interrupted
+        );
+        assert!(take_interrupt_requested());
     }
 }

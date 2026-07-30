@@ -58,11 +58,13 @@ LLMeter can also install a managed copy of itself under `<LLMETER_HOME>/bin`. Th
 llmeter install
 ```
 
-This writes:
+On Windows this writes:
 
 - `llmeter.exe`
 - `llmeter.cmd`
 - `llmeter.ps1`
+
+On Unix it installs an executable named `llmeter` and does not create Windows launcher files.
 
 Use `--force` to overwrite an existing managed install:
 
@@ -98,7 +100,7 @@ llmeter uninstall --purge-home
 
 ### Prebuilt binaries
 
-Public prebuilt binary distribution is not currently approved. Build from source or copy a locally verified binary. If public distribution is approved later, artifact targets and checksum/signing requirements must be implemented and validated before this section claims availability.
+Authorized `v*` tags publish validated GNU/Linux x86-64 and Windows x86-64 archives through the release workflow. Each archive contains the binary, README, LICENSE, and CHANGELOG, and the release includes `SHA256SUMS`. macOS remains a source-compatibility goal rather than a release artifact.
 
 ## Dependencies
 
@@ -118,4 +120,4 @@ Windows x86-64 is Tier 1. Ubuntu GNU/Linux x86-64 is Tier 2 and requires compati
 
 The binary uses `rustls`, so it does not require an OpenSSL runtime dependency. A musl-targeted Linux build is the portable Linux option; the released GNU/Linux artifact still has a glibc compatibility boundary.
 
-Last updated: 2026-07-18
+Last updated: 2026-07-30

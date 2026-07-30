@@ -1,6 +1,6 @@
 # LLMeter User Manual
 
-LLMeter benchmarks local OpenAI-compatible LLM providers through `/v1` APIs. It supports Ollama, LM Studio, llama.cpp, and custom OpenAI-compatible local servers.
+LLMeter benchmarks local OpenAI-compatible LLM providers through `/v1` APIs. It provides presets for Ollama, LM Studio, llama.cpp, and custom OpenAI-compatible local servers; actual availability and capability support depend on the server you run and the endpoints it exposes.
 
 LLMeter does not start or stop provider servers. Start your provider externally, then use LLMeter to check status, list models, run benchmarks, and generate reports.
 
@@ -253,4 +253,4 @@ For LM Studio, load a model and start the local server. For llama.cpp, start `ll
 
 Not every provider/model supports every OpenAI-compatible capability. `responses-generation`, `structured-output`, `tool-calling`, and `embeddings` may fail independently. These failures are saved as error records in JSON/CSV and shown in reports.
 
-Last updated: 2026-07-18
+Last updated: 2026-07-30

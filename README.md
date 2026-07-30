@@ -14,7 +14,7 @@ Key capabilities:
 
 LLMeter does not start or stop provider servers. Start the local provider first, then point LLMeter at its `/v1` base URL.
 
-Windows x86-64 is the primary supported platform, with Ubuntu GNU/Linux covered as a compatibility tier. See [SUPPORTED_PLATFORMS.md](SUPPORTED_PLATFORMS.md) for exact tiers, external prerequisites, and current distribution status.
+Windows x86-64 is the primary supported platform, with Ubuntu GNU/Linux covered as a compatibility tier. Authorized version tags produce only those two release artifacts; macOS remains deferred. See [SUPPORTED_PLATFORMS.md](SUPPORTED_PLATFORMS.md) for exact tiers and external prerequisites.
 
 ## 2. Quick Start
 
@@ -112,4 +112,4 @@ The codebase is organized under:
 ## 7. License
 Distributed under the MIT License. See [LICENSE](LICENSE).
 
-Last updated: 2026-07-18
+Last updated: 2026-07-30

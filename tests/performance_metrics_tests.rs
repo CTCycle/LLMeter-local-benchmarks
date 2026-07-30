@@ -1,4 +1,6 @@
-use llmeter::performance::metrics::{percentile, summarize_traces, RequestTiming, RequestTrace};
+use llmeter::performance::metrics::{
+    inter_token_latency_ms, percentile, summarize_traces, RequestTiming, RequestTrace,
+};
 use llmeter::providers::ProviderKind;
 
 fn trace(
@@ -23,12 +25,12 @@ fn trace(
         http_status: Some(200),
         input_tokens: Some(128),
         output_tokens,
-        token_timings: Vec::new(),
+        chunk_timings: Vec::new(),
         timing: RequestTiming {
             wall_time_ms,
             ttft_ms,
-            tpot_ms: Some(12.0),
             itl_ms: Some(9.0),
+            inter_chunk_latency_ms: Some(12.0),
             generation_wall_ms: ttft_ms.map(|ttft| wall_time_ms - ttft),
             output_tokens_per_second_including_ttft: output_tokens
                 .map(|tokens| tokens as f64 / (wall_time_ms / 1000.0)),
@@ -62,6 +64,8 @@ fn summarize_traces_computes_rates_and_counts() {
     assert_eq!(summary.latency.error_count, 0);
     assert_eq!(summary.throughput.total_input_tokens, 256);
     assert_eq!(summary.throughput.total_output_tokens, 100);
+    assert_eq!(summary.throughput.output_token_sample_count, 2);
+    assert_eq!(summary.throughput.output_token_coverage, 1.0);
     assert!(summary.throughput.requests_per_second.unwrap() > 6.0);
     assert_eq!(summary.latency.wall_time_ms_p50, Some(100.0));
     assert_eq!(summary.latency.generation_wall_ms_p50, Some(80.0));
@@ -133,4 +137,48 @@ fn invalid_measurements_are_filtered_and_zero_duration_has_no_rate() {
     assert_eq!(summary.latency.ttft_ms_mean, Some(20.0));
     assert!(summary.throughput.requests_per_second.is_none());
     assert!(summary.throughput.output_tokens_per_second.is_none());
+}
+
+#[test]
+fn partial_usage_exposes_coverage_and_suppresses_token_averages() {
+    let mut missing = trace(2, 100.0, Some(20.0), None);
+    missing.input_tokens = None;
+    let summary = summarize_traces(&[trace(1, 100.0, Some(20.0), Some(10)), missing], 200.0);
+
+    assert_eq!(summary.throughput.output_token_sample_count, 1);
+    assert_eq!(summary.throughput.input_token_sample_count, 1);
+    assert_eq!(summary.throughput.output_token_coverage, 0.5);
+    assert_eq!(summary.throughput.input_token_coverage, 0.5);
+    assert!(summary.throughput.output_tokens_per_second.is_none());
+    assert!(summary.throughput.input_tokens_per_second.is_none());
+    assert!(summary.throughput.mean_output_tokens_per_request.is_none());
+    assert!(summary
+        .throughput
+        .output_tokens_per_second_including_ttft
+        .is_none());
+}
+
+#[test]
+fn inter_token_latency_requires_two_usage_tokens_and_streaming_ttft() {
+    assert_eq!(
+        inter_token_latency_ms(100.0, Some(20.0), Some(0), true),
+        None
+    );
+    assert_eq!(
+        inter_token_latency_ms(100.0, Some(20.0), Some(1), true),
+        None
+    );
+    assert_eq!(
+        inter_token_latency_ms(100.0, Some(20.0), Some(2), true),
+        Some(80.0)
+    );
+    assert_eq!(
+        inter_token_latency_ms(100.0, Some(20.0), Some(5), false),
+        None
+    );
+    assert_eq!(inter_token_latency_ms(100.0, None, Some(5), true), None);
+    assert_eq!(
+        inter_token_latency_ms(20.0, Some(100.0), Some(5), true),
+        None
+    );
 }

@@ -2,12 +2,19 @@
 
 All notable changes are documented here.
 
-## Unreleased
+## 0.3.0 - 2026-07-30
 
-- Normalize new benchmark result files to schema version `2.1`.
+- Normalize new benchmark result files to schema version `2.4`.
+- Correct streaming metric semantics: chunk arrival timing is separate from ITL, which requires provider-reported output token usage.
+- Replace misleading cold/native load modes with an explicitly client-observed first-request estimate.
+- Separate cached model catalogs from fresh provider measurements and add explicit invalidation.
+- Report token usage sample counts and coverage instead of silently dividing partial usage by all successful requests.
+- Correct consistency exact-match ratios to use matching response pairs.
+- Centralize standard benchmark input validation at both CLI and runner boundaries.
+- Normalize nested prompt cancellation and interruption handling.
 - Add performance matrix dry-run estimates and request-budget safety checks.
 - Harden Markdown and HTML report escaping for untrusted model, benchmark, error, preview, and metric values.
 - Add mock OpenAI-compatible provider E2E coverage for models, streaming chat benchmarks, unsupported endpoint errors, and report generation.
-- Add release workflow scaffolding for checksummed Linux, macOS, and Windows artifacts.
+- Add tag-gated checksummed Linux and Windows release artifacts with archive smoke validation.
 
-Last updated: 2026-07-01
+Last updated: 2026-07-30

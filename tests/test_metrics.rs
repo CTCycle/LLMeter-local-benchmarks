@@ -16,7 +16,7 @@ fn make_result(output_tokens: u64, wall_time_ns: u128) -> ApiResult {
         }),
         wall_time_ns,
         time_to_first_token_ns: Some(300_000_000),
-        token_timings_ns: Vec::new(),
+        chunk_timings_ns: Vec::new(),
         http_status: Some(200),
     }
 }

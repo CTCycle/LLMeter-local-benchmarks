@@ -1,102 +1,167 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Release tag to build
-        required: true
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*"
 
 permissions:
   contents: write
 
 jobs:
+  validate:
+    name: Validate release metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag, package version, and changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          cargo_version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
+          test "$version" = "$cargo_version"
+          grep -Eq "^##[[:space:]]+$version([[:space:]]|$)" CHANGELOG.md
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Check
+        run: cargo check --locked --all-targets --all-features
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+
+      - name: Tests
+        run: cargo test --locked --all-targets --all-features -- --test-threads=1
+
+      - name: Rustdoc
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --locked --no-deps --all-features
+
+      - name: Dependency audit
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+
+      - name: Package dry run
+        run: cargo publish --locked --dry-run
+
   build:
-    name: Build ${{ matrix.artifact }}
+    name: Build ${{ matrix.target }}
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact: llmeter-linux-x86_64
-            bin: llmeter
-            archive: tar.gz
-          - os: macos-13
-            target: x86_64-apple-darwin
-            artifact: llmeter-macos-x86_64
-            bin: llmeter
-            archive: tar.gz
-          - os: macos-14
-            target: aarch64-apple-darwin
-            artifact: llmeter-macos-aarch64
-            bin: llmeter
+            binary: llmeter
             archive: tar.gz
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact: llmeter-windows-x86_64
-            bin: llmeter.exe
+            binary: llmeter.exe
             archive: zip
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
           target: ${{ matrix.target }}
-          components: clippy
-
-      - name: Check formatting
-        run: cargo fmt --check
-
-      - name: Run clippy
-        run: cargo clippy --target ${{ matrix.target }} -- -D warnings
-
-      - name: Run tests
-        run: cargo test -- --test-threads=1
 
       - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --locked --release --all-features --target ${{ matrix.target }}
 
-      - name: Package Unix artifact
+      - name: Run packaged mock-provider suite
+        env:
+          LLMETER_BIN: target/${{ matrix.target }}/release/${{ matrix.binary }}
+        run: cargo test --locked --all-features --test mock_provider_e2e -- --test-threads=1
+
+      - name: Package Linux archive
         if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "dist/${{ matrix.artifact }}"
-          cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "dist/${{ matrix.artifact }}/"
-          cp README.md LICENSE "dist/${{ matrix.artifact }}/"
-          tar -C dist -czf "dist/${{ matrix.artifact }}.tar.gz" "${{ matrix.artifact }}"
-          shasum -a 256 "dist/${{ matrix.artifact }}.tar.gz" > "dist/${{ matrix.artifact }}.tar.gz.sha256"
+          version="${GITHUB_REF_NAME#v}"
+          name="llmeter-v${version}-${{ matrix.target }}"
+          mkdir -p "dist/${name}"
+          cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/${name}/"
+          cp README.md LICENSE CHANGELOG.md "dist/${name}/"
+          tar -C dist -czf "dist/${name}.tar.gz" "${name}"
+          mkdir -p "dist/smoke"
+          tar -C dist/smoke -xzf "dist/${name}.tar.gz"
+          extracted="dist/smoke/${name}"
+          test "$(find "$extracted" -maxdepth 1 -type f | wc -l)" -eq 4
+          test "$(find "$extracted" -maxdepth 1 -type f -printf '%f\n' | sort | tr '\n' ' ')" = "CHANGELOG.md LICENSE README.md ${{ matrix.binary }} "
+          "$extracted/${{ matrix.binary }}" --version
+          "$extracted/${{ matrix.binary }}" --help >/dev/null
 
-      - name: Package Windows artifact
+      - name: Run extracted Linux binary mock-provider suite
+        if: runner.os != 'Windows'
+        env:
+          LLMETER_BIN: dist/smoke/llmeter-${{ github.ref_name }}-${{ matrix.target }}/${{ matrix.binary }}
+        run: cargo test --locked --all-features --test mock_provider_e2e -- --test-threads=1
+
+      - name: Package Windows archive
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path "dist/${{ matrix.artifact }}" | Out-Null
-          Copy-Item "target/${{ matrix.target }}/release/${{ matrix.bin }}" "dist/${{ matrix.artifact }}/"
-          Copy-Item README.md,LICENSE "dist/${{ matrix.artifact }}/"
-          Compress-Archive -Path "dist/${{ matrix.artifact }}/*" -DestinationPath "dist/${{ matrix.artifact }}.zip" -Force
-          $hash = Get-FileHash "dist/${{ matrix.artifact }}.zip" -Algorithm SHA256
-          "$($hash.Hash.ToLowerInvariant())  ${{ matrix.artifact }}.zip" | Set-Content -Path "dist/${{ matrix.artifact }}.zip.sha256" -NoNewline
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          $name = "llmeter-v$version-${{ matrix.target }}"
+          New-Item -ItemType Directory -Force -Path "dist/$name" | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/$name/"
+          Copy-Item README.md, LICENSE, CHANGELOG.md "dist/$name/"
+          Compress-Archive -Path "dist/$name" -DestinationPath "dist/$name.zip" -Force
+          New-Item -ItemType Directory -Force -Path dist/smoke | Out-Null
+          Expand-Archive -Path "dist/$name.zip" -DestinationPath dist/smoke -Force
+          $extracted = "dist/smoke/$name"
+          $files = @(Get-ChildItem -LiteralPath $extracted -File | Select-Object -ExpandProperty Name | Sort-Object)
+          if ($files.Count -ne 4 -or ($files -join ',') -ne "CHANGELOG.md,LICENSE,llmeter.exe,README.md") { throw "Unexpected archive contents: $($files -join ', ')" }
+          & "$extracted/${{ matrix.binary }}" --version
+          & "$extracted/${{ matrix.binary }}" --help | Out-Null
+
+      - name: Run extracted Windows binary mock-provider suite
+        if: runner.os == 'Windows'
+        env:
+          LLMETER_BIN: dist/smoke/llmeter-${{ github.ref_name }}-${{ matrix.target }}/${{ matrix.binary }}
+        run: cargo test --locked --all-features --test mock_provider_e2e -- --test-threads=1
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: |
-            dist/${{ matrix.artifact }}.${{ matrix.archive }}
-            dist/${{ matrix.artifact }}.${{ matrix.archive }}.sha256
+          name: release-${{ matrix.target }}
+          path: dist/*.*
           if-no-files-found: error
 
-      - name: Upload release assets
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
+  publish:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: release-*
+          merge-multiple: true
+
+      - name: Create checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum dist/*.tar.gz dist/*.zip > dist/SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/${{ matrix.artifact }}.${{ matrix.archive }}
-            dist/${{ matrix.artifact }}.${{ matrix.archive }}.sha256
+            dist/*.tar.gz
+            dist/*.zip
+            dist/SHA256SUMS

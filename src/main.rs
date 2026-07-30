@@ -18,6 +18,12 @@ fn main() {
     match result {
         Ok(code) => process::exit(code),
         Err(err) => {
+            if err.downcast_ref::<LLMeterError>() == Some(&LLMeterError::Interrupted) {
+                process::exit(130);
+            }
+            if err.downcast_ref::<LLMeterError>() == Some(&LLMeterError::Canceled) {
+                process::exit(0);
+            }
             if err.downcast_ref::<LLMeterError>().is_some() {
                 eprintln!("{} {}", "Error:".red().bold(), err);
                 process::exit(2);
@@ -71,7 +77,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
         }
         Some(cli::Commands::Models { json }) => {
             let client = ProviderClient::new(config.provider, &config.base_url, config.timeout)?;
-            let models = client.list_models()?;
+            let models = client.list_models_fresh()?;
             if json {
                 println!("{}", serde_json::to_string_pretty(&models)?);
             } else {

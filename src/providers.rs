@@ -221,7 +221,7 @@ pub struct ApiResult {
     pub raw: Value,
     pub wall_time_ns: u128,
     pub time_to_first_token_ns: Option<u128>,
-    pub token_timings_ns: Vec<u128>,
+    pub chunk_timings_ns: Vec<u128>,
     pub http_status: Option<u16>,
 }
 
@@ -381,7 +381,7 @@ impl ProviderClient {
     }
 
     pub fn status(&self) -> ProviderStatus {
-        match self.list_models() {
+        match self.list_models_fresh() {
             Ok(models) => ProviderStatus {
                 provider: self.provider,
                 base_url: self.base_url.clone(),
@@ -403,7 +403,7 @@ impl ProviderClient {
         self.status().running
     }
 
-    pub fn list_models(&self) -> anyhow::Result<Vec<Value>> {
+    pub fn list_models_cached(&self) -> anyhow::Result<Vec<Value>> {
         if let Some(models) = self
             .model_catalog
             .lock()
@@ -415,6 +415,10 @@ impl ProviderClient {
             return Ok(models);
         }
 
+        self.list_models_fresh()
+    }
+
+    pub fn list_models_fresh(&self) -> anyhow::Result<Vec<Value>> {
         let (payload, _) = self
             .get_json("models")
             .map_err(|error| self.provider_failure("list models", error))?;
@@ -434,9 +438,21 @@ impl ProviderClient {
         Ok(models)
     }
 
+    pub fn invalidate_model_catalog(&self) -> anyhow::Result<()> {
+        *self.model_catalog.lock().map_err(|_| {
+            LLMeterError::Provider("Model catalog cache lock was poisoned.".to_string())
+        })? = None;
+        Ok(())
+    }
+
+    pub fn refresh_model_catalog(&self) -> anyhow::Result<Vec<Value>> {
+        self.invalidate_model_catalog()?;
+        self.list_models_fresh()
+    }
+
     pub fn model_names(&self) -> anyhow::Result<Vec<String>> {
         Ok(self
-            .list_models()?
+            .list_models_cached()?
             .iter()
             .filter_map(|m| {
                 m.get("id")
@@ -449,7 +465,7 @@ impl ProviderClient {
     }
 
     pub fn show_model(&self, model: &str) -> anyhow::Result<Value> {
-        let models = self.list_models()?;
+        let models = self.list_models_cached()?;
         models
             .into_iter()
             .find(|m| {
@@ -543,7 +559,7 @@ impl ProviderClient {
             raw: payload,
             wall_time_ns: ended.duration_since(started).as_nanos(),
             time_to_first_token_ns: None,
-            token_timings_ns: Vec::new(),
+            chunk_timings_ns: Vec::new(),
             http_status: Some(status.as_u16()),
         })
     }
@@ -569,7 +585,7 @@ impl ProviderClient {
 
         let mut first_token_at: Option<Instant> = None;
         let mut response_text = String::new();
-        let mut token_timings_ns = Vec::new();
+        let mut chunk_timings_ns = Vec::new();
         let mut final_payload = serde_json::json!({});
         let mut reader = BufReader::new(response);
 
@@ -583,7 +599,7 @@ impl ProviderClient {
                     started,
                     &mut first_token_at,
                     &mut response_text,
-                    &mut token_timings_ns,
+                    &mut chunk_timings_ns,
                     &mut final_payload,
                 )? {
                     break;
@@ -601,7 +617,7 @@ impl ProviderClient {
                 started,
                 &mut first_token_at,
                 &mut response_text,
-                &mut token_timings_ns,
+                &mut chunk_timings_ns,
                 &mut final_payload,
             )?;
         }
@@ -621,7 +637,7 @@ impl ProviderClient {
             raw: final_payload,
             wall_time_ns: ended.duration_since(started).as_nanos(),
             time_to_first_token_ns: first_token_at.map(|t| t.duration_since(started).as_nanos()),
-            token_timings_ns,
+            chunk_timings_ns,
             http_status: Some(status.as_u16()),
         })
     }
@@ -712,7 +728,7 @@ fn process_stream_event(
     started: Instant,
     first_token_at: &mut Option<Instant>,
     response_text: &mut String,
-    token_timings_ns: &mut Vec<u128>,
+    chunk_timings_ns: &mut Vec<u128>,
     final_payload: &mut Value,
 ) -> anyhow::Result<bool> {
     if event_data.is_empty() {
@@ -728,7 +744,7 @@ fn process_stream_event(
         if first_token_at.is_none() {
             *first_token_at = Some(now);
         }
-        token_timings_ns.push(now.duration_since(started).as_nanos());
+        chunk_timings_ns.push(now.duration_since(started).as_nanos());
         response_text.push_str(&token);
     }
     if chunk.get("usage").is_some() {
@@ -844,7 +860,7 @@ mod tests {
     fn list_models_returns_friendly_provider_error() {
         let client =
             ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 0.1).unwrap();
-        let error = client.list_models().unwrap_err().to_string();
+        let error = client.list_models_fresh().unwrap_err().to_string();
         assert!(error.contains("Failed to list models from Ollama"));
         assert!(error.contains("http://127.0.0.1:1/v1"));
     }
@@ -908,7 +924,7 @@ mod tests {
         let mut event_data = Vec::new();
         let mut first_token_at = None;
         let mut response_text = String::new();
-        let mut token_timings_ns = Vec::new();
+        let mut chunk_timings_ns = Vec::new();
         let mut final_payload = json!({});
 
         while let Some(line) = read_stream_line_limited(&mut reader).unwrap() {
@@ -920,7 +936,7 @@ mod tests {
                     started,
                     &mut first_token_at,
                     &mut response_text,
-                    &mut token_timings_ns,
+                    &mut chunk_timings_ns,
                     &mut final_payload,
                 )
                 .unwrap()
@@ -933,7 +949,7 @@ mod tests {
         }
 
         assert_eq!(response_text, "hello");
-        assert_eq!(token_timings_ns.len(), 1);
+        assert_eq!(chunk_timings_ns.len(), 1);
         assert!(first_token_at.is_some());
     }
 }

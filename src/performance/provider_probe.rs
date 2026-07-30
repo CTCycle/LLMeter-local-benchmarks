@@ -89,7 +89,7 @@ pub fn probe_provider_capabilities_with_progress(
     );
     let started = Instant::now();
     probe_progress.start("Checking model catalog", None, "Models");
-    let models_result = client.list_models();
+    let models_result = client.list_models_fresh();
     let model_error = models_result
         .as_ref()
         .err()
