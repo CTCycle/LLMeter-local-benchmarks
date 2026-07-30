@@ -118,8 +118,12 @@ pub fn validate_models(
     client: &ProviderClient,
     selected_models: &[String],
 ) -> anyhow::Result<Vec<String>> {
-    let available: std::collections::HashSet<String> =
-        installed_model_names(client)?.into_iter().collect();
+    let available: std::collections::HashSet<String> = client
+        .list_models_fresh()?
+        .iter()
+        .filter_map(|model| model.get("id").and_then(|value| value.as_str()))
+        .map(ToOwned::to_owned)
+        .collect();
     let mut requested: Vec<String> = Vec::new();
     let mut missing: Vec<String> = Vec::new();
 
@@ -203,6 +207,7 @@ pub fn run_benchmarks(
         timeout: config.timeout,
         options: request.extra_options.clone(),
     };
+    context.validate()?;
 
     let plan = BenchmarkExecutionPlan::new(models.len(), &benchmarks, &context);
     let overall_total_units = plan.total_steps + tail_progress_units;
@@ -426,8 +431,8 @@ pub fn command_report(config: &AppConfig, report_cmd: &ReportCommands) -> anyhow
 
     match report_cmd {
         ReportCommands::List => {
-            let json_files = store.latest_json_files(10);
-            let report_files = store.latest_report_files(10);
+            let json_files = store.latest_json_files(10)?;
+            let report_files = store.latest_report_files(10)?;
             crate::ui::print_file_list(&json_files, "Saved JSON results");
             crate::ui::print_file_list(&report_files, "Generated reports");
         }
@@ -476,7 +481,7 @@ fn resolve_result_file(config: &AppConfig, maybe_path: Option<&str>) -> anyhow::
     }
 
     let store = ResultStore::new(&config.output_dir);
-    let latest = store.latest_json_files(1);
+    let latest = store.latest_json_files(1)?;
     match latest.into_iter().next() {
         Some(path) => Ok(path),
         None => Err(LLMeterError::Io(format!(

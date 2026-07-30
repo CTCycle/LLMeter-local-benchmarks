@@ -6,8 +6,8 @@ use crate::providers::ProviderKind;
 pub struct RequestTiming {
     pub wall_time_ms: f64,
     pub ttft_ms: Option<f64>,
-    pub tpot_ms: Option<f64>,
     pub itl_ms: Option<f64>,
+    pub inter_chunk_latency_ms: Option<f64>,
     pub generation_wall_ms: Option<f64>,
     pub output_tokens_per_second_including_ttft: Option<f64>,
     pub output_tokens_per_second_excluding_ttft: Option<f64>,
@@ -15,7 +15,7 @@ pub struct RequestTiming {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TokenTiming {
+pub struct ChunkTiming {
     pub index: usize,
     pub since_start_ms: f64,
     pub delta_ms: Option<f64>,
@@ -38,7 +38,7 @@ pub struct RequestTrace {
     pub http_status: Option<u16>,
     pub input_tokens: Option<u64>,
     pub output_tokens: Option<u64>,
-    pub token_timings: Vec<TokenTiming>,
+    pub chunk_timings: Vec<ChunkTiming>,
     pub timing: RequestTiming,
 }
 
@@ -65,12 +65,11 @@ pub struct LatencySummary {
     pub ttft_ms_p50: Option<f64>,
     pub ttft_ms_p95: Option<f64>,
     pub ttft_ms_p99: Option<f64>,
-    pub tpot_ms_p50: Option<f64>,
-    pub tpot_ms_p95: Option<f64>,
     pub itl_ms_p50: Option<f64>,
     pub itl_ms_p90: Option<f64>,
     pub itl_ms_p95: Option<f64>,
     pub itl_ms_p99: Option<f64>,
+    pub inter_chunk_latency_ms_p50: Option<f64>,
     pub generation_wall_ms_p50: Option<f64>,
     pub generation_wall_ms_p95: Option<f64>,
     pub generation_wall_ms_p99: Option<f64>,
@@ -87,6 +86,10 @@ pub struct ThroughputSummary {
     pub output_tokens_per_second_excluding_ttft: Option<f64>,
     pub total_input_tokens: u64,
     pub total_output_tokens: u64,
+    pub input_token_sample_count: usize,
+    pub output_token_sample_count: usize,
+    pub input_token_coverage: f64,
+    pub output_token_coverage: f64,
     pub mean_input_tokens_per_request: Option<f64>,
     pub mean_output_tokens_per_request: Option<f64>,
 }
@@ -126,6 +129,28 @@ pub fn percentile(values: &[f64], p: f64) -> Option<f64> {
     sorted.get(rank).copied()
 }
 
+/// Calculates inter-token latency from provider-reported usage and streaming timing.
+/// Chunk arrival timing is intentionally not used as a token metric.
+pub fn inter_token_latency_ms(
+    wall_time_ms: f64,
+    ttft_ms: Option<f64>,
+    output_tokens: Option<u64>,
+    streaming: bool,
+) -> Option<f64> {
+    if !streaming || !wall_time_ms.is_finite() || wall_time_ms < 0.0 {
+        return None;
+    }
+    let tokens = output_tokens?;
+    if tokens < 2 {
+        return None;
+    }
+    let ttft = ttft_ms?;
+    if !ttft.is_finite() || ttft < 0.0 || ttft > wall_time_ms {
+        return None;
+    }
+    Some((wall_time_ms - ttft) / (tokens - 1) as f64)
+}
+
 fn percentile_if_supported(values: &[f64], p: f64) -> Option<f64> {
     let minimum_samples = if p >= 99.0 {
         100
@@ -156,14 +181,14 @@ pub fn summarize_traces(traces: &[RequestTrace], scenario_wall_time_ms: f64) -> 
         .filter_map(|trace| trace.timing.ttft_ms)
         .filter(|value| value.is_finite() && *value >= 0.0)
         .collect();
-    let tpot: Vec<f64> = successful
-        .iter()
-        .filter_map(|trace| trace.timing.tpot_ms)
-        .filter(|value| value.is_finite() && *value >= 0.0)
-        .collect();
     let itl: Vec<f64> = successful
         .iter()
         .filter_map(|trace| trace.timing.itl_ms)
+        .filter(|value| value.is_finite() && *value >= 0.0)
+        .collect();
+    let inter_chunk: Vec<f64> = successful
+        .iter()
+        .filter_map(|trace| trace.timing.inter_chunk_latency_ms)
         .filter(|value| value.is_finite() && *value >= 0.0)
         .collect();
     let generation_wall: Vec<f64> = successful
@@ -187,6 +212,16 @@ pub fn summarize_traces(traces: &[RequestTrace], scenario_wall_time_ms: f64) -> 
         .iter()
         .filter_map(|trace| trace.output_tokens)
         .sum::<u64>();
+    let input_token_sample_count = successful
+        .iter()
+        .filter(|trace| trace.input_tokens.is_some())
+        .count();
+    let output_token_sample_count = successful
+        .iter()
+        .filter(|trace| trace.output_tokens.is_some())
+        .count();
+    let input_token_coverage = coverage(input_token_sample_count, success_count);
+    let output_token_coverage = coverage(output_token_sample_count, success_count);
 
     PerformanceSummary {
         latency: LatencySummary {
@@ -215,35 +250,50 @@ pub fn summarize_traces(traces: &[RequestTrace], scenario_wall_time_ms: f64) -> 
             ttft_ms_p50: percentile(&ttft, 50.0),
             ttft_ms_p95: percentile_if_supported(&ttft, 95.0),
             ttft_ms_p99: percentile_if_supported(&ttft, 99.0),
-            tpot_ms_p50: percentile(&tpot, 50.0),
-            tpot_ms_p95: percentile_if_supported(&tpot, 95.0),
             itl_ms_p50: percentile(&itl, 50.0),
             itl_ms_p90: percentile(&itl, 90.0),
             itl_ms_p95: percentile_if_supported(&itl, 95.0),
             itl_ms_p99: percentile_if_supported(&itl, 99.0),
+            inter_chunk_latency_ms_p50: percentile(&inter_chunk, 50.0),
             generation_wall_ms_p50: percentile(&generation_wall, 50.0),
             generation_wall_ms_p95: percentile_if_supported(&generation_wall, 95.0),
             generation_wall_ms_p99: percentile_if_supported(&generation_wall, 99.0),
         },
         throughput: ThroughputSummary {
             scenario_wall_time_ms,
-            output_tokens_per_second: rate(total_output_tokens as f64, scenario_wall_time_ms),
-            input_tokens_per_second: rate(total_input_tokens as f64, scenario_wall_time_ms),
+            output_tokens_per_second: (output_token_sample_count == success_count)
+                .then(|| rate(total_output_tokens as f64, scenario_wall_time_ms))
+                .flatten(),
+            input_tokens_per_second: (input_token_sample_count == success_count)
+                .then(|| rate(total_input_tokens as f64, scenario_wall_time_ms))
+                .flatten(),
             requests_per_second: rate(request_count as f64, scenario_wall_time_ms),
             successful_requests_per_second: rate(success_count as f64, scenario_wall_time_ms),
-            output_tokens_per_second_including_ttft: mean(&including_ttft_tps),
-            output_tokens_per_second_excluding_ttft: mean(&excluding_ttft_tps),
+            output_tokens_per_second_including_ttft: (output_token_sample_count == success_count)
+                .then(|| mean(&including_ttft_tps))
+                .flatten(),
+            output_tokens_per_second_excluding_ttft: (output_token_sample_count == success_count)
+                .then(|| mean(&excluding_ttft_tps))
+                .flatten(),
             total_input_tokens,
             total_output_tokens,
-            mean_input_tokens_per_request: if success_count == 0 {
-                None
+            input_token_sample_count,
+            output_token_sample_count,
+            input_token_coverage,
+            output_token_coverage,
+            mean_input_tokens_per_request: if input_token_sample_count == success_count
+                && success_count > 0
+            {
+                Some(total_input_tokens as f64 / input_token_sample_count as f64)
             } else {
-                Some(total_input_tokens as f64 / success_count as f64)
+                None
             },
-            mean_output_tokens_per_request: if success_count == 0 {
-                None
+            mean_output_tokens_per_request: if output_token_sample_count == success_count
+                && success_count > 0
+            {
+                Some(total_output_tokens as f64 / output_token_sample_count as f64)
             } else {
-                Some(total_output_tokens as f64 / success_count as f64)
+                None
             },
         },
         errors: ErrorSummary {
@@ -311,5 +361,13 @@ fn rate(units: f64, wall_time_ms: f64) -> Option<f64> {
         None
     } else {
         Some(units / (wall_time_ms / 1000.0))
+    }
+}
+
+fn coverage(sample_count: usize, success_count: usize) -> f64 {
+    if success_count == 0 {
+        0.0
+    } else {
+        sample_count as f64 / success_count as f64
     }
 }

@@ -76,14 +76,17 @@ Performance runs add dedicated sections for:
 ## Performance metric definitions
 
 - `wall_time_ms_*` - end-to-end request wall-clock latency percentiles measured by the CLI
-- `ttft_ms_*` - time to first streamed token percentiles when streaming is enabled and the provider emits token chunks
+- `ttft_ms_*` - client-observed time to the first non-empty streamed content chunk; this is not tokenizer-confirmed
 - `generation_wall_ms_*` - wall time minus TTFT when streaming timing exists
-- `tpot_ms_*` - average time per output token derived from token arrival deltas
-- `itl_ms_*` - average inter-token latency derived from token arrival deltas
+- `inter_chunk_latency_ms_*` - inter-arrival latency for non-empty streamed response chunks; this is not a token metric
+- `itl_ms_*` - inter-token latency calculated as `(wall_time_ms - ttft_ms) / (output_tokens - 1)` only for streamed requests with provider-reported output usage of at least two tokens
 - `output_tokens_per_second` - aggregate output token throughput across the scenario
 - `output_tokens_per_second_including_ttft` - per-request output throughput over full wall time
 - `output_tokens_per_second_excluding_ttft` - per-request output throughput over generation wall time when TTFT exists
 - `input_tokens_per_second` - aggregate input token throughput across the scenario
+- `input_token_coverage` and `output_token_coverage` - the fraction of successful requests with provider-reported input/output usage; aggregate token throughput and means are omitted when coverage is incomplete
+- Standard benchmark summary throughput is per-request output throughput; performance scenarios are reported separately as scenario-level throughput and are not merged into the standard summary column
+- `request_traces_omitted` means the selected summary detail intentionally stored no traces; `request_traces_truncated` means a detailed trace set exceeded its configured cap
 - `requests_per_second` - aggregate scenario request throughput
 - `error_rate` - failed request count divided by total request count
 - `estimated_load_overhead_ms` - client-side first-probe minus warm-probe estimate, clamped at zero
@@ -95,10 +98,10 @@ Environment snapshots record the host OS, CPU count, memory and swap ratios, dis
 ## Reading results correctly
 
 - Compare runs from the same machine under similar load.
-- Treat load overhead as an estimate unless the report explicitly says provider-native telemetry was used.
+- Treat `estimated_load_overhead_ms` as a client-observed first-request versus warm-request estimate; it is not provider startup or model-loading time.
 - Do not compare runs across provider versions, model quantizations, thermal states, or memory pressure without noting those differences.
 - Use JSON when programmatic post-processing needs complete fidelity.
 - Use CSV when slicing metrics in spreadsheets.
 - Use Markdown or HTML when sharing human-readable summaries.
 
-Last updated: 2026-07-18
+Last updated: 2026-07-30

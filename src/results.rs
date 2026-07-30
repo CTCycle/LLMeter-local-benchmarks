@@ -15,7 +15,7 @@ use crate::performance::telemetry::TelemetrySummary;
 use crate::quality::manifest::QualityPlan;
 use crate::utils;
 
-pub const RESULT_SCHEMA_VERSION: &str = "2.3";
+pub const RESULT_SCHEMA_VERSION: &str = "2.4";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OutputPrivacyPolicy {
@@ -249,73 +249,62 @@ impl ResultStore {
         Ok(path)
     }
 
-    pub fn latest_json_files(&self, limit: usize) -> Vec<PathBuf> {
-        if !self.output_dir.exists() {
-            return Vec::new();
-        }
-        let mut files: Vec<PathBuf> = self
-            .output_dir
-            .read_dir()
-            .ok()
-            .into_iter()
-            .flatten()
-            .filter_map(|entry| {
-                let path = entry.ok()?.path();
-                if path.extension()? == "json" {
-                    Some(path)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        files.sort_by(|a, b| {
-            b.metadata()
-                .and_then(|m| m.modified())
-                .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-                .cmp(
-                    &a.metadata()
-                        .and_then(|m| m.modified())
-                        .unwrap_or(std::time::SystemTime::UNIX_EPOCH),
-                )
-        });
-        files.truncate(limit);
-        files
+    pub fn latest_json_files(&self, limit: usize) -> anyhow::Result<Vec<PathBuf>> {
+        self.latest_files(limit, |path| {
+            path.extension().is_some_and(|value| value == "json")
+        })
     }
 
-    pub fn latest_report_files(&self, limit: usize) -> Vec<PathBuf> {
-        if !self.output_dir.exists() {
-            return Vec::new();
-        }
-        let mut files: Vec<PathBuf> = self
-            .output_dir
-            .read_dir()
-            .ok()
-            .into_iter()
-            .flatten()
-            .filter_map(|entry| {
-                let path = entry.ok()?.path();
-                let name = path.file_name()?.to_string_lossy().to_string();
-                if name.ends_with(".report.md") || name.ends_with(".report.html") {
-                    Some(path)
-                } else {
-                    None
-                }
-            })
-            .collect();
+    pub fn latest_report_files(&self, limit: usize) -> anyhow::Result<Vec<PathBuf>> {
+        self.latest_files(limit, |path| {
+            let Some(name) = path.file_name().and_then(|value| value.to_str()) else {
+                return false;
+            };
+            name.ends_with(".report.md") || name.ends_with(".report.html")
+        })
+    }
 
-        files.sort_by(|a, b| {
-            b.metadata()
-                .and_then(|m| m.modified())
-                .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-                .cmp(
-                    &a.metadata()
-                        .and_then(|m| m.modified())
-                        .unwrap_or(std::time::SystemTime::UNIX_EPOCH),
+    fn latest_files(
+        &self,
+        limit: usize,
+        predicate: impl Fn(&Path) -> bool,
+    ) -> anyhow::Result<Vec<PathBuf>> {
+        if !self.output_dir.exists() {
+            return Ok(Vec::new());
+        }
+
+        let mut files = Vec::new();
+        for entry in self.output_dir.read_dir().with_context(|| {
+            format!(
+                "Failed to list result directory {}",
+                self.output_dir.display()
+            )
+        })? {
+            let entry = entry.with_context(|| {
+                format!(
+                    "Failed to read result directory {}",
+                    self.output_dir.display()
                 )
-        });
-        files.truncate(limit);
-        files
+            })?;
+            let path = entry.path();
+            if predicate(&path) {
+                let modified = entry
+                    .metadata()
+                    .with_context(|| format!("Failed to inspect result file {}", path.display()))?
+                    .modified()
+                    .with_context(|| {
+                        format!("Failed to read result file time {}", path.display())
+                    })?;
+                files.push((modified, path));
+            }
+        }
+
+        files.sort_by_key(|entry| std::cmp::Reverse(entry.0));
+        Ok(files
+            .into_iter()
+            .take(limit)
+            .map(|(_, path)| path)
+            .collect())
     }
 
     pub fn load_json(&self, path: &PathBuf) -> anyhow::Result<BenchmarkRun> {

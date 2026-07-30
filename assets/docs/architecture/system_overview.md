@@ -6,7 +6,7 @@ LLMeter is a single-binary Rust CLI for benchmarking local OpenAI-compatible LLM
 
 Primary goals:
 
-1. **Provider-neutral local benchmarking** - support Ollama, LM Studio, llama.cpp, and custom `/v1` servers.
+1. **Provider-neutral local benchmarking** - provide presets and OpenAI-compatible request handling for Ollama, LM Studio, llama.cpp, and custom `/v1` servers; runtime support is confirmed by endpoint checks rather than preset selection alone.
 2. **Interactive and scriptable** - rich terminal UI plus automation-friendly subcommands.
 3. **Zero runtime deps** - everything is compiled into the binary.
 4. **Clear result persistence** - JSON and CSV for raw data, Markdown and HTML for reports.
@@ -53,7 +53,10 @@ src/
   runner.rs            Model validation, benchmark orchestration, output saving.
   results.rs           BenchmarkRun model, JSON/CSV persistence.
   reporting.rs         Markdown and HTML report generation.
+  performance/         Scenario plans, load estimates, fresh probes, inventory, metrics, telemetry, and concurrency.
+  quality/             External quality-framework catalog and dry-run plan adapters.
+  lifecycle.rs         Local convenience install, update, and uninstall operations.
   ui.rs                Interactive menus and terminal output.
 ```
 
-Last updated: 2026-06-12
+Last updated: 2026-07-30

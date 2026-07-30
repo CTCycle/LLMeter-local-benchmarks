@@ -24,9 +24,7 @@ pub enum PerformanceProfile {
 #[serde(rename_all = "kebab-case")]
 pub enum LoadMeasurementMode {
     Off,
-    WarmBaseline,
-    ColdWarmEstimate,
-    NativeIfAvailable,
+    FirstRequestEstimate,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]

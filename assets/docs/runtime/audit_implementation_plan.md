@@ -1,6 +1,6 @@
 # LLMeter audit implementation plan
 
-Last updated: 2026-07-18
+Last updated: 2026-07-30
 
 ## Purpose
 
@@ -124,7 +124,7 @@ Status: complete.
 - Provider model catalog shape and basic SSE metadata handling are tested.
 - Direct provider-client construction validates the base URL, uses a LLMeter user agent, separately bounds connection time, disables redirects and proxy inheritance, and retains the actual successful HTTP status in `ApiResult`.
 - Non-success response diagnostics and streaming lines are bounded; streaming `data:` fields are assembled into protocol-level SSE events.
-- Each provider client caches the first validated `/v1/models` response for the duration of its command, so model selection, lookup, and capability probing share one catalog snapshot.
+- Operational model discovery uses a cached catalog, while status, release validation, and measured provider probes use fresh `/v1/models` requests. The cache has explicit invalidation.
 - Optional provider authentication uses an ephemeral sensitive bearer header sourced only from `LLMETER_API_KEY`; it is never persisted or logged.
 
 ### Acceptance
@@ -329,7 +329,7 @@ Deployment, README, and user-manual guidance now label lifecycle commands as loc
 
 ## Remaining closeout
 
-All locally actionable audit phases are implemented. Run the complete locked validation matrix, record the evidence here, commit the support/CI/lifecycle closeout, and push the incremental commits once the configured external GitHub destination is explicitly approved. Public binary/package distribution, MSRV, macOS release evidence, and release-signing controls remain intentionally owner-gated rather than incomplete implementation work.
+All locally actionable audit phases are implemented. Run the complete locked validation matrix, record the evidence here, commit the support/CI/lifecycle closeout, and push the incremental commits once the configured external GitHub destination is explicitly approved. The tag-gated Linux/Windows archive workflow is implemented, but no public tag or release has been created by this task. Public package publication, MSRV, macOS release evidence, and release-signing controls remain intentionally owner-gated.
 
 ## Definition of done for the local CLI
 

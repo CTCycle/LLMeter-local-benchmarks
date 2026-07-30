@@ -53,17 +53,24 @@ pub fn install(bin_dir_override: Option<&str>, force: bool) -> anyhow::Result<Li
     }
     write_launchers(&paths)?;
 
+    let mut details = vec![format!("Executable: {}", paths.exe_path.display())];
+    if cfg!(windows) {
+        details.push(format!("CMD launcher: {}", paths.cmd_path.display()));
+        details.push(format!(
+            "PowerShell launcher: {}",
+            paths.powershell_path.display()
+        ));
+    } else {
+        details.push("The executable itself is the Unix shell command; no Windows launcher files were created.".to_string());
+    }
+    details.push(format!(
+        "Add {} to PATH to run `llmeter` from new shells.",
+        paths.bin_dir.display()
+    ));
+
     Ok(LifecycleMessage {
         summary: format!("Installed LLMeter into {}", paths.bin_dir.display()),
-        details: vec![
-            format!("Executable: {}", paths.exe_path.display()),
-            format!("CMD launcher: {}", paths.cmd_path.display()),
-            format!("PowerShell launcher: {}", paths.powershell_path.display()),
-            format!(
-                "Add {} to PATH to run `llmeter` from new shells.",
-                paths.bin_dir.display()
-            ),
-        ],
+        details,
     })
 }
 
@@ -99,7 +106,7 @@ pub fn update(
 
     if source_is_target {
         return Err(LLMeterError::InvalidOption(
-            "The update source points at the current managed install. Run a newer llmeter binary with `update`, or pass --source <path-to-llmeter.exe>.".to_string(),
+            "The update source points at the current managed install. Run a newer llmeter binary with `update`, or pass --source <path-to-llmeter-binary>.".to_string(),
         )
         .into());
     }
@@ -112,13 +119,12 @@ pub fn update(
         spawn_windows_script("llmeter-update", &script)?;
         return Ok(LifecycleMessage {
             summary: format!(
-                "Scheduled managed install update for {}",
+                "Update helper launched for {}",
                 paths.exe_path.display()
             ),
             details: vec![
                 format!("Replacement source: {}", source_path.display()),
-                "The new executable will be copied into place after this process exits."
-                    .to_string(),
+                "The helper will copy the executable after this process exits; verify the installed version with `llmeter --version`.".to_string(),
             ],
         });
     }
@@ -170,10 +176,15 @@ pub fn uninstall(
 }
 
 fn uninstall_details(paths: &ManagedInstallPaths, purge_home: bool) -> Vec<String> {
-    let mut details = vec![
-        format!("Removed executable: {}", paths.exe_path.display()),
-        format!("Removed launchers from: {}", paths.bin_dir.display()),
-    ];
+    let mut details = vec![format!("Removed executable: {}", paths.exe_path.display())];
+    if cfg!(windows) {
+        details.push(format!(
+            "Removed launchers from: {}",
+            paths.bin_dir.display()
+        ));
+    } else {
+        details.push("No Windows launcher files were present on this platform.".to_string());
+    }
     if purge_home {
         details.push(format!(
             "Removed LLMeter home: {}",
@@ -249,18 +260,41 @@ fn copy_executable(source: &Path, target: &Path) -> anyhow::Result<()> {
 }
 
 fn write_launchers(paths: &ManagedInstallPaths) -> anyhow::Result<()> {
-    fs::write(&paths.cmd_path, build_cmd_launcher(&paths.exe_path))
-        .with_context(|| format!("Failed to write CMD launcher {}", paths.cmd_path.display()))?;
-    fs::write(
-        &paths.powershell_path,
-        build_powershell_launcher(&paths.exe_path),
-    )
-    .with_context(|| {
-        format!(
-            "Failed to write PowerShell launcher {}",
-            paths.powershell_path.display()
+    if cfg!(windows) {
+        fs::write(&paths.cmd_path, build_cmd_launcher(&paths.exe_path)).with_context(|| {
+            format!("Failed to write CMD launcher {}", paths.cmd_path.display())
+        })?;
+        fs::write(
+            &paths.powershell_path,
+            build_powershell_launcher(&paths.exe_path),
         )
-    })?;
+        .with_context(|| {
+            format!(
+                "Failed to write PowerShell launcher {}",
+                paths.powershell_path.display()
+            )
+        })?;
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        let metadata = fs::metadata(&paths.exe_path).with_context(|| {
+            format!(
+                "Failed to inspect installed executable {}",
+                paths.exe_path.display()
+            )
+        })?;
+        let mut permissions = metadata.permissions();
+        permissions.set_mode(permissions.mode() | 0o111);
+        fs::set_permissions(&paths.exe_path, permissions).with_context(|| {
+            format!(
+                "Failed to make installed executable runnable {}",
+                paths.exe_path.display()
+            )
+        })?;
+    }
     Ok(())
 }
 

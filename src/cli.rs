@@ -11,6 +11,28 @@ use crate::performance::config::{
 use crate::providers::ProviderKind;
 use crate::quality::catalog::QualityFramework;
 
+pub fn parse_positive_u32(value: &str) -> Result<u32, String> {
+    let parsed = value
+        .parse::<u32>()
+        .map_err(|_| format!("'{value}' must be a positive integer"))?;
+    if parsed == 0 {
+        Err(format!("'{value}' must be greater than zero"))
+    } else {
+        Ok(parsed)
+    }
+}
+
+pub fn parse_temperature(value: &str) -> Result<f64, String> {
+    let parsed = value
+        .parse::<f64>()
+        .map_err(|_| format!("'{value}' must be a finite non-negative number"))?;
+    if !parsed.is_finite() || parsed < 0.0 {
+        Err(format!("'{value}' must be a finite non-negative number"))
+    } else {
+        Ok(parsed)
+    }
+}
+
 #[derive(Parser)]
 #[command(
     name = "llmeter",
@@ -45,7 +67,7 @@ pub enum Commands {
     #[command(about = "Check provider /v1 endpoint reachability, health, and exposed model count")]
     Status,
 
-    #[command(about = "List supported provider presets with compatibility tiers and default URLs")]
+    #[command(about = "List provider presets with compatibility tiers and default URLs")]
     Providers {
         #[command(subcommand)]
         provider_command: ProviderCommands,
@@ -170,13 +192,13 @@ pub enum BenchCommands {
         #[arg(long, help = "Comma-separated benchmark ids, or 'all'")]
         benchmarks: Option<String>,
 
-        #[arg(long, help = "Repeated runs per benchmark")]
+        #[arg(long, value_parser = parse_positive_u32, help = "Repeated runs per benchmark")]
         runs: Option<u32>,
 
-        #[arg(long, help = "Maximum output tokens for generation-style requests")]
+        #[arg(long, value_parser = parse_positive_u32, help = "Maximum output tokens for generation-style requests")]
         max_tokens: Option<u32>,
 
-        #[arg(long, help = "Sampling temperature")]
+        #[arg(long, value_parser = parse_temperature, help = "Sampling temperature")]
         temperature: Option<f64>,
 
         #[arg(long, default_value = "both", help = "Raw result export format")]
@@ -193,7 +215,7 @@ pub enum BenchCommands {
     },
 
     #[command(
-        about = "Measure latency, throughput, TTFT, and token timing under concurrent load",
+        about = "Measure latency, throughput, TTFT, and chunk timing under concurrent load",
         visible_alias = "performance"
     )]
     Perf {
@@ -252,7 +274,12 @@ pub enum BenchCommands {
         #[arg(long, action = clap::ArgAction::SetTrue, help = "Include truncated model response previews in saved outputs and reports")]
         include_response_preview: bool,
 
-        #[arg(long, value_enum, default_value_t = LoadMeasurementMode::WarmBaseline)]
+        #[arg(
+            long,
+            value_enum,
+            default_value_t = LoadMeasurementMode::FirstRequestEstimate,
+            help = "Client-observed first-request versus warm-request estimate; not true provider cold-start telemetry"
+        )]
         load_measurement: LoadMeasurementMode,
 
         #[arg(long, default_value_t = 2)]

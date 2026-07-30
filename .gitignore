@@ -1,5 +1,6 @@
 # Rust build outputs
 target/
+target-*/
 *.rs.bk
 
 # Local benchmark outputs and QA artifacts

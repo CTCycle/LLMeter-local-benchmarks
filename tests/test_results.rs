@@ -144,3 +144,16 @@ fn response_previews_require_explicit_opt_in() {
         Some("hello")
     );
 }
+
+#[test]
+fn result_listing_surfaces_output_directory_errors() {
+    let temp = tempfile::tempdir().unwrap();
+    let output_path = temp.path().join("not-a-directory");
+    std::fs::write(&output_path, "not a directory").unwrap();
+    let store = ResultStore::new(&output_path);
+
+    let error = store.latest_json_files(10).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("Failed to list result directory"));
+}

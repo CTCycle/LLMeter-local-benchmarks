@@ -111,7 +111,7 @@ There is no concurrent benchmark scheduling. This keeps timing simpler and makes
 
 Each scenario emits one summary record plus serialized request traces inside record metadata.
 
-Before scenarios, performance runs can optionally capture a provider capability matrix, load overhead estimate, and model inventory metadata/cache footprint. Each of those steps emits terminal progress. Load overhead is a client-side first-probe minus warm-probe estimate, not true model-load telemetry. Detailed and full telemetry levels sample system state during scenario execution and summarize the collected samples at run finalization.
+Before scenarios, performance runs can optionally capture a provider capability matrix, load overhead estimate, and model inventory metadata/provider-cache-directory total. Each of those steps emits terminal progress. Load overhead is a client-side first-probe minus warm-probe estimate, not true model-load telemetry. Detailed and full telemetry levels sample system state during scenario execution and summarize the collected samples at run finalization.
 
 ## Performance scenarios
 
@@ -147,4 +147,4 @@ Fatal failures stop the command when they happen before or outside benchmark exe
 
 Benchmark-level capability failures do not abort the whole run. Instead, individual benchmarks return result records with `error` populated so the run can continue and reports still include the partial outcome.
 
-Last updated: 2026-07-01
+Last updated: 2026-07-30

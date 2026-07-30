@@ -8,8 +8,8 @@ llmeter
 
 The default command opens an interactive menu with these options:
 
-1. **Provider setup** - shows current provider status, supported provider presets, capability probing, and default provider persistence.
-2. **Model inventory** - lists exposed models, shows raw model metadata, and optionally estimates local cache footprint after a path is provided.
+1. **Provider setup** - shows current provider status, provider presets and compatibility tiers, capability probing, and default provider persistence.
+2. **Model inventory** - lists or refreshes exposed models, shows raw model metadata, and optionally estimates local cache footprint after a path is provided.
 3. **Benchmark workspace** - opens benchmark selection and execution.
 4. **Reports and comparisons** - opens saved result/report workflows.
 5. **Help and examples** - prints built-in help topics.
@@ -55,4 +55,4 @@ Options:
 3. **Generate Markdown or HTML report**.
 4. **Back**.
 
-Last updated: 2026-06-22
+Last updated: 2026-07-30

@@ -11,6 +11,7 @@ use std::thread;
 use std::time::Duration;
 
 use llmeter::providers::{ProviderClient, ProviderKind};
+use llmeter::runner::validate_models;
 use serde_json::Value;
 use tempfile::TempDir;
 
@@ -174,7 +175,9 @@ fn write_sse(stream: &mut TcpStream, lines: &[&str]) {
 }
 
 fn llmeter_command(home: &Path, output: &Path, base_url: &str) -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_llmeter"));
+    let executable =
+        std::env::var_os("LLMETER_BIN").unwrap_or_else(|| env!("CARGO_BIN_EXE_llmeter").into());
+    let mut command = Command::new(executable);
     command
         .env("LLMETER_HOME", home)
         .env("LLMETER_OUTPUT_DIR", output)
@@ -223,6 +226,90 @@ fn cli_models_json_reads_mock_provider_catalog() {
 }
 
 #[test]
+fn cli_provider_catalog_lists_compatibility_tiers() {
+    let temp = TempDir::new().expect("tempdir");
+    let output = temp.path().join("results");
+    let catalog = llmeter_command(temp.path(), &output, "http://127.0.0.1:1/v1")
+        .args(["providers", "list"])
+        .output()
+        .expect("run llmeter provider catalog");
+
+    assert!(
+        catalog.status.success(),
+        "{}",
+        String::from_utf8_lossy(&catalog.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&catalog.stdout);
+    assert!(stdout.contains("first-class"));
+    assert!(stdout.contains("openai-compatible"));
+    assert!(stdout.contains("Provider presets"));
+}
+
+#[test]
+fn cli_status_and_model_details_read_from_mock_provider() {
+    let provider = MockProvider::start();
+    let temp = TempDir::new().expect("tempdir");
+    let output = temp.path().join("results");
+
+    let status = llmeter_command(temp.path(), &output, &provider.base_url)
+        .arg("status")
+        .output()
+        .expect("run llmeter status");
+    assert!(
+        status.status.success(),
+        "{}",
+        String::from_utf8_lossy(&status.stderr)
+    );
+    assert!(String::from_utf8_lossy(&status.stdout).contains("API reachable"));
+
+    let details = llmeter_command(temp.path(), &output, &provider.base_url)
+        .args(["show", "mock-model"])
+        .output()
+        .expect("run llmeter show");
+    assert!(
+        details.status.success(),
+        "{}",
+        String::from_utf8_lossy(&details.stderr)
+    );
+    let model: Value = serde_json::from_slice(&details.stdout).expect("model details json");
+    assert_eq!(model["id"], "mock-model");
+    assert!(provider.request_paths().contains(&"/v1/models".to_string()));
+}
+
+#[test]
+fn cli_handles_unavailable_provider_and_missing_model() {
+    let provider = MockProvider::start();
+    let temp = TempDir::new().expect("tempdir");
+    let output = temp.path().join("results");
+
+    let missing = llmeter_command(temp.path(), &output, &provider.base_url)
+        .args(["show", "missing-model"])
+        .output()
+        .expect("run llmeter show for missing model");
+    assert_eq!(missing.status.code(), Some(2));
+    assert!(
+        String::from_utf8_lossy(&missing.stderr).contains("Model not found"),
+        "{}",
+        String::from_utf8_lossy(&missing.stderr)
+    );
+
+    let closed_listener = TcpListener::bind("127.0.0.1:0").expect("bind unavailable endpoint");
+    let closed_address = closed_listener
+        .local_addr()
+        .expect("closed endpoint address");
+    drop(closed_listener);
+    let unavailable_url = format!("http://{closed_address}/v1");
+    let unavailable = llmeter_command(temp.path(), &output, &unavailable_url)
+        .arg("status")
+        .output()
+        .expect("run llmeter status for unavailable provider");
+    assert!(unavailable.status.success());
+    let unavailable_stdout = String::from_utf8_lossy(&unavailable.stdout);
+    assert!(unavailable_stdout.contains("API reachable"));
+    assert!(unavailable_stdout.contains("no"));
+}
+
+#[test]
 fn cli_bench_run_streams_and_generates_report_from_saved_json() {
     let provider = MockProvider::start();
     let temp = TempDir::new().expect("tempdir");
@@ -241,9 +328,9 @@ fn cli_bench_run_streams_and_generates_report_from_saved_json() {
             "--runs",
             "1",
             "--export",
-            "json",
+            "both",
             "--report",
-            "md",
+            "both",
             "--include-response-preview",
         ])
         .output()
@@ -258,12 +345,15 @@ fn cli_bench_run_streams_and_generates_report_from_saved_json() {
     assert_eq!(result_files.len(), 1);
     let run: Value =
         serde_json::from_slice(&fs::read(&result_files[0]).expect("read run")).expect("run json");
-    assert_eq!(run["schema_version"], "2.3");
+    assert_eq!(run["schema_version"], "2.4");
     assert_eq!(run["results"][0]["error"], Value::Null);
     assert!(run["results"][0]["response_preview"]
         .as_str()
         .unwrap_or_default()
         .contains("Hello from mock"));
+    assert!(result_files[0].with_extension("csv").exists());
+    assert!(result_files[0].with_extension("report.md").exists());
+    assert!(result_files[0].with_extension("report.html").exists());
 
     let generated_report = llmeter_command(temp.path(), &output, &provider.base_url)
         .arg("report")
@@ -329,6 +419,37 @@ fn unsupported_endpoint_benchmark_records_controlled_errors() {
 }
 
 #[test]
+fn benchmark_surfaces_output_path_failures() {
+    let provider = MockProvider::start();
+    let temp = TempDir::new().expect("tempdir");
+    let output_file = temp.path().join("results-file");
+    fs::write(&output_file, "not a directory").expect("create output file");
+
+    let bench = llmeter_command(temp.path(), &output_file, &provider.base_url)
+        .args([
+            "bench",
+            "run",
+            "--suite",
+            "llm",
+            "--models",
+            "mock-model",
+            "--benchmarks",
+            "chat-generation",
+            "--runs",
+            "1",
+            "--export",
+            "json",
+            "--report",
+            "none",
+        ])
+        .output()
+        .expect("run llmeter with invalid output path");
+
+    assert!(!bench.status.success());
+    assert!(String::from_utf8_lossy(&bench.stderr).contains("Failed to create output directory"));
+}
+
+#[test]
 fn provider_client_reuses_a_model_catalog_snapshot() {
     let provider = MockProvider::start();
     let client = ProviderClient::new(ProviderKind::OpenaiCompatible, &provider.base_url, 2.0)
@@ -349,6 +470,134 @@ fn provider_client_reuses_a_model_catalog_snapshot() {
             .count(),
         1
     );
+
+    client
+        .list_models_fresh()
+        .expect("fresh fixture model discovery");
+    client
+        .refresh_model_catalog()
+        .expect("refresh fixture model discovery");
+    client
+        .invalidate_model_catalog()
+        .expect("invalidate fixture model catalog");
+    client
+        .list_models_cached()
+        .expect("refreshed fixture model discovery");
+    assert_eq!(
+        provider
+            .request_paths()
+            .iter()
+            .filter(|path| path.as_str() == "/v1/models")
+            .count(),
+        4
+    );
+}
+
+#[test]
+fn benchmark_model_validation_bypasses_cached_catalog() {
+    let provider = MockProvider::start();
+    let client = ProviderClient::new(ProviderKind::OpenaiCompatible, &provider.base_url, 2.0)
+        .expect("build fixture client");
+
+    client
+        .list_models_cached()
+        .expect("seed fixture model catalog cache");
+    assert_eq!(
+        validate_models(&client, &["mock-model".to_string()]).unwrap(),
+        ["mock-model"]
+    );
+    assert_eq!(
+        provider
+            .request_paths()
+            .iter()
+            .filter(|path| path.as_str() == "/v1/models")
+            .count(),
+        2,
+        "benchmark validation must bypass the cached catalog"
+    );
+}
+
+#[test]
+fn performance_load_estimate_runs_before_capability_chat_probes() {
+    let provider = MockProvider::start();
+    let temp = TempDir::new().expect("tempdir");
+    let output = temp.path().join("results");
+
+    let performance = llmeter_command(temp.path(), &output, &provider.base_url)
+        .args([
+            "bench",
+            "perf",
+            "--profile",
+            "smoke",
+            "--models",
+            "mock-model",
+            "--prompt-tokens",
+            "1",
+            "--output-tokens",
+            "2",
+            "--concurrency",
+            "1",
+            "--warmup",
+            "0",
+            "--runs",
+            "1",
+            "--load-measurement",
+            "first-request-estimate",
+            "--load-probe-runs",
+            "1",
+            "--probe-capabilities",
+            "--telemetry",
+            "off",
+            "--export",
+            "json",
+            "--report",
+            "none",
+        ])
+        .output()
+        .expect("run performance estimate");
+
+    assert!(
+        performance.status.success(),
+        "{}",
+        String::from_utf8_lossy(&performance.stderr)
+    );
+
+    let chat_positions = provider
+        .request_paths()
+        .iter()
+        .enumerate()
+        .filter_map(|(index, path)| (path == "/v1/chat/completions").then_some(index))
+        .collect::<Vec<_>>();
+    assert!(
+        chat_positions.len() >= 3,
+        "expected load, capability, and measured chat requests"
+    );
+    assert_eq!(
+        chat_positions[0], 3,
+        "first load probe must follow cached selection, fresh validation, and fresh status"
+    );
+    assert_eq!(
+        chat_positions[1], 4,
+        "warm load probe must follow the first load probe"
+    );
+
+    let result_files = json_result_files(&output);
+    assert_eq!(result_files.len(), 1);
+    let run: Value =
+        serde_json::from_slice(&fs::read(&result_files[0]).expect("read performance result"))
+            .expect("performance result json");
+    assert_eq!(
+        run["model_load_measurements"][0]["mode"],
+        "first-request-estimate"
+    );
+    assert!(run["model_load_measurements"][0]["notes"]
+        .as_array()
+        .unwrap_or(&Vec::new())
+        .iter()
+        .any(|note| note
+            .as_str()
+            .unwrap_or_default()
+            .contains("does not measure provider restart")));
 }
 
 #[test]
@@ -358,7 +607,9 @@ fn every_registered_preset_obeys_the_baseline_openai_contract_fixture() {
     for entry in ProviderKind::catalog() {
         let client = ProviderClient::new(entry.provider, &provider.base_url, 2.0)
             .expect("build fixture client");
-        let models = client.list_models().expect("fixture model discovery");
+        let models = client
+            .list_models_cached()
+            .expect("fixture model discovery");
         assert_eq!(models[0]["id"], "mock-model", "{}", entry.provider);
 
         let response = client
