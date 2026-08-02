@@ -36,6 +36,8 @@ llmeter providers list
 llmeter --provider openai-compatible --base-url http://localhost:8000/v1 status
 ```
 
+If an API key is required, set `LLMETER_API_KEY` in the process environment. It is attached only to the current HTTP client and is not saved in configuration or reports.
+
 ## Model catalog is empty
 
 Provider reachability alone is not enough. The provider must also expose at least one model through `/v1/models`.
@@ -52,6 +54,8 @@ If no models are listed:
 - start `llama-server` with a model for llama.cpp
 - pull or create a model in Ollama
 - confirm a custom server returns model entries in `/v1/models`
+
+Interactive **List exposed models** may use the client-local catalog cache. Choose **Refresh exposed models** when the provider catalog changed; scriptable `models`, `status`, benchmark validation, and measured probes already use fresh catalog requests.
 
 ## Benchmark run rejects selected models
 
@@ -75,4 +79,6 @@ Raw and formatted outputs are saved separately. A run can intentionally save onl
 
 This is expected when a provider or model supports some OpenAI-compatible features but not others. Unsupported endpoints such as `/v1/responses` or `/v1/embeddings` are recorded as per-record errors instead of invalidating the entire run.
 
-Last updated: 2026-06-21
+For performance plans, reduce prompt/output sizes or the scenario matrix when validation reports a safety-limit error. Use `--allow-large-prompt` or `--allow-large-matrix` only after inspecting the plan; these controls cannot be supplied through `--param`.
+
+Last updated: 2026-08-02

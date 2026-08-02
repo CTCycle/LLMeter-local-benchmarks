@@ -11,6 +11,8 @@ LLMeter can save four artifact types per run:
 | Markdown report | `.report.md` | Human-readable report and terminal-renderable summary. |
 | HTML report | `.report.html` | Browser-friendly formatted report. |
 
+New runs persist result schema `2.4`. Older JSON files that omit newer optional fields remain readable.
+
 Default output directory:
 
 - `<LLMETER_HOME>/benchmark_results/`
@@ -104,4 +106,6 @@ Environment snapshots record the host OS, CPU count, memory and swap ratios, dis
 - Use CSV when slicing metrics in spreadsheets.
 - Use Markdown or HTML when sharing human-readable summaries.
 
-Last updated: 2026-07-30
+All persisted formats are written through same-directory temporary files and atomic rename. Output preparation omits response previews by default and redacts credential-shaped values before writing; use `--include-response-preview` only when the output is safe to retain.
+
+Last updated: 2026-08-02

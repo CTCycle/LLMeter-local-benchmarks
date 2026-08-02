@@ -1,8 +1,17 @@
 # Project index
-Last updated: 2026-07-01
+Last updated: 2026-08-02
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first, then open the smallest topic file that matches the task.
+
+## Current codebase snapshot
+
+- Package version: `0.3.0` on the `develop` branch.
+- Persisted result schema: `2.4`, including explicit token-usage coverage and separate inter-chunk/inter-token timing semantics.
+- Runtime surfaces: standard `llm` and `embeddings` suites, native `bench perf` scenarios, and dry-run external quality plans.
+- Provider catalogs use cached reads for ordinary interactive navigation and explicit fresh reads for status, model listing, benchmark validation, and measured probes.
+- Local convenience lifecycle commands (`install`, `update`, and `uninstall`) do not implement remote update or signature verification.
+- Release artifacts are workflow-gated for authorized `v*` tags on GNU/Linux x86-64 and Windows x86-64; macOS remains source-compatibility only.
 
 ## How To Navigate
 1. Start with this file only.

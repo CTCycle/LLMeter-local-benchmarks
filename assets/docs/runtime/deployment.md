@@ -102,6 +102,8 @@ llmeter uninstall --purge-home
 
 Authorized `v*` tags publish validated GNU/Linux x86-64 and Windows x86-64 archives through the release workflow. Each archive contains the binary, README, LICENSE, and CHANGELOG, and the release includes `SHA256SUMS`. macOS remains a source-compatibility goal rather than a release artifact.
 
+The current `develop` source state is package version `0.3.0`; it has no public release tag or published binary. Treat any local or downloaded replacement executable as untrusted until independently verified before using `llmeter update --source`.
+
 ## Dependencies
 
 - GNU/Linux binaries require a compatible glibc runtime; they are not fully static.
@@ -120,4 +122,4 @@ Windows x86-64 is Tier 1. Ubuntu GNU/Linux x86-64 is Tier 2 and requires compati
 
 The binary uses `rustls`, so it does not require an OpenSSL runtime dependency. A musl-targeted Linux build is the portable Linux option; the released GNU/Linux artifact still has a glibc compatibility boundary.
 
-Last updated: 2026-07-30
+Last updated: 2026-08-02

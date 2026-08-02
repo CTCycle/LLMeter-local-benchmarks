@@ -17,6 +17,8 @@ The default command opens an interactive menu with these options:
 
 The provider is selected before launch with `--provider` and optional `--base-url`.
 
+The model inventory keeps a client-local catalog cache for ordinary listing and metadata navigation. Use **Refresh exposed models** after loading or unloading a provider model; benchmark validation and measured/status paths independently refresh the provider catalog.
+
 ## Benchmark workspace
 
 Opened via `llmeter` then selecting option 3, or directly with `llmeter bench menu`.
@@ -44,6 +46,8 @@ Capability probing under provider setup and performance benchmarking reports eac
 
 The model inventory cache-footprint flow also reports metadata fetches and optional cache scans, and interactive report generation reuses the same terminal progress renderer as scriptable output generation.
 
+Performance safety limits are shown during plan construction, before timed requests begin. The quality workspace is intentionally a dry-run planning surface for external evaluators.
+
 ## Reports workspace
 
 Opened via `llmeter` then selecting option 4.
@@ -55,4 +59,4 @@ Options:
 3. **Generate Markdown or HTML report**.
 4. **Back**.
 
-Last updated: 2026-07-30
+Last updated: 2026-08-02

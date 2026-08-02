@@ -54,6 +54,8 @@ At launch:
 3. `ProviderClient::new()` builds the HTTP client.
 4. `main.rs` dispatches to interactive menu, provider command, benchmark command, report command, or help topic.
 
+`status`, `models`, benchmark model validation, and measured performance probes refresh `/v1/models` from the provider. Interactive model inventory can list the current client-local cache or explicitly refresh it.
+
 ## Recommended prechecks
 
 Run these before a full benchmark:
@@ -71,9 +73,9 @@ If those checks fail, benchmark execution will also fail.
 Example:
 
 ```bash
-llmeter --provider ollama bench run --models all --benchmarks all --export both --report both
+llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export both --report both
 ```
 
 This performs provider validation, builds a benchmark plan, runs benchmarks serially, saves raw outputs, and then generates formatted reports.
 
-Last updated: 2026-06-21
+Last updated: 2026-08-02

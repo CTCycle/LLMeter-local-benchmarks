@@ -60,6 +60,8 @@ List exposed models:
 llmeter --provider ollama models
 ```
 
+`status` and the scriptable `models` command perform fresh `/v1/models` requests. Interactive **List exposed models** may use the current client-local cache; **Refresh exposed models** invalidates it first.
+
 Probe provider capabilities before a performance benchmark:
 
 ```bash
@@ -67,6 +69,8 @@ llmeter --provider ollama bench perf --models all --profile smoke --probe-capabi
 ```
 
 In interactive mode, use **Provider setup** then **Probe provider capabilities**.
+
+For authenticated local endpoints, set `LLMETER_API_KEY` in the environment before launching LLMeter. The bearer value is held only by the active HTTP client and is never persisted or printed.
 
 ## Custom base URL
 
@@ -101,4 +105,4 @@ LLMeter accepts a base URL with or without the `/v1` suffix and normalizes it in
 - Ensure the server is local and exposes the required `/v1` endpoints.
 - Capability coverage varies by implementation, so some benchmark types may report per-record errors.
 
-Last updated: 2026-06-18
+Last updated: 2026-08-02

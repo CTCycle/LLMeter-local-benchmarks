@@ -43,6 +43,8 @@ The plan tracks:
 
 Planned steps come from each benchmark's `planned_steps()` implementation, which allows progress to reflect repeated runs and prompt variants before execution starts.
 
+The command-level model inventory is refreshed from the provider before validation. Interactive model selection may reuse the client-local catalog cache, but an explicit refresh is available and benchmark/status paths use fresh `/v1/models` reads so measurements do not rely on stale selection data.
+
 `bench perf` first normalizes a `PerformancePlan` from CLI input:
 
 - profile: `smoke`, `latency`, `throughput`, or `sweep`
@@ -59,7 +61,7 @@ Planned steps come from each benchmark's `planned_steps()` implementation, which
 - optional provider process hint and model cache scan path
 - dry-run and request budget guard values
 
-The plan rejects zero runs, zero concurrency, invalid load probe counts, telemetry sampling below 100 ms, oversized prompt/output token requests unless `--param unsafe_large_prompt=true` is present, and oversized scenario matrices above `--max-requests` unless `--param unsafe_large_matrix=true` is present.
+The plan rejects zero runs, zero concurrency, invalid load probe counts, telemetry sampling below 100 ms, oversized prompt/output token requests unless `--allow-large-prompt` is present, and oversized scenario matrices above `--max-requests` unless `--allow-large-matrix` is present. These safety controls are dedicated CLI flags and cannot be passed through provider `--param` values.
 
 Scriptable performance runs print a plan estimate before timed requests begin. The estimate includes selected models, prompt sizes, output sizes, concurrency levels, scenario count, warmup requests, measured requests, total requests, and the active maximum request limit. `--dry-run` prints this estimate and exits before provider load probes, timed requests, saving, or report generation.
 
@@ -147,4 +149,4 @@ Fatal failures stop the command when they happen before or outside benchmark exe
 
 Benchmark-level capability failures do not abort the whole run. Instead, individual benchmarks return result records with `error` populated so the run can continue and reports still include the partial outcome.
 
-Last updated: 2026-07-30
+Last updated: 2026-08-02

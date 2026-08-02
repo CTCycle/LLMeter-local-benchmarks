@@ -27,6 +27,9 @@ Scriptable mode starts when a subcommand is supplied, such as:
 - `report list`
 - `report show`
 - `report generate`
+- `quality list`
+- `quality plan`
+- `install`, `update`, and `uninstall`
 
 Primary characteristics:
 
@@ -35,6 +38,7 @@ Primary characteristics:
 - automation-friendly exit codes
 - repeatable output generation for CI or local batch runs
 - benchmark progress and diagnostics on standard error, leaving standard output available for command data
+- explicit `--dry-run` performance planning and request-budget validation before provider requests
 
 ## Report-only workflows
 
@@ -53,5 +57,6 @@ All modes assume:
 - a provider server is started externally when provider access is required
 - the selected provider exposes an OpenAI-compatible `/v1` API
 - results and reports are stored under the configured output directory
+- managed lifecycle commands operate only on local files; they do not download, authenticate, or roll back updates
 
-Last updated: 2026-07-18
+Last updated: 2026-08-02

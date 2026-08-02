@@ -32,8 +32,10 @@
 
 `src/main.rs` parses arguments with `clap`, rejects interactive dispatch when stdin or stdout is not a terminal, builds `AppConfig`, resolves the effective provider for the active command, creates a `ProviderClient`, and dispatches to provider, model, benchmark, report, install/update/uninstall lifecycle, menu, or built-in help commands. CLI export/report formats are typed `ValueEnum` values and the displayed version is derived from Cargo package metadata.
 
+The scriptable surface also includes `quality list` and `quality plan`, which describe external evaluator commands without executing or installing those frameworks. `models` and `status` use fresh provider model discovery; interactive model inventory deliberately separates cached listing from an explicit refresh action.
+
 `src/runner.rs` owns benchmark orchestration, work-unit planning, and shared progress reporting so interactive and non-interactive benchmark runs use the same terminal progress lifecycle.
 
 Interactive menus use explicit `MenuAction` values rather than display labels or one-based numeric contracts. Only an Enter key press selects; Enter releases/repeats are ignored, Escape/Left returns from a workspace, and Ctrl+C restores the terminal before exiting.
 
-Last updated: 2026-07-18
+Last updated: 2026-08-02

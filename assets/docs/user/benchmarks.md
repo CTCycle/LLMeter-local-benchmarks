@@ -45,6 +45,8 @@ Synthetic prompt sizes are estimates. Provider usage fields remain authoritative
 
 Load overhead is always a client-observed first-request versus warm-request estimate in this release. It does not measure provider restart, cache eviction, model loading, or native lifecycle telemetry. Non-streaming runs do not report TTFT.
 
+Performance safety limits are enforced before requests are sent: prompt values above 32,768 estimated tokens or output values above 8,192 require `--allow-large-prompt`, and matrices above the default 500 warmup-plus-measured request budget require `--allow-large-matrix` after review. These controls are dedicated CLI flags, not provider parameters. New saved runs use result schema `2.4`.
+
 ## Quality preparation
 
 `llmeter quality` is a planning surface, not a native evaluator in this phase.
@@ -97,4 +99,4 @@ Key types:
 
 The benchmark appears in both interactive and scriptable flows.
 
-Last updated: 2026-07-30
+Last updated: 2026-08-02
