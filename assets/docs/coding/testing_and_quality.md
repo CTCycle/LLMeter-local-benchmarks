@@ -7,7 +7,7 @@ Rust's built-in `#[test]` attribute is the test framework. Integration tests liv
 Run all tests:
 
 ```bash
-cargo test -- --test-threads=1
+cargo test --locked --all-targets --all-features -- --test-threads=1
 ```
 
 Use a single test thread because configuration tests mutate process environment variables.
@@ -25,7 +25,7 @@ Clippy runs as a linter with `-D warnings` (deny mode) in CI.
 Check lint:
 
 ```bash
-cargo clippy -- -D warnings
+cargo clippy --locked --all-targets --all-features -- -D warnings
 ```
 
 ## Formatting
@@ -35,7 +35,7 @@ cargo clippy -- -D warnings
 Check formatting:
 
 ```bash
-cargo fmt --check
+cargo fmt --all -- --check
 ```
 
 ## CI
@@ -69,5 +69,8 @@ Unit coverage in `src/ui.rs` also locks down menu key normalization so an Enter 
 - CLI changes must include parse coverage for new subcommands and key validation paths.
 - Quality adapters must remain dry-run by default and test command preview generation without installing tools or downloading datasets.
 - Result schema changes must preserve old JSON readability when fields are absent.
+- Release validation must also run `cargo audit`, a locked package dry-run, a release build, and extracted-binary `--version`/`--help` plus mock-provider smoke checks.
 
-Last updated: 2026-07-18
+The current local audit evidence covers 118 serialized all-target/all-feature tests on Windows. Native hosted Linux/Windows workflow execution is defined in CI and release workflows but must still be treated separately from local evidence when it has not been run for the current commit.
+
+Last updated: 2026-08-02

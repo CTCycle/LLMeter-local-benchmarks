@@ -29,10 +29,12 @@
 - Save benchmark artifacts under the configured output directory only.
 - Keep JSON as the canonical full-fidelity run format.
 - Ensure new report or export features derive from `BenchmarkRun` rather than introducing disconnected storage formats.
+- Keep performance metrics explicit about their observation boundary: inter-chunk timing is not inter-token timing, and token aggregates disclose provider-usage coverage.
+- Treat response previews and provider parameters as untrusted output data; apply the repository privacy policy before persistence.
 
 ## Cleanup rules
 
 - Remove dead benchmark branches, unused prompt variants, and obsolete report fields when replacing them.
 - Keep `assets/docs/project_index.md` aligned with any doc additions, deletions, or renames.
 
-Last updated: 2026-06-15
+Last updated: 2026-08-02

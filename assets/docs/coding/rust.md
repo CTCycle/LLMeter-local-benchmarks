@@ -13,6 +13,7 @@ Rust edition 2021 is used, targeting stable Rust.
 - Prefer `PathBuf` over `String` for filesystem paths.
 - Use `HashMap<String, Value>` (serde_json::Value) for dynamic metric dictionaries.
 - Use `pub` module declarations in `lib.rs` for integration test access.
+- Keep provider protocol types, benchmark records, performance plans, quality plans, and report data serializable so the CLI and integration tests share the same contracts.
 
 ## Crate dependencies
 
@@ -21,7 +22,7 @@ Only the crates listed in `Cargo.toml` under `[dependencies]`. No runtime depend
 ## Style
 
 - Formatted with `cargo fmt` (default settings, 100-char line width).
-- Linted with `cargo clippy` — deny warnings in CI.
+- Linted with `cargo clippy --locked --all-targets --all-features` — deny warnings in CI and release validation.
 - No unsafe code except where platform APIs require it (Windows process creation flags).
 
 ## Module structure
@@ -29,5 +30,6 @@ Only the crates listed in `Cargo.toml` under `[dependencies]`. No runtime depend
 - One module per file. Modules declared in `lib.rs`.
 - Internal benchmark modules live under `benchmarks/`; provider integration lives in `providers.rs`.
 - Tests live in `tests/` as integration tests, plus inline `#[cfg(test)] mod tests` where appropriate.
+- Performance and quality planning code lives under `src/performance/` and `src/quality/`; the latter remains a dry-run adapter boundary rather than an embedded evaluator.
 
-Last updated: 2026-06-12
+Last updated: 2026-08-02

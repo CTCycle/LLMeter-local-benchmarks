@@ -67,6 +67,8 @@ The HTML renderer uses the same aggregated data model as Markdown and emits a se
 
 The HTML file is generated locally and does not depend on an external web app or asset pipeline.
 
+Both renderers escape untrusted model, benchmark, error, preview, and metric text. Output preparation applies the same privacy policy used for JSON and CSV: previews are omitted unless explicitly requested and sensitive values are redacted before files are written.
+
 ## Save flow
 
 `runner::save_outputs()` applies persistence in this order:
@@ -90,4 +92,4 @@ Supported report choices:
 
 The saved file list is returned to the caller and then shown in the terminal UI.
 
-Last updated: 2026-06-18
+Last updated: 2026-08-02

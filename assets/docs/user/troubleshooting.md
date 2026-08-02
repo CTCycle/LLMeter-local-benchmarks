@@ -32,6 +32,16 @@ Not every provider/model supports every OpenAI-compatible capability. `responses
 
 Check that the JSON result file exists in the output directory and is valid JSON. The output directory defaults to `benchmark_results/`.
 
+If a saved result is from an older schema, missing optional fields are supported, but malformed JSON is a hard report-loading error. Response previews are omitted by default and may be present only when the run used `--include-response-preview`.
+
+### Configuration is rejected before startup
+
+LLMeter does not silently default invalid values. Check the named source in the error (`--timeout`, `LLMETER_PROVIDER`, `LLMETER_BASE_URL`, persisted `config.json`, or another environment variable), then correct the value. Provider base URLs must be absolute HTTP(S) URLs without embedded credentials, query strings, or fragments; `/v1` is normalized automatically.
+
+### A performance plan is rejected before requests
+
+Use `--dry-run` to inspect the scenario matrix and request count. Reduce the matrix or use the dedicated `--allow-large-prompt` / `--allow-large-matrix` flags only when the larger workload is intentional. Passing these safety controls through `--param` is rejected.
+
 ## File locations
 
 | Item | Default path |
@@ -48,4 +58,4 @@ Check that the JSON result file exists in the output directory and is valid JSON
 - No concurrent benchmark execution. Each benchmark runs serially.
 - Results are machine-specific. Compare runs from the same host under similar load.
 
-Last updated: 2026-06-12
+Last updated: 2026-08-02

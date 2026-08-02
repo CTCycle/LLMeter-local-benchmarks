@@ -5,7 +5,7 @@
 | Variable | Default | Description |
 |---|---|---|
 | `LLMETER_HOME` | `%USERPROFILE%\\.llmeter` on Windows, `~/.llmeter` on Unix | Root directory for LLMeter state, including persisted config and default outputs. |
-| `LLMETER_PROVIDER` | `ollama` | Provider preset: `ollama`, `lmstudio`, `llama-cpp`, or `openai-compatible`. |
+| `LLMETER_PROVIDER` | `ollama` | Provider preset. See `llmeter providers list` for all registered presets and compatibility tiers. |
 | `LLMETER_BASE_URL` | provider default | OpenAI-compatible `/v1` base URL override. |
 | `OLLAMA_HOST` | unset | Ollama host compatibility value, mapped to `<OLLAMA_HOST>/v1`. |
 | `LMSTUDIO_BASE_URL` | unset | LM Studio base URL override. |
@@ -16,6 +16,9 @@
 | `LLMETER_RUNS` | `3` | Default repeated runs per benchmark. Must be a positive integer. |
 | `LLMETER_MAX_TOKENS` | `128` | Default generation output token cap. Must be a positive integer. |
 | `LLMETER_TEMPERATURE` | `0.2` | Default sampling temperature. Must be finite and non-negative. |
+| `LLMETER_API_KEY` | unset | Optional ephemeral bearer token for provider requests. It is not persisted or rendered in output. |
+
+Provider-specific base URL environment variables are also recognized for `OLLAMA_HOST`, `LMSTUDIO_BASE_URL`, `LLAMA_CPP_BASE_URL`, `VLLM_BASE_URL`, `SGLANG_BASE_URL`, `LOCALAI_BASE_URL`, `LITELLM_BASE_URL`, `TGI_BASE_URL`, `TEXT_GENERATION_WEBUI_BASE_URL`, `JAN_BASE_URL`, and `MLX_LM_BASE_URL`. `LLMETER_BASE_URL` takes precedence over these provider-specific values.
 
 Malformed persisted JSON, unknown persisted providers, and invalid `LLMETER_PROVIDER` values are configuration errors. A missing `config.json` still uses the normal precedence and built-in default.
 
@@ -55,4 +58,4 @@ llmeter providers set ollama
 
 By default this writes `config.json` under `<LLMETER_HOME>/config/`.
 
-Last updated: 2026-07-18
+Last updated: 2026-08-02

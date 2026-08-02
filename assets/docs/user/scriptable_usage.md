@@ -107,6 +107,8 @@ Load-estimate probes, model inventory metadata/cache scans, and `llmeter report 
 
 Load overhead is always reported as an explicitly client-observed first-request versus warm-request estimate in this release; LLMeter does not infer provider-native lifecycle telemetry. Model cache scanning is opt-in with `--scan-model-cache` and never downloads or mutates model files.
 
+`status`, `models`, standard benchmark validation, and measured probes use fresh model discovery. Use `models --json` when an automation caller needs provider data without terminal table formatting.
+
 Run an explicit latency profile on Windows PowerShell:
 
 ```powershell
@@ -125,7 +127,7 @@ Preview a performance matrix before sending requests:
 llmeter bench perf --models llama3.1 --profile sweep --prompt-tokens 128,512 --output-tokens 64,128 --concurrency 1,2 --dry-run
 ```
 
-`bench perf` prints models, prompt sizes, output sizes, concurrency levels, scenario count, warmup requests, measured requests, total requests, and the active request limit before execution. The default `--max-requests` value is `500`; larger matrices must reduce the matrix, raise `--max-requests`, or pass `--param unsafe_large_matrix=true`.
+`bench perf` prints models, prompt sizes, output sizes, concurrency levels, scenario count, warmup requests, measured requests, total requests, and the active request limit before execution. The default `--max-requests` value is `500`; larger matrices must reduce the matrix, raise `--max-requests`, or pass `--allow-large-matrix`. Prompt/output sizes above the documented bounds likewise require `--allow-large-prompt`.
 
 Preview external quality commands without installing tools automatically:
 
@@ -146,4 +148,4 @@ Example:
   run: ./llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export json --report md
 ```
 
-Last updated: 2026-07-30
+Last updated: 2026-08-02

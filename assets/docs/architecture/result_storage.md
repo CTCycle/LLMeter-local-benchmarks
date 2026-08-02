@@ -26,6 +26,8 @@ BenchmarkRun {
 
 `schema_version` is now persisted as `2.4`. Older JSON files that omit newer fields still deserialize because added fields default to `None`. Performance latency aggregates use successful requests only; failure counts/rates stay explicit in each scenario record. Scenario metrics persist the successful latency sample count, nearest-rank percentile estimator, and population-standard-deviation label. Unsupported high percentiles are omitted rather than repeated from undersized samples. Token usage coverage and the separation between inter-token and inter-chunk timing are part of the 2.4 metric contract.
 
+The current output policy is applied to a clone of the in-memory run. Response previews are omitted by default, credential-shaped values and secret-named parameters are redacted, and local process/cache selectors are removed from persisted performance data. JSON, CSV, Markdown, HTML, and provider configuration writes use same-directory temporary files followed by an atomic rename.
+
 ## Result records
 
 Each `BenchmarkResultRecord` contains:
@@ -75,4 +77,4 @@ If `LLMETER_HOME` is unset, the effective home is `%USERPROFILE%\\.llmeter` on W
 
 Overridable via `--output-dir` flag or `LLMETER_OUTPUT_DIR` environment variable.
 
-Last updated: 2026-07-30
+Last updated: 2026-08-02

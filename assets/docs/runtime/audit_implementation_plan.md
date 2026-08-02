@@ -1,6 +1,6 @@
 # LLMeter audit implementation plan
 
-Last updated: 2026-07-30
+Last updated: 2026-08-02
 
 ## Purpose
 
@@ -40,8 +40,11 @@ Completed in the current source state:
 - `1758c01` - private-by-default saved outputs and redaction.
 - `f3d534f` - statistically explicit metrics and bounded telemetry.
 - `6bc563d` - support tiers, native CI, lifecycle policy, ephemeral authentication, and interruption contracts.
+- `b49a567` - result schema `2.4`, honest streaming and token-usage semantics, fresh model validation, hardened reports, and tag-gated release validation.
 
-Final Windows validation evidence (2026-07-18): all five locked gates passed with an isolated temporary Cargo target directory. The complete all-target/all-feature suite passed 93/93 tests, including CLI output/exit contracts, mock-provider protocol behavior, privacy/redaction, statistical guardrails, telemetry shutdown, and Windows ConPTY interruption.
+Current package state is `0.3.0` on `develop`. The implementation is committed and pushed; no public release tag or binary publication has been created.
+
+Latest local validation evidence (2026-07-30): formatting, locked all-target/all-feature check, Clippy, rustdoc with warnings denied, release build, package dry-run, and the serialized all-target/all-feature suite passed 118 tests. `cargo audit` reported no vulnerabilities and two non-blocking unmaintained transitive warnings. The Windows release binary and extracted archive also passed the mock-provider and CLI smoke checks.
 
 The validated commands are:
 
@@ -97,7 +100,7 @@ Status: complete.
 - Invalid `LLMETER_PROVIDER` values are rejected instead of silently selecting Ollama.
 - CLI, environment, provider-specific environment, and persisted-file diagnostics identify their configuration source.
 
-Validation evidence (2026-07-18): focused configuration tests passed 13/13; `cargo fmt --all -- --check`, all-target/all-feature `cargo check`, Clippy with warnings denied, and the full single-threaded all-target/all-feature test suite passed with isolated target directories.
+Validation evidence (2026-07-30): configuration behavior remains covered by the locked all-target/all-feature suite, including malformed persisted JSON, invalid provider values, URL normalization, timeout bounds, numeric defaults, and provider-specific URL precedence.
 
 The validation boundaries are centralized rather than wrapped in additional domain types: configuration construction validates timeout, positive runs/tokens, finite non-negative temperature, and performance-plan concurrency before values enter execution. Dedicated wrappers were not added because each value has one construction boundary and wrappers would not remove repeated checks. Configuration writes are atomic, malformed persisted files fail with their path, and atomic rename failure cleanup is tested.
 
@@ -265,7 +268,7 @@ Status: complete.
 
 ## Phase 7 - CI and maintainer validation
 
-Status: native Ubuntu and Windows CI implemented.
+Status: native Ubuntu and Windows CI implemented; hosted execution remains separate from local validation evidence.
 
 ### Required local/repository gates
 
@@ -329,7 +332,7 @@ Deployment, README, and user-manual guidance now label lifecycle commands as loc
 
 ## Remaining closeout
 
-All locally actionable audit phases are implemented. Run the complete locked validation matrix, record the evidence here, commit the support/CI/lifecycle closeout, and push the incremental commits once the configured external GitHub destination is explicitly approved. The tag-gated Linux/Windows archive workflow is implemented, but no public tag or release has been created by this task. Public package publication, MSRV, macOS release evidence, and release-signing controls remain intentionally owner-gated.
+All locally actionable audit phases are implemented and the closeout is present in `b49a567`. The tag-gated Linux/Windows archive workflow is implemented, but no public tag or release has been created. GitHub-hosted release jobs have not been rerun for this source state, so hosted CI remains unverified here. Public package publication, MSRV, macOS release evidence, and release-signing controls remain intentionally owner-gated.
 
 ## Definition of done for the local CLI
 

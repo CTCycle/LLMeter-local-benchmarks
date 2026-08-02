@@ -13,6 +13,8 @@ Primary goals:
 5. **Modular benchmark registration** - add benchmarks by implementing a single trait.
 6. **Maximum portability** - `rustls` instead of `openssl`.
 7. **Capability coverage** - measure text generation, prompt sizes, consistency, structured output, tool calls, responses, and embeddings.
+8. **Honest performance interpretation** - separate client-observed timing signals, expose sample coverage, and keep load estimates distinct from provider-native lifecycle telemetry.
+9. **Safe local outputs** - redact sensitive values and omit response previews by default while preserving full measurement metadata in JSON.
 
 ## Stack
 
@@ -59,4 +61,6 @@ src/
   ui.rs                Interactive menus and terminal output.
 ```
 
-Last updated: 2026-07-30
+The current release boundary is source-first: package version `0.3.0` is implemented on `develop`; authorized `v*` tags are prepared to publish only GNU/Linux x86-64 and Windows x86-64 archives, while macOS remains a compatibility target without a release artifact.
+
+Last updated: 2026-08-02

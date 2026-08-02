@@ -36,7 +36,7 @@ Provider presets carry compatibility tiers: first-class, known OpenAI-compatible
 
 Client construction accepts only absolute HTTP(S) `/v1` URLs without embedded credentials, queries, or fragments. Requests identify LLMeter with its Cargo-derived user agent, use a separately bounded connection timeout, do not follow redirects, and do not inherit proxy settings. Non-success response bodies are capped before diagnostics are rendered; streaming lines are bounded and multi-line SSE `data:` fields are assembled as one event.
 
-Each `ProviderClient` retains the first validated `/v1/models` response as an immutable command-local catalog snapshot. Model selection, lookup, and capability probing reuse that snapshot rather than repeatedly contacting the provider during a single invocation.
+Each `ProviderClient` retains the first validated `/v1/models` response as a command-local catalog cache. Ordinary interactive listing and metadata lookup can reuse it; `refresh_model_catalog()` invalidates and replaces it. Status, the scriptable `models` command, benchmark model validation, load measurement, and capability probing use fresh `/v1/models` requests so operational checks are not satisfied by stale model data.
 
 Optional authentication uses only the `LLMETER_API_KEY` process environment variable. The client converts it to a sensitive in-memory `Authorization: Bearer` header. The value is never written to persisted provider configuration, benchmark configuration, results, reports, progress output, or error diagnostics. Empty values mean no authentication header; invalid header values fail without echoing the secret.
 
@@ -52,4 +52,4 @@ Performance capability probing checks `/v1/models`, chat completions, optional s
 
 LLMeter does not start or stop provider servers. Users start Ollama, LM Studio, llama.cpp, or custom local servers externally and pass provider/base URL settings to LLMeter.
 
-Last updated: 2026-07-18
+Last updated: 2026-08-02
