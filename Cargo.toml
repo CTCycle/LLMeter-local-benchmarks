@@ -2,9 +2,11 @@
 name = "llmeter"
 version = "0.3.0"
 edition = "2021"
+publish = ["crates-io"]
 description = "A modern interactive CLI benchmarking tool for local OpenAI-compatible LLM providers."
 license = "MIT"
 repository = "https://github.com/CTCycle/LLMeter-local-benchmarks"
+homepage = "https://github.com/CTCycle/LLMeter-local-benchmarks"
 readme = "README.md"
 authors = ["CTCycle"]
 keywords = ["llm", "benchmark", "cli", "local-llm", "openai-compatible"]
@@ -19,10 +21,10 @@ csv = "1"
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1"
 thiserror = "2"
-inquire = "0.7"
-tabled = "0.17"
+inquire = { version = "0.9", default-features = false, features = ["crossterm"] }
+tabled = { version = "0.21", default-features = false, features = ["std"] }
 colored = "2"
-crossterm = "0.28"
+crossterm = "0.29"
 sysinfo = "0.33"
 similar = "2"
 dirs = "5"
@@ -38,4 +40,4 @@ expectrl = "0.9"
 strip = "symbols"
 lto = true
 codegen-units = 1
-opt-level = "s"
+opt-level = 3

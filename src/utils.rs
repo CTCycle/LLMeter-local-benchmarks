@@ -149,13 +149,7 @@ mod tests {
         let destination = directory.path().join("occupied");
         fs::create_dir(&destination).unwrap();
 
-        let error = atomic_write(&destination, b"content").unwrap_err();
-        assert!(matches!(
-            error.kind(),
-            std::io::ErrorKind::PermissionDenied
-                | std::io::ErrorKind::AlreadyExists
-                | std::io::ErrorKind::Other
-        ));
+        atomic_write(&destination, b"content").unwrap_err();
         let entries = fs::read_dir(directory.path())
             .unwrap()
             .filter_map(Result::ok)

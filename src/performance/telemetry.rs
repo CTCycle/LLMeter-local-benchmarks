@@ -43,12 +43,12 @@ impl TelemetrySampler {
         let interval = Duration::from_millis(sample_interval_ms.max(100));
         let handle = thread::spawn(move || {
             let started = Instant::now();
-            let mut system = System::new_all();
+            let mut system = System::new();
             loop {
                 system.refresh_memory();
                 system.refresh_cpu_usage();
-                system.refresh_processes(ProcessesToUpdate::All, true);
                 let pid = sysinfo::Pid::from_u32(std::process::id());
+                system.refresh_processes(ProcessesToUpdate::Some(&[pid]), false);
                 let process_memory = system.process(pid).map(|process| process.memory());
                 let memory_used = system
                     .total_memory()

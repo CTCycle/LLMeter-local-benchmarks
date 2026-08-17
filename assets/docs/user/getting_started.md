@@ -12,7 +12,7 @@ The catalog includes first-class local presets (`ollama`, `lmstudio`, and `llama
 
 ### Using an authorized prebuilt binary
 
-The release workflow publishes validated GNU/Linux x86-64 and Windows x86-64 archives only from authorized `v*` tags. macOS is currently source-compatible but has no release artifact. Extract the binary, verify the archive and checksum independently, rename it to `llmeter` or `llmeter.exe` if needed, and place it on your `PATH`.
+The release workflow publishes validated Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives only from authorized `v*` tags. Extract the binary, verify the archive checksum and GitHub artifact attestation independently, rename it to `llmeter` or `llmeter.exe` if needed, and place it on your `PATH`.
 
 By default, LLMeter stores its config and outputs under `%USERPROFILE%\\.llmeter` on Windows and `~/.llmeter` on Unix. Set `LLMETER_HOME` to move that state into another portable folder.
 

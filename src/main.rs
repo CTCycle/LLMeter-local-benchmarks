@@ -56,8 +56,10 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
         }
         Some(cli::Commands::Status) => {
             let client = ProviderClient::new(config.provider, &config.base_url, config.timeout)?;
-            llmeter::ui::print_status_panel(&client.status());
-            Ok(0)
+            let status = client.status();
+            let running = status.running;
+            llmeter::ui::print_status_panel(&status);
+            Ok(if running { 0 } else { 1 })
         }
         Some(cli::Commands::Providers {
             ref provider_command,

@@ -1,17 +1,17 @@
 # Supported platforms
 
-Last updated: 2026-07-18
+Last updated: 2026-08-17
 
 ## Support tiers
 
 ### Tier 1
 
-- Windows 11 x86-64 using the MSVC Rust target. Native CI runs formatting-independent checks, Clippy, tests, documentation, and the Windows ConPTY menu test.
+- Windows 11 x86-64 using the MSVC Rust target. Native CI and the release workflow exercise checks, Clippy, tests, documentation, and the Windows ConPTY menu test. The release archive is a `.zip`.
 
 ### Tier 2
 
-- Current Ubuntu x86-64 using the GNU Rust target. Native CI runs checks, Clippy, tests, and documentation. The GNU binary requires a compatible glibc runtime and is not fully static.
-- Current macOS x86-64 and arm64 source builds. These targets are compatibility goals but are not release-supported until native CI and an approved binary distribution workflow exist.
+- Current Ubuntu x86-64 using the GNU Rust target. Native CI and the release workflow run checks, Clippy, tests, and documentation. The GNU binary requires a compatible glibc runtime and is not fully static.
+- Current macOS x86-64 (Intel) and arm64 (Apple silicon) native builds. Native CI and the release workflow exercise both targets and publish `.tar.gz` archives.
 - Linux musl targets are portability candidates only; no musl artifact is currently promised or published.
 
 The minimum supported Rust version is not declared. Builds use the current stable toolchain until an MSRV is intentionally selected and added to CI.
@@ -22,4 +22,4 @@ LLMeter does not manage provider processes or model installation. The user must 
 
 ## Distribution status
 
-Source builds and local `cargo install --path .` are supported. Public prebuilt binary distribution and package-manager publication are not currently approved; documentation and automation must not claim that release artifacts exist until that decision changes.
+The release workflow is tag-gated and publishes the four archives above plus `SHA256SUMS` and GitHub artifact provenance attestations. The first `0.3.0` crates.io publication is manual; subsequent releases can use crates.io trusted publishing. Source builds and `cargo install --path . --locked` remain supported.

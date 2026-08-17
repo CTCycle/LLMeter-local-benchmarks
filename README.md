@@ -1,6 +1,6 @@
 # LLMeter
 
-Last updated: 2026-08-06
+Last updated: 2026-08-17
 
 [![CI](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml?query=branch%3Adevelop) [![Rust](https://img.shields.io/badge/rust-2021-orange?logo=rust&logoColor=white)](./Cargo.toml) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](./LICENSE)
 
@@ -43,6 +43,39 @@ For authenticated local endpoints, set `LLMETER_API_KEY` for the process that la
 
 ## Install
 
+### Prebuilt releases
+
+The [GitHub Releases](https://github.com/CTCycle/LLMeter-local-benchmarks/releases) page is the preferred portable installation path. Each release publishes these archives:
+
+| Target | Archive |
+| --- | --- |
+| Windows x86-64 (MSVC) | `llmeter-v<version>-x86_64-pc-windows-msvc.zip` |
+| Linux x86-64 (GNU) | `llmeter-v<version>-x86_64-unknown-linux-gnu.tar.gz` |
+| macOS Apple silicon | `llmeter-v<version>-aarch64-apple-darwin.tar.gz` |
+| macOS Intel | `llmeter-v<version>-x86_64-apple-darwin.tar.gz` |
+
+Extract an archive and run the binary directly, or place it in a user-owned directory on `PATH`. The Linux archive is dynamically linked and requires a compatible glibc runtime; it is not a fully static Linux build.
+
+Verify a download from the directory containing the assets:
+
+```bash
+sha256sum --check SHA256SUMS
+gh attestation verify llmeter-v<version>-x86_64-unknown-linux-gnu.tar.gz \
+  --repo CTCycle/LLMeter-local-benchmarks
+```
+
+On Windows, use `Get-FileHash .\llmeter-v<version>-x86_64-pc-windows-msvc.zip -Algorithm SHA256` and compare it with the matching line in `SHA256SUMS`. GitHub records provenance attestations for the archives and checksum file; verify them with `gh attestation verify`.
+
+### Install with Cargo
+
+For a published release, Cargo provides the conventional installation path:
+
+```bash
+cargo install llmeter --locked
+```
+
+The first `0.3.0` publication is intentionally manual; until it appears on [crates.io](https://crates.io/crates/llmeter), install the checked-out source with `cargo install --path . --locked` or use a GitHub archive.
+
 ### Build from source
 
 ```bash
@@ -56,10 +89,8 @@ The binary is written to `target/release/llmeter` on Unix-like systems or `targe
 You can also install a user-local copy with Cargo:
 
 ```bash
-cargo install --path .
+cargo install --path . --locked
 ```
-
-The crate is not currently published to crates.io, so `cargo install llmeter` is not the supported installation path.
 
 On Windows, `run_llmeter.ps1` can build when needed and forward command arguments to the release binary:
 
@@ -67,10 +98,6 @@ On Windows, `run_llmeter.ps1` can build when needed and forward command argument
 .\run_llmeter.ps1 status
 .\run_llmeter.ps1 --provider lmstudio bench run --models all --benchmarks all
 ```
-
-### Prebuilt artifacts
-
-The repository's release workflow is tag-gated and can prepare GNU/Linux x86-64 (`.tar.gz`) and Windows x86-64 (`.zip`) archives with `SHA256SUMS`. The current `0.3.0` source state is on `develop`; use a matching authorized release artifact when one is available, or build from source as shown above. macOS remains source-compatible without a current release artifact. See [SUPPORTED_PLATFORMS.md](SUPPORTED_PLATFORMS.md) for support tiers and prerequisites.
 
 ## Quick start
 
@@ -80,6 +107,7 @@ After installing `llmeter` or adding the release binary to `PATH`, start your pr
 llmeter providers list
 llmeter --provider ollama status
 llmeter --provider ollama models
+llmeter bench list --suite llm
 ```
 
 Run the complete standard LLM suite against all exposed Ollama models:
@@ -99,7 +127,7 @@ To explore the guided workflow instead, run:
 llmeter
 ```
 
-The interactive menu covers provider setup, model inventory, benchmark workspaces, reports, built-in help, and exit. A subcommand should be supplied for non-interactive callers; a piped or CI invocation without a subcommand prints help and exits with usage status `2`.
+The interactive menu covers provider setup, model inventory, benchmark workspaces, reports, built-in help, and exit. A subcommand should be supplied for non-interactive callers; a piped or CI invocation without a subcommand prints help and exits with usage status `2`. `status` always prints its panel: it exits `0` when the selected provider is reachable and `1` when the provider cannot be reached.
 
 ## Provider setup
 
@@ -175,7 +203,7 @@ llmeter bench perf \
 
 Performance plans show the selected models, matrix dimensions, warmup and measured request counts, total request estimate, and active request limit before execution. The default matrix budget is `500` requests; larger matrices require deliberate review and `--allow-large-matrix`. Prompt values above the documented bounds likewise require `--allow-large-prompt`.
 
-Capability probes, detailed telemetry, and the client-observed load estimate are opt-in:
+Capability probes, telemetry, and the client-observed load estimate are opt-in. Telemetry is disabled by default so sampling does not distort benchmark timings:
 
 ```bash
 llmeter --provider ollama bench performance \

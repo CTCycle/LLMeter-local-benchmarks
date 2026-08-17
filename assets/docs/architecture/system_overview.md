@@ -61,6 +61,6 @@ src/
   ui.rs                Interactive menus and terminal output.
 ```
 
-The current release boundary is source-first: package version `0.3.0` is implemented on `develop`; authorized `v*` tags are prepared to publish only GNU/Linux x86-64 and Windows x86-64 archives, while macOS remains a compatibility target without a release artifact.
+The current release boundary is locally prepared for package version `0.3.0` on `develop`; authorized `v*` tags publish Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The first crates.io publication is manual.
 
 Last updated: 2026-08-02

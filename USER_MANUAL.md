@@ -4,7 +4,7 @@ LLMeter benchmarks local OpenAI-compatible LLM providers through `/v1` APIs. It 
 
 LLMeter does not start or stop provider servers. Start your provider externally, then use LLMeter to check status, list models, run benchmarks, and generate reports.
 
-Windows x86-64 is the primary supported platform. GNU/Linux requires a compatible glibc runtime; public prebuilt binaries are not currently promised. See `SUPPORTED_PLATFORMS.md` for the maintained support tiers.
+Windows x86-64 is the primary supported platform. GNU/Linux requires a compatible glibc runtime. Tagged releases also publish macOS Intel and Apple silicon archives; see `SUPPORTED_PLATFORMS.md` for the maintained support tiers.
 
 ## Installation
 

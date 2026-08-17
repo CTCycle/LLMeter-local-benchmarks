@@ -1,5 +1,5 @@
 # Project index
-Last updated: 2026-08-02
+Last updated: 2026-08-17
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first, then open the smallest topic file that matches the task.
@@ -11,7 +11,7 @@ This file is the root index for `assets/docs`. Read it first, then open the smal
 - Runtime surfaces: standard `llm` and `embeddings` suites, native `bench perf` scenarios, and dry-run external quality plans.
 - Provider catalogs use cached reads for ordinary interactive navigation and explicit fresh reads for status, model listing, benchmark validation, and measured probes.
 - Local convenience lifecycle commands (`install`, `update`, and `uninstall`) do not implement remote update or signature verification.
-- Release artifacts are workflow-gated for authorized `v*` tags on GNU/Linux x86-64 and Windows x86-64; macOS remains source-compatibility only.
+- Release artifacts are workflow-gated for authorized `v*` tags on Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon. The workflow publishes checksums and provenance attestations; the first crates.io publication remains manual.
 
 ## How To Navigate
 1. Start with this file only.
