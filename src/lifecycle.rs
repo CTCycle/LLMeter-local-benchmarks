@@ -556,7 +556,7 @@ mod tests {
     use super::{
         build_cmd_launcher, build_powershell_launcher, build_windows_uninstall_script,
         build_windows_update_script, install, managed_install_paths, uninstall, update,
-        validate_purge_home, ManagedInstallPaths,
+        validate_purge_home, ManagedInstallPaths, CONFIG_DIR_NAME, RESULTS_DIR_NAME,
     };
     use std::path::PathBuf;
     use std::sync::{Mutex, OnceLock};
@@ -604,10 +604,12 @@ mod tests {
             powershell_path: PathBuf::from("C:\\Users\\tester\\.llmeter\\bin\\llmeter.ps1"),
         };
         let script = build_windows_uninstall_script(&paths, true);
-        assert!(script.contains("rmdir /Q /S \"C:\\Users\\tester\\.llmeter\\config\""));
-        assert!(script.contains("rmdir /Q /S \"C:\\Users\\tester\\.llmeter\\benchmark_results\""));
-        assert!(script.contains("rmdir /Q \"C:\\Users\\tester\\.llmeter\""));
-        assert!(!script.contains("rmdir /Q /S \"C:\\Users\\tester\\.llmeter\""));
+        let config_dir = paths.home_dir.join(CONFIG_DIR_NAME);
+        let results_dir = paths.home_dir.join(RESULTS_DIR_NAME);
+        assert!(script.contains(&format!("rmdir /Q /S \"{}\"", config_dir.display())));
+        assert!(script.contains(&format!("rmdir /Q /S \"{}\"", results_dir.display())));
+        assert!(script.contains(&format!("rmdir /Q \"{}\"", paths.home_dir.display())));
+        assert!(!script.contains(&format!("rmdir /Q /S \"{}\"", paths.home_dir.display())));
     }
 
     #[test]
