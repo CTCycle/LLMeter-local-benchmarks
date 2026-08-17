@@ -110,7 +110,7 @@ Authorized `v*` tags publish validated Windows x86-64, GNU/Linux x86-64, macOS I
 
 Verify checksums from the asset directory with `sha256sum --check SHA256SUMS` (or `Get-FileHash` on Windows), then verify an archive with `gh attestation verify <archive> --repo CTCycle/LLMeter-local-benchmarks`. The Linux GNU archive requires a compatible glibc runtime and is not fully static.
 
-The current `develop` source state is package version `0.3.0`; it has no public release tag or published binary. Treat any local or downloaded replacement executable as untrusted until independently verified before using `llmeter update --source`.
+The current source state is package version `0.3.0`, and the public `v0.3.0` archives are available from the [GitHub Releases page](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.3.0). The first crates.io publication remains a manual follow-up, so use a verified archive or source checkout until `llmeter` is available from the registry. Treat any replacement executable as untrusted until independently verified before using `llmeter update --source`.
 
 ## Dependencies
 

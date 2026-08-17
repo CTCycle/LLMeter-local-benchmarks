@@ -42,7 +42,7 @@ Completed in the current source state:
 - `6bc563d` - support tiers, native CI, lifecycle policy, ephemeral authentication, and interruption contracts.
 - `b49a567` - result schema `2.4`, honest streaming and token-usage semantics, fresh model validation, hardened reports, and tag-gated release validation.
 
-Current package state is `0.3.0` on `develop`. The implementation is committed and pushed; no public release tag or binary publication has been created.
+At the audit snapshot, package state was `0.3.0` on `develop`; the implementation was committed and pushed before hosted release validation.
 
 Latest local validation evidence (2026-07-30): formatting, locked all-target/all-feature check, Clippy, rustdoc with warnings denied, release build, package dry-run, and the serialized all-target/all-feature suite passed 118 tests. `cargo audit` reported no vulnerabilities and two non-blocking unmaintained transitive warnings. The Windows release binary and extracted archive also passed the mock-provider and CLI smoke checks.
 
@@ -332,7 +332,7 @@ Deployment, README, and user-manual guidance now label lifecycle commands as loc
 
 ## Remaining closeout
 
-All locally actionable audit phases are implemented and the closeout is present in `b49a567`. The tag-gated Linux/Windows archive workflow is implemented, but no public tag or release has been created. GitHub-hosted release jobs have not been rerun for this source state, so hosted CI remains unverified here. Public package publication, MSRV, macOS release evidence, and release-signing controls remain intentionally owner-gated.
+All locally actionable audit phases are implemented. Hosted release run `32050420660` passed the four-target build, packaged mock-provider, checksum, and provenance gates, and published `v0.3.0` on 2026-08-17. crates.io publication remains a manual owner-gated step; MSRV is still not declared.
 
 ## Definition of done for the local CLI
 
