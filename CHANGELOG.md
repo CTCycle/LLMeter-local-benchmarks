@@ -2,7 +2,7 @@
 
 All notable changes are documented here.
 
-## 0.3.0 - Unreleased
+## 0.3.0 - 2026-08-17
 
 - Normalize new benchmark result files to schema version `2.4`.
 - Correct streaming metric semantics: chunk arrival timing is separate from ITL, which requires provider-reported output token usage.
@@ -16,7 +16,7 @@ All notable changes are documented here.
 - Harden Markdown and HTML report escaping for untrusted model, benchmark, error, preview, and metric values.
 - Add mock OpenAI-compatible provider E2E coverage for models, streaming chat benchmarks, unsupported endpoint errors, and report generation.
 - Add tag-gated checksummed Windows, Linux, and macOS release archives with archive smoke validation and GitHub artifact provenance attestations.
-- Prepare the first public distribution through GitHub Releases and crates.io (`cargo install llmeter --locked`).
+- Publish the first public GitHub distribution and prepare the package for the manual initial crates.io publication (`cargo install llmeter --locked`).
 - Make provider status return exit code `1` when unreachable, make performance telemetry opt-in, and harden managed install purge and replacement behavior.
 - Refresh compatible dependencies, remove the unmaintained fuzzy-matcher chain, and use release-oriented optimization.
 
