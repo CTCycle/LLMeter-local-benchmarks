@@ -114,7 +114,7 @@ jobs:
           mkdir -p dist/smoke
           tar -C dist/smoke -xzf "dist/${name}.tar.gz"
           extracted="dist/smoke/${name}"
-          files="$(find "$extracted" -maxdepth 1 -type f -exec basename {} \; | sort | tr '\n' ' ')"
+          files="$(find "$extracted" -maxdepth 1 -type f -exec basename {} \; | LC_ALL=C sort | tr '\n' ' ')"
           test "$files" = "CHANGELOG.md LICENSE README.md ${{ matrix.binary }} "
           "$extracted/${{ matrix.binary }}" --version
           "$extracted/${{ matrix.binary }}" --help >/dev/null
@@ -141,9 +141,10 @@ jobs:
           cargo test --locked --all-features --test mock_provider_e2e -- --test-threads=1
 
       - name: Attest release archive
-        uses: actions/attest@025375512d7691d20fa59fad9e64a6399960847c # v3.2.0
+        uses: actions/attest@c32b4b8b198b65d0bd9d63490e847ff7b53989d4 # v4.0.0
         with:
           subject-path: dist/llmeter-v*.${{ matrix.archive }}
+          create-storage-record: false
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -174,9 +175,10 @@ jobs:
           (cd dist && sha256sum --check SHA256SUMS)
 
       - name: Attest checksums
-        uses: actions/attest@025375512d7691d20fa59fad9e64a6399960847c # v3.2.0
+        uses: actions/attest@c32b4b8b198b65d0bd9d63490e847ff7b53989d4 # v4.0.0
         with:
           subject-path: dist/SHA256SUMS
+          create-storage-record: false
 
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2 (Node 20)
         with:
