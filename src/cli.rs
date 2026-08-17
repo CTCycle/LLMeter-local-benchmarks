@@ -285,7 +285,12 @@ pub enum BenchCommands {
         #[arg(long, default_value_t = 2)]
         load_probe_runs: u32,
 
-        #[arg(long, value_enum, default_value_t = TelemetryLevel::Standard)]
+        #[arg(
+            long,
+            value_enum,
+            default_value_t = TelemetryLevel::Off,
+            help = "Optional system/process telemetry; disabled by default to minimize benchmark overhead"
+        )]
         telemetry: TelemetryLevel,
 
         #[arg(long, default_value_t = 1000)]

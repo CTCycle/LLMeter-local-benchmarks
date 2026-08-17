@@ -10,6 +10,8 @@ use crate::errors::LLMeterError;
 use crate::utils;
 
 const BIN_DIR_NAME: &str = "bin";
+const CONFIG_DIR_NAME: &str = "config";
+const RESULTS_DIR_NAME: &str = "benchmark_results";
 const EXECUTABLE_NAME: &str = "llmeter.exe";
 const CMD_LAUNCHER_NAME: &str = "llmeter.cmd";
 const POWERSHELL_LAUNCHER_NAME: &str = "llmeter.ps1";
@@ -143,6 +145,10 @@ pub fn uninstall(
     let current_exe = current_executable()?;
     let paths = managed_install_paths(bin_dir_override)?;
 
+    if purge_home {
+        validate_purge_home(&paths.home_dir)?;
+    }
+
     if !paths.exe_path.exists() && !paths.cmd_path.exists() && !paths.powershell_path.exists() {
         return Err(LLMeterError::InvalidOption(format!(
             "No managed install was found under {}.",
@@ -164,9 +170,10 @@ pub fn uninstall(
     remove_if_exists(&paths.cmd_path)?;
     remove_if_exists(&paths.powershell_path)?;
     remove_if_exists(&paths.exe_path)?;
-    remove_empty_or_missing_dir(&paths.bin_dir)?;
     if purge_home {
-        remove_dir_if_exists(&paths.home_dir)?;
+        purge_owned_home(&paths)?;
+    } else {
+        remove_empty_or_missing_dir(&paths.bin_dir)?;
     }
 
     Ok(LifecycleMessage {
@@ -187,7 +194,7 @@ fn uninstall_details(paths: &ManagedInstallPaths, purge_home: bool) -> Vec<Strin
     }
     if purge_home {
         details.push(format!(
-            "Removed LLMeter home: {}",
+            "Purged LLMeter-owned data under {} (the home directory is removed only when empty).",
             paths.home_dir.display()
         ));
     } else {
@@ -236,7 +243,16 @@ fn copy_executable(source: &Path, target: &Path) -> anyhow::Result<()> {
             format!("Failed to create target directory for {}", target.display())
         })?;
     }
-    let temp_target = target.with_extension("tmp");
+    if target.is_dir() {
+        return Err(LLMeterError::InvalidOption(format!(
+            "Cannot replace managed executable {}; the target is a directory.",
+            target.display()
+        ))
+        .into());
+    }
+    let suffix = utils::utc_now_run_id_stamp();
+    let temp_target = target.with_extension(format!("llmeter-tmp-{suffix}"));
+    let backup_target = target.with_extension(format!("llmeter-backup-{suffix}"));
     fs::copy(source, &temp_target).with_context(|| {
         format!(
             "Failed to copy executable from {} to {}",
@@ -244,18 +260,43 @@ fn copy_executable(source: &Path, target: &Path) -> anyhow::Result<()> {
             temp_target.display()
         )
     })?;
-    if target.exists() {
-        fs::remove_file(target).with_context(|| {
-            format!("Failed to remove existing executable {}", target.display())
+    let had_target = target.exists();
+    if had_target {
+        fs::rename(target, &backup_target).with_context(|| {
+            format!(
+                "Failed to stage the existing executable {} for replacement",
+                target.display()
+            )
         })?;
     }
-    fs::rename(&temp_target, target).with_context(|| {
-        format!(
-            "Failed to move staged executable {} into {}",
-            temp_target.display(),
-            target.display()
-        )
-    })?;
+    if let Err(error) = fs::rename(&temp_target, target) {
+        let _ = remove_if_exists(&temp_target);
+        if had_target && !target.exists() {
+            if let Err(restore_error) = fs::rename(&backup_target, target) {
+                return Err(anyhow::anyhow!(
+                    "Failed to move staged executable {} into {} ({error}); restoring the previous executable also failed ({restore_error})",
+                    temp_target.display(),
+                    target.display()
+                ));
+            }
+        }
+        return Err(error).with_context(|| {
+            format!(
+                "Failed to move staged executable {} into {}",
+                temp_target.display(),
+                target.display()
+            )
+        });
+    }
+    if had_target {
+        remove_if_exists(&backup_target).with_context(|| {
+            format!(
+                "Installed {} but failed to remove its replacement backup {}",
+                target.display(),
+                backup_target.display()
+            )
+        })?;
+    }
     Ok(())
 }
 
@@ -327,12 +368,12 @@ fn stage_temp_copy(source: &Path, prefix: &str) -> anyhow::Result<PathBuf> {
 }
 
 fn build_windows_update_script(staged_source: &Path, target: &Path) -> String {
+    let backup = target.with_extension(format!("llmeter-backup-{}", utils::utc_now_run_id_stamp()));
     format!(
-        "@echo off\r\nsetlocal\r\nping 127.0.0.1 -n 3 >nul\r\ncopy /Y \"{}\" \"{}\" >nul\r\nif exist \"{}\" del /F /Q \"{}\"\r\n(goto) 2>nul & del \"%~f0\"\r\n",
+        "@echo off\r\nsetlocal\r\nping 127.0.0.1 -n 3 >nul\r\nset \"staged={}\"\r\nset \"target={}\"\r\nset \"backup={}\"\r\nif exist \"%target%\" move /Y \"%target%\" \"%backup%\" >nul\r\nif errorlevel 1 goto :restore\r\nmove /Y \"%staged%\" \"%target%\" >nul\r\nif errorlevel 1 goto :restore\r\nif exist \"%backup%\" del /F /Q \"%backup%\"\r\nif exist \"%staged%\" del /F /Q \"%staged%\"\r\n(goto) 2>nul & del \"%~f0\"\r\nexit /b 0\r\n:restore\r\nif exist \"%backup%\" move /Y \"%backup%\" \"%target%\" >nul\r\nif exist \"%staged%\" del /F /Q \"%staged%\"\r\nexit /b 1\r\n",
         staged_source.display(),
         target.display(),
-        staged_source.display(),
-        staged_source.display()
+        backup.display()
     )
 }
 
@@ -357,14 +398,34 @@ fn build_windows_uninstall_script(paths: &ManagedInstallPaths, purge_home: bool)
             paths.exe_path.display()
         ),
         format!(
-            "if exist \"{}\" rmdir /Q /S \"{}\"",
+            "if exist \"{}\" rmdir /Q \"{}\"",
             paths.bin_dir.display(),
             paths.bin_dir.display()
         ),
     ];
     if purge_home {
+        let owned_bin_dir = paths.home_dir.join(BIN_DIR_NAME);
+        let config_dir = paths.home_dir.join(CONFIG_DIR_NAME);
+        let results_dir = paths.home_dir.join(RESULTS_DIR_NAME);
+        lines.extend([
+            format!(
+                "if exist \"{}\" rmdir /Q /S \"{}\"",
+                owned_bin_dir.display(),
+                owned_bin_dir.display()
+            ),
+            format!(
+                "if exist \"{}\" rmdir /Q /S \"{}\"",
+                config_dir.display(),
+                config_dir.display()
+            ),
+            format!(
+                "if exist \"{}\" rmdir /Q /S \"{}\"",
+                results_dir.display(),
+                results_dir.display()
+            ),
+        ]);
         lines.push(format!(
-            "if exist \"{}\" rmdir /Q /S \"{}\"",
+            "if exist \"{}\" rmdir /Q \"{}\"",
             paths.home_dir.display(),
             paths.home_dir.display()
         ));
@@ -414,6 +475,62 @@ fn remove_dir_if_exists(path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn purge_owned_home(paths: &ManagedInstallPaths) -> anyhow::Result<()> {
+    remove_dir_if_exists(&paths.home_dir.join(BIN_DIR_NAME))?;
+    remove_dir_if_exists(&paths.home_dir.join(CONFIG_DIR_NAME))?;
+    remove_dir_if_exists(&paths.home_dir.join(RESULTS_DIR_NAME))?;
+    remove_empty_or_missing_dir(&paths.bin_dir)?;
+    remove_empty_or_missing_dir(&paths.home_dir)
+}
+
+fn validate_purge_home(home_dir: &Path) -> anyhow::Result<()> {
+    let candidate = absolute_path(home_dir);
+    if candidate.parent().is_none() {
+        return Err(LLMeterError::InvalidOption(format!(
+            "Refusing to purge filesystem root {}.",
+            home_dir.display()
+        ))
+        .into());
+    }
+
+    let mut protected = vec![std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))];
+    protected.push(std::env::temp_dir());
+    if let Some(user_home) = dirs::home_dir() {
+        protected.push(user_home);
+    }
+    if protected
+        .iter()
+        .map(|path| absolute_path(path))
+        .any(|path| path.starts_with(&candidate))
+    {
+        return Err(LLMeterError::InvalidOption(format!(
+            "Refusing to purge broad or protected path {}. Set LLMETER_HOME to a dedicated LLMeter directory.",
+            home_dir.display()
+        ))
+        .into());
+    }
+
+    if candidate.exists() && !candidate.is_dir() {
+        return Err(LLMeterError::InvalidOption(format!(
+            "Cannot purge LLMeter home {}; it is not a directory.",
+            home_dir.display()
+        ))
+        .into());
+    }
+    Ok(())
+}
+
+fn absolute_path(path: &Path) -> PathBuf {
+    let path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(path)
+    };
+    fs::canonicalize(&path).unwrap_or(path)
+}
+
 fn remove_empty_or_missing_dir(path: &Path) -> anyhow::Result<()> {
     if !path.exists() {
         return Ok(());
@@ -438,7 +555,8 @@ fn same_path(left: &Path, right: &Path) -> bool {
 mod tests {
     use super::{
         build_cmd_launcher, build_powershell_launcher, build_windows_uninstall_script,
-        managed_install_paths, ManagedInstallPaths,
+        build_windows_update_script, install, managed_install_paths, uninstall, update,
+        validate_purge_home, ManagedInstallPaths,
     };
     use std::path::PathBuf;
     use std::sync::{Mutex, OnceLock};
@@ -486,6 +604,66 @@ mod tests {
             powershell_path: PathBuf::from("C:\\Users\\tester\\.llmeter\\bin\\llmeter.ps1"),
         };
         let script = build_windows_uninstall_script(&paths, true);
-        assert!(script.contains("rmdir /Q /S \"C:\\Users\\tester\\.llmeter\""));
+        assert!(script.contains("rmdir /Q /S \"C:\\Users\\tester\\.llmeter\\config\""));
+        assert!(script.contains("rmdir /Q /S \"C:\\Users\\tester\\.llmeter\\benchmark_results\""));
+        assert!(script.contains("rmdir /Q \"C:\\Users\\tester\\.llmeter\""));
+        assert!(!script.contains("rmdir /Q /S \"C:\\Users\\tester\\.llmeter\""));
+    }
+
+    #[test]
+    fn update_script_restores_the_previous_executable_on_failure() {
+        let script = build_windows_update_script(
+            PathBuf::from("C:\\Users\\tester\\AppData\\Local\\Temp\\update.exe").as_path(),
+            PathBuf::from("C:\\Users\\tester\\.llmeter\\bin\\llmeter.exe").as_path(),
+        );
+        assert!(script.contains("move /Y \"%target%\" \"%backup%\""));
+        assert!(script.contains("goto :restore"));
+        assert!(script.contains(":restore"));
+        assert!(script.contains("move /Y \"%backup%\" \"%target%\""));
+    }
+
+    #[test]
+    fn purge_rejects_protected_broad_paths() {
+        let current = std::env::current_dir().unwrap();
+        assert!(validate_purge_home(&current).is_err());
+        assert!(validate_purge_home(&std::env::temp_dir()).is_err());
+        if let Some(home) = dirs::home_dir() {
+            assert!(validate_purge_home(&home).is_err());
+        }
+    }
+
+    #[test]
+    fn purge_allows_a_dedicated_missing_directory() {
+        let temp = tempdir().unwrap();
+        let dedicated = temp.path().join("llmeter-home");
+        assert!(validate_purge_home(&dedicated).is_ok());
+    }
+
+    #[test]
+    fn managed_install_update_uninstall_round_trip_uses_only_owned_data() {
+        let _guard = env_lock().lock().unwrap();
+        let temp = tempdir().unwrap();
+        let home = temp.path().join("llmeter-home");
+        std::env::set_var("LLMETER_HOME", &home);
+
+        let installed = install(None, false).unwrap();
+        assert!(installed.summary.contains("Installed LLMeter"));
+        let paths = managed_install_paths(None).unwrap();
+        assert!(paths.exe_path.is_file());
+
+        std::fs::create_dir_all(home.join("config")).unwrap();
+        std::fs::create_dir_all(home.join("benchmark_results")).unwrap();
+        std::fs::write(home.join("config").join("config.json"), b"{}").unwrap();
+        std::fs::write(home.join("benchmark_results").join("result.json"), b"{}").unwrap();
+
+        let updated = update(None, None).unwrap();
+        assert!(updated.summary.contains("Updated managed install"));
+        assert!(paths.exe_path.is_file());
+
+        let removed = uninstall(None, true).unwrap();
+        assert!(removed.summary.contains("Removed managed install"));
+        assert!(!home.exists());
+
+        std::env::remove_var("LLMETER_HOME");
     }
 }

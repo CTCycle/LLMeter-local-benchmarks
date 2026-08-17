@@ -303,7 +303,7 @@ fn cli_handles_unavailable_provider_and_missing_model() {
         .arg("status")
         .output()
         .expect("run llmeter status for unavailable provider");
-    assert!(unavailable.status.success());
+    assert_eq!(unavailable.status.code(), Some(1));
     let unavailable_stdout = String::from_utf8_lossy(&unavailable.stdout);
     assert!(unavailable_stdout.contains("API reachable"));
     assert!(unavailable_stdout.contains("no"));

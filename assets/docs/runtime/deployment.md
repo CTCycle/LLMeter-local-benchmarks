@@ -25,10 +25,16 @@ copy target\release\llmeter.exe C:\Users\<you>\bin\
 ### Via cargo install
 
 ```bash
-cargo install --path .
+cargo install --path . --locked
 ```
 
-The crate is not currently published. Do not use `cargo install llmeter`; public package publication requires a separate owner approval.
+After the first manual `0.3.0` publication, the conventional crates.io path is:
+
+```bash
+cargo install llmeter --locked
+```
+
+Until that publication is complete, use the source path above or a GitHub release archive.
 
 To install into a user-owned folder, set `CARGO_INSTALL_ROOT` or pass `--root` directly:
 
@@ -100,7 +106,9 @@ llmeter uninstall --purge-home
 
 ### Prebuilt binaries
 
-Authorized `v*` tags publish validated GNU/Linux x86-64 and Windows x86-64 archives through the release workflow. Each archive contains the binary, README, LICENSE, and CHANGELOG, and the release includes `SHA256SUMS`. macOS remains a source-compatibility goal rather than a release artifact.
+Authorized `v*` tags publish validated Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives through the release workflow. Each archive contains the binary, README, LICENSE, and CHANGELOG, and the release includes `SHA256SUMS` plus GitHub artifact provenance attestations.
+
+Verify checksums from the asset directory with `sha256sum --check SHA256SUMS` (or `Get-FileHash` on Windows), then verify an archive with `gh attestation verify <archive> --repo CTCycle/LLMeter-local-benchmarks`. The Linux GNU archive requires a compatible glibc runtime and is not fully static.
 
 The current `develop` source state is package version `0.3.0`; it has no public release tag or published binary. Treat any local or downloaded replacement executable as untrusted until independently verified before using `llmeter update --source`.
 
@@ -118,8 +126,8 @@ Current version: `0.3.0`. Follows semantic versioning. Defined in `Cargo.toml`.
 
 ## Platforms
 
-Windows x86-64 is Tier 1. Ubuntu GNU/Linux x86-64 is Tier 2 and requires compatible glibc. macOS and musl are source compatibility goals without current native release evidence. See `SUPPORTED_PLATFORMS.md`.
+Windows x86-64 is Tier 1. Ubuntu GNU/Linux x86-64 and macOS Intel/Apple silicon are Tier 2 native release targets; GNU/Linux requires compatible glibc. musl remains source-only. See `SUPPORTED_PLATFORMS.md`.
 
 The binary uses `rustls`, so it does not require an OpenSSL runtime dependency. A musl-targeted Linux build is the portable Linux option; the released GNU/Linux artifact still has a glibc compatibility boundary.
 
-Last updated: 2026-08-02
+Last updated: 2026-08-17

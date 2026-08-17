@@ -5,15 +5,16 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   validate:
     name: Validate release metadata
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Check tag, package version, and changelog
         shell: bash
@@ -25,7 +26,7 @@ jobs:
           test "$version" = "$cargo_version"
           grep -Eq "^##[[:space:]]+$version([[:space:]]|$)" CHANGELOG.md
 
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1
         with:
           toolchain: stable
           components: clippy
@@ -58,6 +59,10 @@ jobs:
   build:
     name: Build ${{ matrix.target }}
     needs: validate
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -70,11 +75,19 @@ jobs:
             target: x86_64-pc-windows-msvc
             binary: llmeter.exe
             archive: zip
+          - os: macos-14
+            target: aarch64-apple-darwin
+            binary: llmeter
+            archive: tar.gz
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            binary: llmeter
+            archive: tar.gz
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1
         with:
           toolchain: stable
           target: ${{ matrix.target }}
@@ -87,7 +100,7 @@ jobs:
           LLMETER_BIN: target/${{ matrix.target }}/release/${{ matrix.binary }}
         run: cargo test --locked --all-features --test mock_provider_e2e -- --test-threads=1
 
-      - name: Package Linux archive
+      - name: Package Unix archive
         if: runner.os != 'Windows'
         shell: bash
         run: |
@@ -98,19 +111,14 @@ jobs:
           cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/${name}/"
           cp README.md LICENSE CHANGELOG.md "dist/${name}/"
           tar -C dist -czf "dist/${name}.tar.gz" "${name}"
-          mkdir -p "dist/smoke"
+          mkdir -p dist/smoke
           tar -C dist/smoke -xzf "dist/${name}.tar.gz"
           extracted="dist/smoke/${name}"
-          test "$(find "$extracted" -maxdepth 1 -type f | wc -l)" -eq 4
-          test "$(find "$extracted" -maxdepth 1 -type f -printf '%f\n' | sort | tr '\n' ' ')" = "CHANGELOG.md LICENSE README.md ${{ matrix.binary }} "
+          files="$(find "$extracted" -maxdepth 1 -type f -exec basename {} \; | sort | tr '\n' ' ')"
+          test "$files" = "CHANGELOG.md LICENSE README.md ${{ matrix.binary }} "
           "$extracted/${{ matrix.binary }}" --version
           "$extracted/${{ matrix.binary }}" --help >/dev/null
-
-      - name: Run extracted Linux binary mock-provider suite
-        if: runner.os != 'Windows'
-        env:
-          LLMETER_BIN: dist/smoke/llmeter-${{ github.ref_name }}-${{ matrix.target }}/${{ matrix.binary }}
-        run: cargo test --locked --all-features --test mock_provider_e2e -- --test-threads=1
+          LLMETER_BIN="$extracted/${{ matrix.binary }}" cargo test --locked --all-features --test mock_provider_e2e -- --test-threads=1
 
       - name: Package Windows archive
         if: runner.os == 'Windows'
@@ -129,38 +137,50 @@ jobs:
           if ($files.Count -ne 4 -or ($files -join ',') -ne "CHANGELOG.md,LICENSE,llmeter.exe,README.md") { throw "Unexpected archive contents: $($files -join ', ')" }
           & "$extracted/${{ matrix.binary }}" --version
           & "$extracted/${{ matrix.binary }}" --help | Out-Null
+          $env:LLMETER_BIN = "$extracted/${{ matrix.binary }}"
+          cargo test --locked --all-features --test mock_provider_e2e -- --test-threads=1
 
-      - name: Run extracted Windows binary mock-provider suite
-        if: runner.os == 'Windows'
-        env:
-          LLMETER_BIN: dist/smoke/llmeter-${{ github.ref_name }}-${{ matrix.target }}/${{ matrix.binary }}
-        run: cargo test --locked --all-features --test mock_provider_e2e -- --test-threads=1
+      - name: Attest release archive
+        uses: actions/attest@025375512d7691d20fa59fad9e64a6399960847c # v3.2.0
+        with:
+          subject-path: dist/llmeter-v*.${{ matrix.archive }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-${{ matrix.target }}
           path: dist/*.*
           if-no-files-found: error
 
   publish:
-    name: Publish GitHub release
+    name: Publish GitHub release assets
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: dist
           pattern: release-*
           merge-multiple: true
 
-      - name: Create checksums
+      - name: Create and verify checksums
         shell: bash
         run: |
           set -euo pipefail
-          sha256sum dist/*.tar.gz dist/*.zip > dist/SHA256SUMS
+          (cd dist && sha256sum *.tar.gz *.zip > SHA256SUMS)
+          (cd dist && sha256sum --check SHA256SUMS)
 
-      - uses: softprops/action-gh-release@v2
+      - name: Attest checksums
+        uses: actions/attest@025375512d7691d20fa59fad9e64a6399960847c # v3.2.0
         with:
+          subject-path: dist/SHA256SUMS
+
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2 (Node 20)
+        with:
+          generate_release_notes: true
           files: |
             dist/*.tar.gz
             dist/*.zip
