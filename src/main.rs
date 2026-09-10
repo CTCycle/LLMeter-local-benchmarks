@@ -311,8 +311,12 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     task,
                     model,
                 } => {
-                    let plan =
-                        llmeter::quality::adapter::build_quality_plan(*framework, task, model);
+                    let plan = llmeter::quality::adapter::build_quality_plan(
+                        *framework,
+                        task,
+                        model,
+                        &config.base_url,
+                    );
                     println!("{}", serde_json::to_string_pretty(&plan)?);
                 }
             }
