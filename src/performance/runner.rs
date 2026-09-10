@@ -30,7 +30,7 @@ use crate::performance::workload::{
 };
 use crate::progress::{ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate};
 use crate::providers::ProviderClient;
-use crate::results::{BenchmarkRun, BenchmarkRunKind, ResultStore, RESULT_SCHEMA_VERSION};
+use crate::results::{BenchmarkRun, BenchmarkRunKind, ResultStore};
 use crate::utils::{error_chain, ns_to_ms, utc_now_iso};
 
 pub fn run_performance_plan(
@@ -229,34 +229,32 @@ pub fn run_performance_plan(
         Some(summarize_samples(&telemetry_samples))
     };
 
-    Ok(BenchmarkRun {
+    let mut config_map = HashMap::new();
+    config_map.insert("provider".to_string(), json!(config.provider.to_string()));
+    config_map.insert("base_url".to_string(), json!(config.base_url));
+    config_map.insert("profile".to_string(), json!(plan.profile.label()));
+    config_map.insert("stream".to_string(), json!(plan.stream));
+
+    let mut run = BenchmarkRun::new(
         run_id,
-        created_at: utc_now_iso(),
-        models: available,
-        benchmark_ids: vec!["performance-scenario".to_string()],
-        config: {
-            let mut config_map = HashMap::new();
-            config_map.insert("provider".to_string(), json!(config.provider.to_string()));
-            config_map.insert("base_url".to_string(), json!(config.base_url));
-            config_map.insert("profile".to_string(), json!(plan.profile.label()));
-            config_map.insert("stream".to_string(), json!(plan.stream));
-            config_map
-        },
+        utc_now_iso(),
+        available,
+        vec!["performance-scenario".to_string()],
+        config_map,
         results,
-        schema_version: RESULT_SCHEMA_VERSION.to_string(),
-        run_kind: Some(BenchmarkRunKind::Performance),
-        environment: Some(environment),
-        performance_plan: Some(plan),
-        quality_plan: None,
-        provider_capabilities,
-        model_load_measurements: if model_load_measurements.is_empty() {
-            None
-        } else {
-            Some(model_load_measurements)
-        },
-        model_inventory_measurements: Some(model_inventory_measurements),
-        telemetry_summary,
-    })
+        BenchmarkRunKind::Performance,
+    );
+    run.environment = Some(environment);
+    run.performance_plan = Some(plan);
+    run.provider_capabilities = provider_capabilities;
+    run.model_load_measurements = if model_load_measurements.is_empty() {
+        None
+    } else {
+        Some(model_load_measurements)
+    };
+    run.model_inventory_measurements = Some(model_inventory_measurements);
+    run.telemetry_summary = telemetry_summary;
+    Ok(run)
 }
 
 fn build_prompts(plan: &PerformancePlan) -> anyhow::Result<Vec<PerformancePrompt>> {
