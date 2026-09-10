@@ -83,7 +83,7 @@ pub enum Commands {
     Show { model: String },
 
     #[command(
-        about = "Run and manage LLM benchmarks — generation, latency, performance, and quality"
+        about = "Run and manage LLM benchmarks: generation, latency, performance, and quality"
     )]
     Bench {
         #[command(subcommand)]
@@ -141,8 +141,7 @@ pub enum Commands {
     },
 
     #[command(
-        about = "Show built-in help. Use a topic such as providers, bench, reports, install, or examples",
-        visible_alias = "/help"
+        about = "Show built-in help. Use a topic such as providers, bench, reports, install, or examples"
     )]
     Help { topic: Option<String> },
 
@@ -168,7 +167,7 @@ pub enum BenchCommands {
     },
 
     #[command(
-        about = "Run standard benchmarks — generation, consistency, structured output, etc."
+        about = "Run standard benchmarks: generation, consistency, structured output, etc."
     )]
     Run {
         #[arg(
@@ -214,10 +213,7 @@ pub enum BenchCommands {
         include_response_preview: bool,
     },
 
-    #[command(
-        about = "Measure latency, throughput, TTFT, and chunk timing under concurrent load",
-        visible_alias = "performance"
-    )]
+    #[command(about = "Measure latency, throughput, TTFT, and chunk timing under concurrent load")]
     Perf {
         #[arg(
             long,
