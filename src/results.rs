@@ -430,16 +430,13 @@ fn redact_value(value: &mut Value) {
 
 fn is_sensitive_key(key: &str) -> bool {
     let key = key.to_ascii_lowercase().replace('-', "_");
-    [
-        "authorization",
-        "api_key",
-        "apikey",
-        "password",
-        "secret",
-        "token",
-    ]
-    .iter()
-    .any(|needle| key.contains(needle))
+    matches!(
+        key.as_str(),
+        "authorization" | "api_key" | "apikey" | "password" | "secret" | "token"
+    ) || key.ends_with("_api_key")
+        || key.ends_with("_password")
+        || key.ends_with("_secret")
+        || key.ends_with("_token")
 }
 
 pub fn redact_sensitive_text(text: &str) -> String {
@@ -486,7 +483,14 @@ fn build_run_id(stamp: &str, pid: u32, models: &[String]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_run_id, redact_sensitive_text, sanitize_csv_text};
+    use std::collections::HashMap;
+
+    use serde_json::json;
+
+    use super::{
+        build_run_id, prepare_run_for_output, redact_sensitive_text, sanitize_csv_text,
+        BenchmarkRun, BenchmarkRunKind, OutputPrivacyPolicy,
+    };
 
     #[test]
     fn build_run_id_varies_by_process_for_same_timestamp_and_models() {
@@ -518,5 +522,28 @@ mod tests {
         assert!(!redacted.contains("secret"));
         assert!(!redacted.contains("hunter2"));
         assert!(redacted.contains("[redacted]"));
+    }
+
+    #[test]
+    fn output_redaction_preserves_non_secret_token_counts() {
+        let mut config = HashMap::new();
+        config.insert("max_tokens".to_string(), json!(128));
+        config.insert("access_token".to_string(), json!("secret-value"));
+        let run = BenchmarkRun::new(
+            "run".to_string(),
+            "2026-09-10T00:00:00Z".to_string(),
+            vec!["model".to_string()],
+            vec!["chat-generation".to_string()],
+            config,
+            Vec::new(),
+            BenchmarkRunKind::Benchmark,
+        );
+
+        let prepared = prepare_run_for_output(&run, OutputPrivacyPolicy::default());
+        assert_eq!(prepared.config.get("max_tokens"), Some(&json!(128)));
+        assert_eq!(
+            prepared.config.get("access_token"),
+            Some(&json!("[redacted]"))
+        );
     }
 }
