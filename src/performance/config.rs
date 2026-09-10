@@ -52,6 +52,19 @@ impl PerformanceProfile {
             Self::Sweep => "sweep",
         }
     }
+
+    pub const fn default_runs(self) -> u32 {
+        match self {
+            Self::Smoke => 3,
+            Self::Latency => 5,
+            Self::Throughput => 4,
+            Self::Sweep => 3,
+        }
+    }
+
+    pub const fn default_warmup_requests(self) -> u32 {
+        1
+    }
 }
 
 impl std::str::FromStr for PerformanceProfile {
@@ -211,8 +224,10 @@ impl PerformancePlan {
                     estimated_tokens: vec![128],
                 },
                 concurrency: ConcurrencySpec { levels: vec![1] },
-                warmup: WarmupConfig { requests: 1 },
-                runs: 3,
+                warmup: WarmupConfig {
+                    requests: profile.default_warmup_requests(),
+                },
+                runs: profile.default_runs(),
                 stream,
                 workload_jsonl,
                 extra_params,
@@ -239,8 +254,10 @@ impl PerformancePlan {
                     estimated_tokens: vec![128],
                 },
                 concurrency: ConcurrencySpec { levels: vec![1] },
-                warmup: WarmupConfig { requests: 1 },
-                runs: 5,
+                warmup: WarmupConfig {
+                    requests: profile.default_warmup_requests(),
+                },
+                runs: profile.default_runs(),
                 stream,
                 workload_jsonl,
                 extra_params,
@@ -269,8 +286,10 @@ impl PerformancePlan {
                 concurrency: ConcurrencySpec {
                     levels: vec![1, 2, 4, 8],
                 },
-                warmup: WarmupConfig { requests: 1 },
-                runs: 4,
+                warmup: WarmupConfig {
+                    requests: profile.default_warmup_requests(),
+                },
+                runs: profile.default_runs(),
                 stream,
                 workload_jsonl,
                 extra_params,
@@ -299,8 +318,10 @@ impl PerformancePlan {
                 concurrency: ConcurrencySpec {
                     levels: vec![1, 2, 4],
                 },
-                warmup: WarmupConfig { requests: 1 },
-                runs: 3,
+                warmup: WarmupConfig {
+                    requests: profile.default_warmup_requests(),
+                },
+                runs: profile.default_runs(),
                 stream,
                 workload_jsonl,
                 extra_params,
@@ -450,4 +471,25 @@ fn parse_csv_u32(value: &str) -> anyhow::Result<Vec<u32>> {
         .into());
     }
     Ok(items.into_iter().collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PerformanceProfile;
+
+    #[test]
+    fn performance_profile_defaults_are_canonical() {
+        assert_eq!(PerformanceProfile::Smoke.default_runs(), 3);
+        assert_eq!(PerformanceProfile::Latency.default_runs(), 5);
+        assert_eq!(PerformanceProfile::Throughput.default_runs(), 4);
+        assert_eq!(PerformanceProfile::Sweep.default_runs(), 3);
+        for profile in [
+            PerformanceProfile::Smoke,
+            PerformanceProfile::Latency,
+            PerformanceProfile::Throughput,
+            PerformanceProfile::Sweep,
+        ] {
+            assert_eq!(profile.default_warmup_requests(), 1);
+        }
+    }
 }
