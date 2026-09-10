@@ -166,9 +166,7 @@ pub enum BenchCommands {
         suite: Option<BenchmarkSuite>,
     },
 
-    #[command(
-        about = "Run standard benchmarks: generation, consistency, structured output, etc."
-    )]
+    #[command(about = "Run standard benchmarks: generation, consistency, structured output, etc.")]
     Run {
         #[arg(
             long,
