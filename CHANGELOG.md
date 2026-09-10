@@ -2,6 +2,16 @@
 
 All notable changes are documented here.
 
+## 0.4.0 - 2026-09-10
+
+- Establish canonical provider metadata, base-URL resolution, model identity, typed output formats, and shared performance-profile defaults across scriptable and interactive workflows.
+- Enforce strict result schema `3.0` and mandatory run metadata; remove obsolete command aliases and legacy runtime compatibility fallbacks.
+- Improve fresh provider validation, benchmark planning, performance safety limits, capability probes, load estimates, telemetry boundaries, and report aggregation.
+- Preserve non-secret token metadata while redacting sensitive output values and keeping response previews private by default.
+- Add regression coverage for canonical quality plans, result compatibility, performance planning, provider behavior, reporting, and interactive menu flows.
+- Fix PowerShell launcher argument forwarding so documented flags such as `--provider` and `--version` reach the LLMeter binary unchanged.
+- Refresh locked compatible dependencies, including the yanked `chacha20` package update, and validate the Windows release packaging path.
+
 ## 0.3.0 - 2026-08-17
 
 - Normalize new benchmark result files to schema version `2.4`.
@@ -20,4 +30,4 @@ All notable changes are documented here.
 - Make provider status return exit code `1` when unreachable, make performance telemetry opt-in, and harden managed install purge and replacement behavior.
 - Refresh compatible dependencies, remove the unmaintained fuzzy-matcher chain, and use release-oriented optimization.
 
-Last updated: 2026-08-17
+Last updated: 2026-09-10

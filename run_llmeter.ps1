@@ -2,7 +2,7 @@ param(
     [ValidateSet('Run', 'Clean', 'RemoveAllData', 'Uninstall')]
     [string]$Action = 'Run',
     [switch]$WhatIf,
-    [Parameter(ValueFromRemainingArguments = $true)]
+    [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
     [string[]]$LlmeterArgs
 )
 

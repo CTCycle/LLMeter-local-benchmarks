@@ -43,9 +43,11 @@ Completed in the current source state:
 - `b49a567` - result schema `2.4`, honest streaming and token-usage semantics, fresh model validation, hardened reports, and tag-gated release validation.
 - PR #1 (`refactor/canonical-sources-of-truth`) supersedes the active runtime contract with strict result schema `3.0`, canonical provider/model identity, typed output choices, shared performance-profile defaults, and removal of obsolete aliases and runtime compatibility fallbacks. Historical `2.4` references below remain release-history evidence rather than current runtime behavior.
 
-At the audit snapshot, package state was `0.3.0` on `develop`; the implementation was committed and pushed before hosted release validation.
+At the original audit snapshot, package state was `0.3.0` on `develop`; that implementation was committed and pushed before hosted release validation.
 
-Latest local validation evidence (2026-07-30): formatting, locked all-target/all-feature check, Clippy, rustdoc with warnings denied, release build, package dry-run, and the serialized all-target/all-feature suite passed 118 tests. `cargo audit` reported no vulnerabilities and two non-blocking unmaintained transitive warnings. The Windows release binary and extracted archive also passed the mock-provider and CLI smoke checks.
+Earlier local validation evidence (2026-07-30): formatting, locked all-target/all-feature check, Clippy, rustdoc with warnings denied, release build, package dry-run, and the serialized all-target/all-feature suite passed 118 tests. The Windows release binary and extracted archive also passed the mock-provider and CLI smoke checks.
+
+Current release validation evidence (2026-09-10): package version `0.4.0` passes formatting, locked all-target/all-feature check, Clippy, rustdoc with warnings denied, release build, dependency audit, package dry-run, and 132 serialized all-target/all-feature tests on Windows. The release binary passes `--version`, `--help`, the packaged mock-provider E2E suite, and isolated CLI/report smoke checks. A live Ollama pass completed the standard LLM suite (8/8 records), embeddings (1/1), and a performance smoke scenario (1/1); the PowerShell launcher forwards documented flags correctly after a focused fix. Hosted four-platform CI and public release publication remain separate gates.
 
 The validated commands are:
 
@@ -333,7 +335,7 @@ Deployment, README, and user-manual guidance now label lifecycle commands as loc
 
 ## Remaining closeout
 
-All locally actionable audit phases are implemented. Hosted release run `32050420660` passed the four-target build, packaged mock-provider, checksum, and provenance gates, and published `v0.3.0` on 2026-08-17. crates.io publication remains a manual owner-gated step; MSRV is still not declared.
+All locally actionable audit phases are implemented. Hosted release run `32050420660` passed the four-target build, packaged mock-provider, checksum, and provenance gates, and published `v0.3.0` on 2026-08-17. The `0.4.0` source release is locally prepared; hosted four-platform execution, public tag publication, and crates.io publication remain owner-gated steps. MSRV is still not declared.
 
 ## Definition of done for the local CLI
 

@@ -71,6 +71,6 @@ Unit coverage in `src/ui.rs` also locks down menu key normalization so an Enter 
 - Result schema changes must preserve old JSON readability when fields are absent.
 - Release validation must also run `cargo audit`, a locked package dry-run, a release build, and extracted-binary `--version`/`--help` plus mock-provider smoke checks.
 
-The current local audit evidence covers 118 serialized all-target/all-feature tests on Windows. Native hosted Linux/Windows workflow execution is defined in CI and release workflows but must still be treated separately from local evidence when it has not been run for the current commit.
+The current local audit evidence covers 132 serialized all-target/all-feature tests on Windows. Native hosted Linux/Windows workflow execution is defined in CI and release workflows but must still be treated separately from local evidence when it has not been run for the current commit.
 
-Last updated: 2026-08-02
+Last updated: 2026-09-10

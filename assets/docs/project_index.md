@@ -6,7 +6,7 @@ This file is the root index for `assets/docs`. Read it first, then open the smal
 
 ## Current codebase snapshot
 
-- Package version: `0.3.0` on the `develop` branch.
+- Package version: `0.4.0` on the `develop` branch.
 - Persisted result schema: `3.0`, with mandatory schema identity and run kind; older result shapes are rejected rather than silently normalized.
 - Runtime surfaces: standard `llm` and `embeddings` suites, native `bench perf` scenarios, and dry-run external quality plans.
 - Provider catalogs use cached reads for ordinary interactive navigation and explicit fresh reads for status, model listing, benchmark validation, and measured probes.
