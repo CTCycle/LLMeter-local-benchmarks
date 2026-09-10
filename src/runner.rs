@@ -19,7 +19,6 @@ use crate::providers::ProviderClient;
 use crate::reporting::{save_html_report, save_markdown_report};
 use crate::results::{
     prepare_run_for_output, BenchmarkRun, BenchmarkRunKind, OutputPrivacyPolicy, ResultStore,
-    RESULT_SCHEMA_VERSION,
 };
 use crate::utils::utc_now_iso;
 
@@ -259,37 +258,27 @@ fn execute_benchmark_plan(
     let plan = BenchmarkExecutionPlan::new(models.len(), benchmarks, &context);
     let store = ResultStore::new(&config.output_dir);
     let run_id = store.new_run_id(models);
+    let mut run_config = std::collections::HashMap::new();
+    run_config.insert(
+        "provider".to_string(),
+        Value::from(config.provider.to_string()),
+    );
+    run_config.insert("base_url".to_string(), Value::from(config.base_url.clone()));
+    run_config.insert("runs".to_string(), Value::from(context.runs));
+    run_config.insert("max_tokens".to_string(), Value::from(context.max_tokens));
+    run_config.insert("temperature".to_string(), Value::from(context.temperature));
+    run_config.insert("timeout".to_string(), Value::from(config.timeout));
+    run_config.insert("suite".to_string(), Value::from(suite.label()));
 
-    let mut run = BenchmarkRun {
+    let mut run = BenchmarkRun::new(
         run_id,
-        created_at: utc_now_iso(),
-        models: models.to_vec(),
-        benchmark_ids: benchmarks.iter().map(|b| b.id().to_string()).collect(),
-        config: {
-            let mut c = std::collections::HashMap::new();
-            c.insert(
-                "provider".to_string(),
-                Value::from(config.provider.to_string()),
-            );
-            c.insert("base_url".to_string(), Value::from(config.base_url.clone()));
-            c.insert("runs".to_string(), Value::from(context.runs));
-            c.insert("max_tokens".to_string(), Value::from(context.max_tokens));
-            c.insert("temperature".to_string(), Value::from(context.temperature));
-            c.insert("timeout".to_string(), Value::from(config.timeout));
-            c.insert("suite".to_string(), Value::from(suite.label()));
-            c
-        },
-        results: Vec::new(),
-        schema_version: RESULT_SCHEMA_VERSION.to_string(),
-        run_kind: Some(BenchmarkRunKind::Benchmark),
-        environment: None,
-        performance_plan: None,
-        quality_plan: None,
-        provider_capabilities: None,
-        model_load_measurements: None,
-        model_inventory_measurements: None,
-        telemetry_summary: None,
-    };
+        utc_now_iso(),
+        models.to_vec(),
+        benchmarks.iter().map(|b| b.id().to_string()).collect(),
+        run_config,
+        Vec::new(),
+        BenchmarkRunKind::Benchmark,
+    );
 
     let mut completed_units = 0u32;
     for (model_offset, model) in models.iter().enumerate() {
@@ -335,7 +324,7 @@ pub fn save_outputs(
     let store = ResultStore::new(&config.output_dir);
     let prepared_run = prepare_run_for_output(run, privacy);
     let mut saved: Vec<PathBuf> = Vec::new();
-    let benchmark_units = planned_steps_for_run(run);
+    let benchmark_units = planned_steps_for_run(run)?;
     let total_units = benchmark_units + 2u32;
     let mut completed_units = benchmark_units;
 
@@ -492,59 +481,76 @@ fn resolve_result_file(config: &AppConfig, maybe_path: Option<&str>) -> anyhow::
     }
 }
 
-fn planned_steps_for_run(run: &BenchmarkRun) -> u32 {
-    if matches!(run.run_kind, Some(BenchmarkRunKind::Performance)) {
-        if let Some(plan) = &run.performance_plan {
-            let scenario_units = (run.models.len()
-                * plan.prompt_sizes.estimated_tokens.len()
-                * plan.output_sizes.estimated_tokens.len()
-                * plan.concurrency.levels.len()) as u32;
-            let probe_units = if plan.probe_capabilities || plan.probe_all_endpoints {
-                planned_probe_steps(plan)
-            } else {
-                0
-            };
-            return scenario_units
-                + probe_units
-                + planned_load_steps(plan, run.models.len())
-                + planned_inventory_steps(plan, run.models.len())
-                + ENVIRONMENT_SNAPSHOT_STEPS;
-        }
+fn required_u32_config(run: &BenchmarkRun, key: &str) -> anyhow::Result<u32> {
+    let value = run
+        .config
+        .get(key)
+        .and_then(Value::as_u64)
+        .and_then(|value| u32::try_from(value).ok())
+        .ok_or_else(|| {
+            LLMeterError::InvalidOption(format!(
+                "Current benchmark result is missing valid '{key}' metadata."
+            ))
+        })?;
+    Ok(value)
+}
+
+fn required_f64_config(run: &BenchmarkRun, key: &str) -> anyhow::Result<f64> {
+    run.config
+        .get(key)
+        .and_then(Value::as_f64)
+        .filter(|value| value.is_finite())
+        .ok_or_else(|| {
+            LLMeterError::InvalidOption(format!(
+                "Current benchmark result is missing valid '{key}' metadata."
+            ))
+            .into()
+        })
+}
+
+fn planned_steps_for_run(run: &BenchmarkRun) -> anyhow::Result<u32> {
+    if matches!(run.run_kind, BenchmarkRunKind::Performance) {
+        let plan = run.performance_plan.as_ref().ok_or_else(|| {
+            LLMeterError::InvalidOption(
+                "Current performance result is missing its performance plan.".to_string(),
+            )
+        })?;
+        let scenario_units = (run.models.len()
+            * plan.prompt_sizes.estimated_tokens.len()
+            * plan.output_sizes.estimated_tokens.len()
+            * plan.concurrency.levels.len()) as u32;
+        let probe_units = if plan.probe_capabilities || plan.probe_all_endpoints {
+            planned_probe_steps(plan)
+        } else {
+            0
+        };
+        return Ok(scenario_units
+            + probe_units
+            + planned_load_steps(plan, run.models.len())
+            + planned_inventory_steps(plan, run.models.len())
+            + ENVIRONMENT_SNAPSHOT_STEPS);
     }
 
     let registry = default_registry();
     let context = BenchmarkContext {
-        runs: run
-            .config
-            .get("runs")
-            .and_then(|value| value.as_u64())
-            .map(|value| value as u32)
-            .unwrap_or(1),
-        max_tokens: run
-            .config
-            .get("max_tokens")
-            .and_then(|value| value.as_u64())
-            .map(|value| value as u32)
-            .unwrap_or(1),
-        temperature: run
-            .config
-            .get("temperature")
-            .and_then(|value| value.as_f64())
-            .unwrap_or(0.0),
-        timeout: run
-            .config
-            .get("timeout")
-            .and_then(|value| value.as_f64())
-            .unwrap_or(0.0),
+        runs: required_u32_config(run, "runs")?,
+        max_tokens: required_u32_config(run, "max_tokens")?,
+        temperature: required_f64_config(run, "temperature")?,
+        timeout: required_f64_config(run, "timeout")?,
         options: std::collections::HashMap::new(),
     };
+    context.validate()?;
 
-    run.benchmark_ids
-        .iter()
-        .filter_map(|benchmark_id| registry.get(benchmark_id))
-        .map(|benchmark| benchmark.planned_steps(&context))
-        .sum::<u32>()
-        * run.models.len() as u32
+    let mut steps = 0u32;
+    for benchmark_id in &run.benchmark_ids {
+        let benchmark = registry.get(benchmark_id).ok_or_else(|| {
+            LLMeterError::Benchmark(format!(
+                "Current result references unknown benchmark '{benchmark_id}'."
+            ))
+        })?;
+        steps = steps.saturating_add(benchmark.planned_steps(&context));
+    }
+    Ok(steps.saturating_mul(run.models.len() as u32))
 }
 
 #[cfg(test)]
