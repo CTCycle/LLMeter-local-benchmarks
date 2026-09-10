@@ -1,4 +1,5 @@
 # Startup
+Last updated: 2026-09-01
 
 ## Prerequisites
 
@@ -20,13 +21,35 @@ PowerShell:
 .\target\release\llmeter.exe --provider ollama
 ```
 
-Or use the repo launcher, which builds when needed and falls back to a temp Cargo target directory if the workspace `target\release` tree is locked on Windows:
+Or use the repo launcher, which builds when needed, reports build and binary
+status, passes the remaining arguments to the binary unchanged, and falls back
+to a temp Cargo target directory if the workspace `target\release` tree is
+locked on Windows:
 
 ```powershell
 .\run_llmeter.ps1 --provider ollama status
 .\run_llmeter.ps1 --provider ollama models
 .\run_llmeter.ps1 --provider ollama
 ```
+
+The wrapper also exposes storage-aware maintenance actions:
+
+```powershell
+.\run_llmeter.ps1 -Action Clean
+.\run_llmeter.ps1 -Action RemoveAllData
+.\run_llmeter.ps1 -Action Uninstall
+```
+
+Each destructive action requires an affirmative `[y/N]` confirmation and fails
+closed when input is redirected. `Clean` removes the repository or fallback
+Cargo build trees and repository-local legacy cache paths such as `.uv-cache`.
+`RemoveAllData` additionally removes LLMeter-owned `bin`,
+`config`, and `benchmark_results` data under the configured `LLMETER_HOME`.
+`Uninstall` removes only the managed installation, cleans wrapper-owned build/cache paths, and preserves home data.
+Provider servers, model caches, externally selected output directories, and
+repository lockfiles are not removed. Normal remaining arguments continue to
+pass through to the binary unchanged; forwarded `uninstall` and
+`--purge-home` commands are confirmed by the wrapper as well.
 
 CMD:
 
@@ -77,5 +100,3 @@ llmeter --provider ollama bench run --suite llm --models all --benchmarks all --
 ```
 
 This performs provider validation, builds a benchmark plan, runs benchmarks serially, saves raw outputs, and then generates formatted reports.
-
-Last updated: 2026-08-02
