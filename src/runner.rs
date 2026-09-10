@@ -355,10 +355,7 @@ pub fn save_outputs(
     sink.on_update(ProgressUpdate {
         kind: ProgressEventKind::Phase,
         phase: ProgressPhase::GeneratingReports,
-        message: format!(
-            "Generating formatted report setting: {}",
-            report.as_str()
-        ),
+        message: format!("Generating formatted report setting: {}", report.as_str()),
         completed_units,
         total_units,
         model_name: None,

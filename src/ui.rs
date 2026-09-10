@@ -12,9 +12,7 @@ use tabled::{
 };
 
 use crate::benchmarks::registry::{default_registry, BenchmarkSuite};
-use crate::cli::{
-    parse_temperature, ExportFormat, ReportFormat, EXPORT_CHOICES, REPORT_CHOICES,
-};
+use crate::cli::{parse_temperature, ExportFormat, ReportFormat, EXPORT_CHOICES, REPORT_CHOICES};
 use crate::config::AppConfig;
 use crate::errors::LLMeterError;
 use crate::performance::config::{
@@ -515,13 +513,11 @@ pub fn ask_choice(prompt: &str, choices: &[&str], default: &str) -> Result<Strin
 }
 
 fn export_format_from_choice(value: &str) -> Result<ExportFormat> {
-    ExportFormat::from_str(value, false)
-        .map_err(|error| LLMeterError::InvalidOption(error).into())
+    ExportFormat::from_str(value, false).map_err(|error| LLMeterError::InvalidOption(error).into())
 }
 
 fn report_format_from_choice(value: &str) -> Result<ReportFormat> {
-    ReportFormat::from_str(value, false)
-        .map_err(|error| LLMeterError::InvalidOption(error).into())
+    ReportFormat::from_str(value, false).map_err(|error| LLMeterError::InvalidOption(error).into())
 }
 
 pub fn pause() -> Result<()> {
