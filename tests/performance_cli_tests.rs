@@ -1,9 +1,8 @@
 use llmeter::performance::config::{
-    LoadMeasurementMode, PerformancePlan, PerformanceProfile, ReportDetailLevel, TelemetryLevel,
-    DEFAULT_MAX_PERFORMANCE_REQUESTS,
+    LoadMeasurementMode, PerformancePlan, PerformanceProfile, PerformanceSafetyOptions,
+    ReportDetailLevel, TelemetryLevel, DEFAULT_MAX_PERFORMANCE_REQUESTS,
 };
 use llmeter::providers::ProviderKind;
-use serde_json::json;
 use std::collections::HashMap;
 
 #[test]
@@ -39,7 +38,7 @@ fn performance_plan_normalizes_and_validates_csv_values() {
 }
 
 #[test]
-fn performance_plan_rejects_oversized_prompt_without_override() {
+fn performance_plan_rejects_oversized_prompt_without_explicit_safety_override() {
     let error = PerformancePlan::from_cli(
         ProviderKind::Ollama,
         vec!["llama3.1".to_string()],
@@ -68,9 +67,42 @@ fn performance_plan_rejects_oversized_prompt_without_override() {
 
     assert!(error.to_string().contains("--allow-large-prompt"));
 
+    PerformancePlan::from_cli_with_safety(
+        ProviderKind::Ollama,
+        vec!["llama3.1".to_string()],
+        PerformanceProfile::Sweep,
+        Some("65536"),
+        Some("64"),
+        Some("1"),
+        Some(1),
+        Some(1),
+        true,
+        None,
+        HashMap::new(),
+        PerformanceSafetyOptions {
+            allow_large_prompt: true,
+            allow_large_matrix: false,
+        },
+        LoadMeasurementMode::FirstRequestEstimate,
+        2,
+        TelemetryLevel::Standard,
+        1000,
+        None,
+        false,
+        false,
+        None,
+        false,
+        ReportDetailLevel::Detailed,
+        None,
+    )
+    .unwrap();
+}
+
+#[test]
+fn legacy_unsafe_parameter_does_not_bypass_prompt_safety() {
     let mut params = HashMap::new();
-    params.insert("unsafe_large_prompt".to_string(), json!(true));
-    PerformancePlan::from_cli(
+    params.insert("unsafe_large_prompt".to_string(), true.into());
+    let error = PerformancePlan::from_cli(
         ProviderKind::Ollama,
         vec!["llama3.1".to_string()],
         PerformanceProfile::Sweep,
@@ -94,7 +126,8 @@ fn performance_plan_rejects_oversized_prompt_without_override() {
         ReportDetailLevel::Detailed,
         None,
     )
-    .unwrap();
+    .unwrap_err();
+    assert!(error.to_string().contains("--allow-large-prompt"));
 }
 
 #[test]
@@ -163,7 +196,7 @@ fn performance_plan_estimates_request_matrix() {
 }
 
 #[test]
-fn performance_plan_rejects_large_request_matrix_without_override() {
+fn performance_plan_rejects_large_request_matrix_without_explicit_safety_override() {
     let error = PerformancePlan::from_cli(
         ProviderKind::Ollama,
         vec!["model-a".to_string(), "model-b".to_string()],
@@ -192,9 +225,7 @@ fn performance_plan_rejects_large_request_matrix_without_override() {
 
     assert!(error.to_string().contains("--max-requests 10"));
 
-    let mut params = HashMap::new();
-    params.insert("unsafe_large_matrix".to_string(), json!(true));
-    PerformancePlan::from_cli(
+    PerformancePlan::from_cli_with_safety(
         ProviderKind::Ollama,
         vec!["model-a".to_string(), "model-b".to_string()],
         PerformanceProfile::Sweep,
@@ -205,7 +236,11 @@ fn performance_plan_rejects_large_request_matrix_without_override() {
         Some(3),
         true,
         None,
-        params,
+        HashMap::new(),
+        PerformanceSafetyOptions {
+            allow_large_prompt: false,
+            allow_large_matrix: true,
+        },
         LoadMeasurementMode::FirstRequestEstimate,
         2,
         TelemetryLevel::Standard,
