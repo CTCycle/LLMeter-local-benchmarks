@@ -5,17 +5,17 @@ use llmeter::performance::config::{
 };
 use llmeter::providers::ProviderKind;
 use llmeter::reporting::{build_summary_rows, render_html_report, render_markdown_report};
-use llmeter::results::{BenchmarkRun, BenchmarkRunKind, RESULT_SCHEMA_VERSION};
+use llmeter::results::{BenchmarkRun, BenchmarkRunKind};
 use serde_json::json;
 
 fn sample_run() -> BenchmarkRun {
-    BenchmarkRun {
-        run_id: "test-run-1".to_string(),
-        created_at: "2026-06-12T12:00:00".to_string(),
-        models: vec!["llama3".to_string()],
-        benchmark_ids: vec!["chat-generation".to_string()],
-        config: std::collections::HashMap::new(),
-        results: vec![
+    BenchmarkRun::new(
+        "test-run-1".to_string(),
+        "2026-06-12T12:00:00".to_string(),
+        vec!["llama3".to_string()],
+        vec!["chat-generation".to_string()],
+        std::collections::HashMap::new(),
+        vec![
             BenchmarkResultRecord {
                 benchmark_id: "chat-generation".to_string(),
                 benchmark_name: "Basic generation latency".to_string(),
@@ -50,16 +50,8 @@ fn sample_run() -> BenchmarkRun {
                 metadata: None,
             },
         ],
-        schema_version: RESULT_SCHEMA_VERSION.to_string(),
-        run_kind: Some(BenchmarkRunKind::Benchmark),
-        environment: None,
-        performance_plan: None,
-        quality_plan: None,
-        provider_capabilities: None,
-        model_load_measurements: None,
-        model_inventory_measurements: None,
-        telemetry_summary: None,
-    }
+        BenchmarkRunKind::Benchmark,
+    )
 }
 
 #[test]
