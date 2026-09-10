@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::Result;
+use clap::ValueEnum;
 use colored::Colorize;
 use inquire::{CustomType, InquireError, MultiSelect, Select, Text};
 use serde_json::Value;
@@ -11,7 +12,9 @@ use tabled::{
 };
 
 use crate::benchmarks::registry::{default_registry, BenchmarkSuite};
-use crate::cli::{parse_temperature, EXPORT_CHOICES, REPORT_CHOICES};
+use crate::cli::{
+    parse_temperature, ExportFormat, ReportFormat, EXPORT_CHOICES, REPORT_CHOICES,
+};
 use crate::config::AppConfig;
 use crate::errors::LLMeterError;
 use crate::performance::config::{
@@ -100,8 +103,6 @@ pub fn print_models(models: &[Value], provider: ProviderKind) {
             (index + 1).to_string(),
             model
                 .get("id")
-                .or_else(|| model.get("name"))
-                .or_else(|| model.get("model"))
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
@@ -497,12 +498,30 @@ pub fn choose_number(prompt: &str, default: u32, min: u32, max: Option<u32>) -> 
 }
 
 pub fn ask_choice(prompt: &str, choices: &[&str], default: &str) -> Result<String> {
+    let starting_cursor = choices
+        .iter()
+        .position(|&choice| choice == default)
+        .ok_or_else(|| {
+            LLMeterError::InvalidOption(format!(
+                "Interactive default '{default}' is not present in the available choices."
+            ))
+        })?;
     prompt_value(
         Select::new(prompt, choices.to_vec())
-            .with_starting_cursor(choices.iter().position(|&c| c == default).unwrap_or(0))
+            .with_starting_cursor(starting_cursor)
             .prompt(),
     )
     .map(|s| s.to_string())
+}
+
+fn export_format_from_choice(value: &str) -> Result<ExportFormat> {
+    ExportFormat::from_str(value, false)
+        .map_err(|error| LLMeterError::InvalidOption(error).into())
+}
+
+fn report_format_from_choice(value: &str) -> Result<ReportFormat> {
+    ReportFormat::from_str(value, false)
+        .map_err(|error| LLMeterError::InvalidOption(error).into())
 }
 
 pub fn pause() -> Result<()> {
@@ -617,7 +636,7 @@ pub fn provider_setup_menu(config: &AppConfig, client: &ProviderClient) -> Resul
                     .collect::<Vec<_>>();
                 let selected = choose_from_menu("Default provider", &choices, false, false)?;
                 if let Some(label) = selected.first() {
-                    let provider = label.parse().unwrap_or(config.provider);
+                    let provider: ProviderKind = label.parse()?;
                     let path = crate::config::save_global_provider(provider)?;
                     println!(
                         "Saved default provider '{}' to {}",
@@ -756,7 +775,7 @@ fn guided_benchmark_run_inner(config: &AppConfig, suite: BenchmarkSuite) -> Resu
             .collect::<Vec<_>>(),
         config.provider.label(),
     )?;
-    let provider = provider_choice.parse().unwrap_or(config.provider);
+    let provider: ProviderKind = provider_choice.parse()?;
     let run_config = config.with_provider(provider)?;
     let run_client = match ProviderClient::new(
         run_config.provider,
@@ -817,8 +836,16 @@ fn guided_benchmark_run_inner(config: &AppConfig, suite: BenchmarkSuite) -> Resu
     let temperature =
         parse_temperature(&raw_temperature).map_err(|error| anyhow::anyhow!(error))?;
 
-    let export = ask_choice("Save raw results", EXPORT_CHOICES, "both")?;
-    let report = ask_choice("Generate formatted report", REPORT_CHOICES, "both")?;
+    let export = export_format_from_choice(&ask_choice(
+        "Save raw results",
+        EXPORT_CHOICES,
+        ExportFormat::Both.as_str(),
+    )?)?;
+    let report = report_format_from_choice(&ask_choice(
+        "Generate formatted report",
+        REPORT_CHOICES,
+        ReportFormat::Both.as_str(),
+    )?)?;
 
     let selected_ids: Option<Vec<String>> = if all_benchmarks {
         None
@@ -848,8 +875,8 @@ fn guided_benchmark_run_inner(config: &AppConfig, suite: BenchmarkSuite) -> Resu
     let saved = runner::save_outputs(
         &run_config,
         &run,
-        &export,
-        &report,
+        export,
+        report,
         crate::results::OutputPrivacyPolicy::default(),
         Some(&mut progress),
     )?;
@@ -878,7 +905,7 @@ fn guided_performance_run_with_profile(
             .collect::<Vec<_>>(),
         config.provider.label(),
     )?;
-    let provider = provider_choice.parse().unwrap_or(config.provider);
+    let provider: ProviderKind = provider_choice.parse()?;
     let run_config = config.with_provider(provider)?;
     let run_client = match ProviderClient::new(
         run_config.provider,
@@ -895,7 +922,7 @@ fn guided_performance_run_with_profile(
     let probe_choice = ask_choice(
         "Capability probe",
         &["basic probe", "full endpoint probe", "skip probe"],
-        "basic probe",
+        "skip probe",
     )?;
     let models = match runner::installed_model_names(&run_client) {
         Ok(models) => models,
@@ -911,7 +938,7 @@ fn guided_performance_run_with_profile(
     }
 
     let profile_choice = if quick {
-        "smoke".to_string()
+        PerformanceProfile::Smoke.label().to_string()
     } else {
         ask_choice(
             "Performance profile",
@@ -919,21 +946,37 @@ fn guided_performance_run_with_profile(
             default_profile.label(),
         )?
     };
-    let profile = profile_choice.parse().unwrap_or(default_profile);
+    let profile = profile_choice
+        .parse::<PerformanceProfile>()
+        .map_err(LLMeterError::InvalidOption)?;
     let runs = choose_number(
         "Measured runs per scenario",
-        if quick { 1 } else { 3 },
+        profile.default_runs(),
         1,
         None,
     )?;
-    let warmup = choose_number("Warmup requests", 1, 0, None)?;
+    let warmup = choose_number(
+        "Warmup requests",
+        profile.default_warmup_requests(),
+        0,
+        None,
+    )?;
     let stream_choice = ask_choice("Streaming", &["yes", "no"], "yes")?;
-    let export = ask_choice("Save raw results", EXPORT_CHOICES, "both")?;
-    let report = ask_choice(
+    let export = export_format_from_choice(&ask_choice(
+        "Save raw results",
+        EXPORT_CHOICES,
+        ExportFormat::Both.as_str(),
+    )?)?;
+    let report_default = if quick {
+        ReportFormat::Md
+    } else {
+        ReportFormat::Both
+    };
+    let report = report_format_from_choice(&ask_choice(
         "Generate formatted report",
         REPORT_CHOICES,
-        if quick { "md" } else { "both" },
-    )?;
+        report_default.as_str(),
+    )?)?;
 
     let plan = PerformancePlan::from_cli(
         run_config.provider,
@@ -949,7 +992,7 @@ fn guided_performance_run_with_profile(
         std::collections::HashMap::new(),
         LoadMeasurementMode::FirstRequestEstimate,
         2,
-        TelemetryLevel::Standard,
+        TelemetryLevel::Off,
         1000,
         None,
         probe_choice != "skip probe",
@@ -976,8 +1019,8 @@ fn guided_performance_run_with_profile(
     let saved = runner::save_outputs(
         &run_config,
         &run,
-        &export,
-        &report,
+        export,
+        report,
         crate::results::OutputPrivacyPolicy::default(),
         Some(&mut progress),
     )?;
@@ -1029,7 +1072,7 @@ fn probe_provider_capabilities_interactive(
     client: &ProviderClient,
 ) -> Result<()> {
     let full = ask_choice("Probe depth", &["basic", "full"], "basic")? == "full";
-    let models = runner::installed_model_names(client).unwrap_or_default();
+    let models = runner::installed_model_names(client)?;
     let plan = PerformancePlan::from_cli(
         client.provider(),
         models,
@@ -1044,7 +1087,7 @@ fn probe_provider_capabilities_interactive(
         std::collections::HashMap::new(),
         LoadMeasurementMode::Off,
         1,
-        TelemetryLevel::Standard,
+        TelemetryLevel::Off,
         1000,
         None,
         true,
@@ -1142,7 +1185,7 @@ fn estimate_model_inventory_interactive(config: &AppConfig, client: &ProviderCli
         std::collections::HashMap::new(),
         LoadMeasurementMode::Off,
         1,
-        TelemetryLevel::Standard,
+        TelemetryLevel::Off,
         1000,
         None,
         false,
@@ -1238,19 +1281,18 @@ fn show_latest_report(config: &AppConfig) -> Result<()> {
             .collect::<Vec<_>>(),
         false,
         false,
-    );
-    match selected {
-        Ok(s) if !s.is_empty() => {
-            let path = PathBuf::from(&s[0]);
-            match store.load_json(&path) {
-                Ok(run) => {
-                    let markdown = render_markdown_report(&run);
-                    print_terminal_report(&markdown);
-                }
-                Err(e) => println!("{} {e}", "Error:".red()),
-            }
+    )?;
+    if selected.is_empty() {
+        return Ok(());
+    }
+
+    let path = PathBuf::from(&selected[0]);
+    match store.load_json(&path) {
+        Ok(run) => {
+            let markdown = render_markdown_report(&run);
+            print_terminal_report(&markdown);
         }
-        _ => {}
+        Err(error) => println!("{} {error}", "Error:".red()),
     }
     Ok(())
 }
@@ -1278,8 +1320,12 @@ fn generate_report_interactive(config: &AppConfig) -> Result<()> {
     }
 
     let path = PathBuf::from(&selected[0]);
-    let report_format = ask_choice("Report format", REPORT_CHOICES, "both")?;
-    if report_format == "none" {
+    let report_format = report_format_from_choice(&ask_choice(
+        "Report format",
+        REPORT_CHOICES,
+        ReportFormat::Both.as_str(),
+    )?)?;
+    if matches!(report_format, ReportFormat::None) {
         println!("{} No report generated.", "Warning:".yellow());
         return Ok(());
     }
@@ -1289,8 +1335,8 @@ fn generate_report_interactive(config: &AppConfig) -> Result<()> {
     let saved = runner::save_outputs(
         config,
         &run,
-        "none",
-        &report_format,
+        ExportFormat::None,
+        report_format,
         crate::results::OutputPrivacyPolicy::default(),
         Some(&mut progress),
     )?;
@@ -1363,7 +1409,7 @@ pub fn print_help_topic(topic: Option<&str>) {
             );
             println!("  llmeter bench perf --models all --profile smoke --export json --report md");
             println!(
-                "  llmeter bench performance --models all --profile latency --probe-capabilities --telemetry detailed"
+                "  llmeter bench perf --models all --profile latency --probe-capabilities --telemetry detailed"
             );
         }
         "reports" => {
@@ -1397,7 +1443,7 @@ pub fn print_help_topic(topic: Option<&str>) {
             println!("  llmeter menu                                  Open the interactive menu");
             println!("  llmeter bench run --suite llm --models all \\");
             println!("    --benchmarks all --runs 3 --max-tokens 128  Run all LLM benchmarks");
-            println!("  llmeter perf --models all --profile smoke     Quick performance check");
+            println!("  llmeter bench perf --models all --profile smoke  Quick performance check");
             println!("  llmeter quality list                          Browse quality tasks");
         }
         _ => {
