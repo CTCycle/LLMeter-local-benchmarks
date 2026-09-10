@@ -13,10 +13,9 @@ BenchmarkRun {
     config: HashMap<String, Value>,
     results: Vec<BenchmarkResultRecord>,
     schema_version: String,
-    run_kind: Option<BenchmarkRunKind>,
+    run_kind: BenchmarkRunKind,
     environment: Option<EnvironmentSnapshot>,
     performance_plan: Option<PerformancePlan>,
-    quality_plan: Option<QualityPlan>,
     provider_capabilities: Option<ProviderCapabilityReport>,
     model_load_measurements: Option<Vec<ModelLoadMeasurement>>,
     model_inventory_measurements: Option<Vec<ModelInventoryMeasurement>>,
@@ -24,9 +23,11 @@ BenchmarkRun {
 }
 ```
 
-`schema_version` is now persisted as `2.4`. Older JSON files that omit newer fields still deserialize because added fields default to `None`. Performance latency aggregates use successful requests only; failure counts/rates stay explicit in each scenario record. Scenario metrics persist the successful latency sample count, nearest-rank percentile estimator, and population-standard-deviation label. Unsupported high percentiles are omitted rather than repeated from undersized samples. Token usage coverage and the separation between inter-token and inter-chunk timing are part of the 2.4 metric contract.
+`schema_version` is persisted as `3.0`. Schema identity and `run_kind` are mandatory. Files from older result schemas are rejected on load instead of being silently normalized into the current model. Performance latency aggregates use successful requests only; failure counts and rates stay explicit in each scenario record. Scenario metrics persist the successful latency sample count, nearest-rank percentile estimator, and population-standard-deviation label. Unsupported high percentiles are omitted rather than repeated from undersized samples.
 
-The current output policy is applied to a clone of the in-memory run. Response previews are omitted by default, credential-shaped values and secret-named parameters are redacted, and local process/cache selectors are removed from persisted performance data. JSON, CSV, Markdown, HTML, and provider configuration writes use same-directory temporary files followed by an atomic rename.
+External quality benchmark plans are dry-run planning output and are not stored as an alternate `BenchmarkRun` shape. Persisted benchmark results therefore have one canonical run model, with `run_kind` distinguishing standard and performance runs.
+
+The current output policy is applied to a clone of the in-memory run. Response previews are omitted by default, credential-shaped values and explicitly secret-named parameters are redacted, and local process/cache selectors are removed from persisted performance data. Non-secret measurement keys such as `max_tokens` remain intact because they are required to reproduce and validate saved benchmark metadata. JSON, CSV, Markdown, HTML, and provider configuration writes use same-directory temporary files followed by an atomic rename.
 
 ## Result records
 
@@ -65,7 +66,7 @@ CSV text cells beginning with `=`, `+`, `-`, or `@` receive a leading apostrophe
 | Markdown | `.report.md` | Human-readable summary with aggregated tables and interpretation notes. |
 | HTML | `.report.html` | Self-contained browser report with summary cards, sortable tables, and dark mode support. |
 
-JSON is the only format that preserves the full scenario metadata, provider capability probe, model load overhead estimates, model inventory measurements, telemetry summary, environment snapshot, quality plan previews, and per-request performance traces.
+JSON is the only format that preserves the full scenario metadata, provider capability probe, model load overhead estimates, model inventory measurements, telemetry summary, environment snapshot, and per-request performance traces.
 
 CSV keeps one row per result record. It includes fixed high-value columns such as schema version, run kind, provider, base URL, profile, telemetry level, load measurement mode, estimated load overhead, memory ratio, swap ratio, and GPU probe text before dynamic metric columns. Full request traces remain JSON-only.
 
@@ -77,4 +78,4 @@ If `LLMETER_HOME` is unset, the effective home is `%USERPROFILE%\\.llmeter` on W
 
 Overridable via `--output-dir` flag or `LLMETER_OUTPUT_DIR` environment variable.
 
-Last updated: 2026-08-02
+Last updated: 2026-09-10
