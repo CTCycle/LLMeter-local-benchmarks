@@ -5,10 +5,10 @@
 Benchmark runs originate from two surfaces:
 
 - `llmeter bench run ...` in scriptable mode.
-- `llmeter bench perf ...` or `llmeter bench performance ...` in scriptable mode for native performance scenarios.
+- `llmeter bench perf ...` in scriptable mode for native performance scenarios.
 - `llmeter` or `llmeter bench menu` in interactive mode.
 
-Serial benchmark runs converge in `src/runner.rs`. Native performance scenarios use `src/performance/runner.rs`. Both paths persist the same `BenchmarkRun` shape and reuse the same save/report flow.
+Standard benchmark runs converge in `src/runner.rs`. Native performance scenarios use `src/performance/runner.rs`. These are separate current implementations for different execution responsibilities, not old/new compatibility paths. Both persist the same canonical `BenchmarkRun` shape and reuse the same typed save/report flow.
 
 ## Run request
 
@@ -43,7 +43,7 @@ The plan tracks:
 
 Planned steps come from each benchmark's `planned_steps()` implementation, which allows progress to reflect repeated runs and prompt variants before execution starts.
 
-The command-level model inventory is refreshed from the provider before validation. Interactive model selection may reuse the client-local catalog cache, but an explicit refresh is available and benchmark/status paths use fresh `/v1/models` reads so measurements do not rely on stale selection data.
+The command-level model inventory is refreshed from the provider before validation. Interactive model selection may reuse the client-local catalog cache, but an explicit refresh is available and benchmark/status paths use fresh `/v1/models` reads so measurements do not rely on stale selection data. Model identity is the `/v1/models` `id` field; alternate historical field names are not used as identity fallbacks.
 
 `bench perf` first normalizes a `PerformancePlan` from CLI input:
 
@@ -61,7 +61,7 @@ The command-level model inventory is refreshed from the provider before validati
 - optional provider process hint and model cache scan path
 - dry-run and request budget guard values
 
-The plan rejects zero runs, zero concurrency, invalid load probe counts, telemetry sampling below 100 ms, oversized prompt/output token requests unless `--allow-large-prompt` is present, and oversized scenario matrices above `--max-requests` unless `--allow-large-matrix` is present. These safety controls are dedicated CLI flags and cannot be passed through provider `--param` values.
+Profile defaults are defined by `PerformanceProfile` and consumed by both scriptable planning and the guided workflow. The plan rejects zero runs, zero concurrency, invalid load probe counts, telemetry sampling below 100 ms, oversized prompt/output token requests unless `--allow-large-prompt` is present, and oversized scenario matrices above `--max-requests` unless `--allow-large-matrix` is present. These safety controls are dedicated CLI flags and cannot be passed through provider `--param` values.
 
 Scriptable performance runs print a plan estimate before timed requests begin. The estimate includes selected models, prompt sizes, output sizes, concurrency levels, scenario count, warmup requests, measured requests, total requests, and the active maximum request limit. `--dry-run` prints this estimate and exits before provider load probes, timed requests, saving, or report generation.
 
@@ -84,16 +84,16 @@ While running, every benchmark step emits:
 - optional prompt name
 - completed work units vs total work units
 
-For performance runs, progress now also covers the previously silent pre/post scenario work around timed requests:
+For performance runs, progress also covers pre/post scenario work around timed requests:
 
-- capability endpoint probes
-- per-model load estimate probes
+- capability endpoint probes when explicitly enabled
+- per-model load estimate probes when enabled
 - per-model metadata and optional cache scan inventory work
 - final environment snapshot capture
 
 ## Execution model
 
-Execution is serial.
+Standard benchmark execution is serial.
 
 For each selected model:
 
@@ -102,9 +102,9 @@ For each selected model:
 3. Call `benchmark.run(...)`.
 4. Append returned `BenchmarkResultRecord` values to the current `BenchmarkRun`.
 
-There is no concurrent benchmark scheduling. This keeps timing simpler and makes local-machine comparisons more interpretable.
+There is no concurrent scheduling inside the standard benchmark runner. This keeps timing simpler and makes local-machine comparisons more interpretable.
 
-`bench perf` keeps the legacy benchmark path unchanged and uses a separate isolated Tokio runtime for request concurrency. The runtime issues warmups first, then measured requests for each scenario matrix cell:
+`bench perf` is the canonical concurrent performance runner and uses a bounded Tokio runtime for request concurrency. The runtime issues warmups first, then measured requests for each scenario matrix cell:
 
 - model
 - prompt workload or synthetic prompt size
@@ -113,29 +113,29 @@ There is no concurrent benchmark scheduling. This keeps timing simpler and makes
 
 Each scenario emits one summary record plus serialized request traces inside record metadata.
 
-Before scenarios, performance runs can optionally capture a provider capability matrix, load overhead estimate, and model inventory metadata/provider-cache-directory total. Each of those steps emits terminal progress. Load overhead is a client-side first-probe minus warm-probe estimate, not true model-load telemetry. Detailed and full telemetry levels sample system state during scenario execution and summarize the collected samples at run finalization.
+Before scenarios, performance runs can capture a provider capability matrix, load overhead estimate, and model inventory metadata/provider-cache-directory total. Each of those steps emits terminal progress. Load overhead is a client-side first-probe minus warm-probe estimate, not true model-load telemetry. Telemetry is disabled by default; standard and detailed telemetry modes sample system state during scenario execution and summarize the collected samples at run finalization.
 
 ## Performance scenarios
 
 The built-in performance profiles are:
 
 - `smoke` - conservative verification with concurrency `1`, prompt sizes `128` and `512`, `1` warmup, and `3` measured runs
-- `latency` - concurrency `1` with multiple prompt sizes and percentile-focused summaries
-- `throughput` - fixed prompt/output sizes with a concurrency sweep
-- `sweep` - prompt size, output size, and concurrency matrix exploration
+- `latency` - concurrency `1`, prompt sizes `128`, `512`, and `2048`, `1` warmup, and `5` measured runs
+- `throughput` - prompt size `512`, output size `256`, concurrency `1`, `2`, `4`, and `8`, `1` warmup, and `4` measured runs
+- `sweep` - prompt sizes `128`, `512`, and `2048`, output sizes `64`, `128`, and `256`, concurrency `1`, `2`, and `4`, `1` warmup, and `3` measured runs
 
 Prompt text generation is deterministic and provider-agnostic. The recorded `estimated_prompt_tokens` field is an approximation, while provider-reported usage remains the source of truth when available.
 
 ## Quality planning boundary
 
-`llmeter quality ...` does not execute benchmark frameworks inside Rust in this phase. It emits catalog information and dry-run command previews for:
+`llmeter quality ...` does not execute benchmark frameworks inside Rust. It emits catalog information and dry-run command previews for:
 
 - `lighteval`
 - `inspect-ai`
 - `lm-eval-harness`
 - `swe-bench`
 
-This keeps the binary focused on native performance work while preserving a stable planning/report schema for external quality tooling.
+Quality plans are separate planning output and are not persisted through an alternate `BenchmarkRun` representation.
 
 ## Error behavior
 
@@ -146,7 +146,8 @@ Fatal failures stop the command when they happen before or outside benchmark exe
 - benchmark requested outside the active suite
 - no selected models
 - requested model not exposed by the provider
+- unsupported saved-result schema during report loading
 
 Benchmark-level capability failures do not abort the whole run. Instead, individual benchmarks return result records with `error` populated so the run can continue and reports still include the partial outcome.
 
-Last updated: 2026-08-02
+Last updated: 2026-09-10
