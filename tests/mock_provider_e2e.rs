@@ -345,7 +345,7 @@ fn cli_bench_run_streams_and_generates_report_from_saved_json() {
     assert_eq!(result_files.len(), 1);
     let run: Value =
         serde_json::from_slice(&fs::read(&result_files[0]).expect("read run")).expect("run json");
-    assert_eq!(run["schema_version"], "2.4");
+    assert_eq!(run["schema_version"], "3.0");
     assert_eq!(run["results"][0]["error"], Value::Null);
     assert!(run["results"][0]["response_preview"]
         .as_str()
