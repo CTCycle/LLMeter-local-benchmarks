@@ -175,8 +175,8 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     let saved = llmeter::runner::save_outputs(
                         &run_config,
                         &run,
-                        export.as_str(),
-                        report.as_str(),
+                        *export,
+                        *report,
                         llmeter::results::OutputPrivacyPolicy {
                             include_response_preview: *include_response_preview,
                             redact_sensitive_values: true,
@@ -283,8 +283,8 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     let saved = llmeter::runner::save_outputs(
                         &run_config,
                         &run,
-                        export.as_str(),
-                        report.as_str(),
+                        *export,
+                        *report,
                         llmeter::results::OutputPrivacyPolicy {
                             include_response_preview: *include_response_preview,
                             redact_sensitive_values: true,
