@@ -1,6 +1,6 @@
 # LLMeter
 
-Last updated: 2026-08-17
+Last updated: 2026-09-10
 
 [![CI](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml?query=branch%3Adevelop) [![Rust](https://img.shields.io/badge/rust-2021-orange?logo=rust&logoColor=white)](./Cargo.toml) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](./LICENSE)
 
@@ -15,7 +15,7 @@ It can benchmark providers such as Ollama, LM Studio, llama.cpp, and other serve
 - Standard `llm` and `embeddings` suites covering generation, consistency, prompt sizes, structured output, tool calling, responses, and embeddings.
 - Native `bench perf` profiles for latency, throughput, warmups, concurrency sweeps, capability probes, telemetry, and request-budget planning.
 - JSON and CSV raw exports plus Markdown and self-contained HTML reports.
-- Persisted result schema `2.4`, including explicit token-usage coverage and separate inter-chunk and inter-token timing semantics.
+- Persisted result schema `3.0`, with mandatory schema identity and run kind and no implicit legacy-result normalization.
 - Privacy-aware output defaults: response previews are omitted unless requested, and credential-shaped values are redacted before persistence.
 
 Quality commands are intentionally a planning surface. `llmeter quality plan` prints dry-run adapter commands for external tools; it does not install or execute those evaluators inside LLMeter.
@@ -138,7 +138,7 @@ llmeter --provider lmstudio --base-url http://localhost:1234/v1 status
 llmeter --provider openai-compatible --base-url http://localhost:9000/v1 models
 ```
 
-LLMeter accepts a base URL with or without the `/v1` suffix and normalizes it internally. `status`, `models`, benchmark model validation, and measured performance probes use fresh `/v1/models` reads. Ordinary interactive model navigation may use the client-local catalog cache; choose its explicit refresh action after loading or unloading a model.
+LLMeter accepts a base URL with or without the `/v1` suffix and normalizes it internally. Provider selection, provider-specific environment variables, and provider default URLs resolve through the provider catalog. An explicit global `LLMETER_BASE_URL` remains authoritative when a command overrides only the provider. `status`, `models`, benchmark model validation, and measured performance probes use fresh `/v1/models` reads. Ordinary interactive model navigation may use the client-local catalog cache; choose its explicit refresh action after loading or unloading a model.
 
 Persist a default provider for later commands:
 
@@ -179,7 +179,7 @@ llmeter --provider lmstudio bench run \
 
 ### Native performance profiles
 
-`bench perf` (also available as `bench performance`) is the native scenario-based performance surface:
+`bench perf` is the canonical native scenario-based performance surface:
 
 ```bash
 llmeter --provider ollama bench perf \
@@ -203,10 +203,10 @@ llmeter bench perf \
 
 Performance plans show the selected models, matrix dimensions, warmup and measured request counts, total request estimate, and active request limit before execution. The default matrix budget is `500` requests; larger matrices require deliberate review and `--allow-large-matrix`. Prompt values above the documented bounds likewise require `--allow-large-prompt`.
 
-Capability probes, telemetry, and the client-observed load estimate are opt-in. Telemetry is disabled by default so sampling does not distort benchmark timings:
+Capability probes and telemetry are opt-in. Telemetry is disabled by default so sampling does not distort benchmark timings. The client-observed first-request versus warm-request load estimate is enabled by default and can be disabled with `--load-measurement off`:
 
 ```bash
-llmeter --provider ollama bench performance \
+llmeter --provider ollama bench perf \
   --models all \
   --profile latency \
   --runs 3 \
@@ -250,9 +250,9 @@ Each run can produce:
 | `<run-id>.report.md` | Human-readable Markdown summary. |
 | `<run-id>.report.html` | Self-contained browser report. |
 
-New runs use result schema `2.4`; older JSON files that omit newer optional fields remain readable. Reports include benchmark summaries, latency and throughput measures, token-usage coverage, capability errors, and performance sections when applicable.
+New runs use result schema `3.0`. Schema identity and run kind are mandatory, and older result schemas are rejected rather than silently upgraded. Reports include benchmark summaries, latency and throughput measures, token-usage coverage, capability errors, and performance sections when applicable.
 
-Response previews are omitted by default. Use `--include-response-preview` only when model output is safe to retain. Saved artifacts also redact credential-shaped values and secret-named provider parameters before writing.
+Response previews are omitted by default. Use `--include-response-preview` only when model output is safe to retain. Saved artifacts also redact credential-shaped values and explicitly secret-named provider parameters before writing, while preserving non-secret benchmark metadata such as token-count settings.
 
 ## Configuration
 
@@ -281,7 +281,7 @@ Provider-specific base URL variables such as `OLLAMA_HOST`, `LMSTUDIO_BASE_URL`,
 | No models are listed | Load or expose a model in the provider, then run `llmeter models` or refresh the interactive inventory. |
 | A benchmark records endpoint errors | Check the provider's supported `/v1` capabilities; unsupported calls remain visible as error records. |
 | A performance plan is rejected | Use `--dry-run` to inspect request counts and reduce the matrix, or deliberately review `--allow-large-prompt` / `--allow-large-matrix`. |
-| A report cannot be loaded | Confirm the selected JSON file is complete and was not manually truncated or malformed. |
+| A report cannot be loaded | Confirm that the JSON result uses the current schema and is complete, rather than truncated, malformed, or from an unsupported older schema. |
 | Concerned about secrets in output | Keep response previews disabled and pass `LLMETER_API_KEY` through the process environment rather than command arguments. |
 
 ## Development
