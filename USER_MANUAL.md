@@ -58,6 +58,8 @@ llmeter uninstall
 | `llama-cpp` | `http://localhost:8080/v1` | Start `llama-server` from llama.cpp with a model. |
 | `openai-compatible` | `http://localhost:8000/v1` | Use with `--base-url` for any compatible local server. |
 
+Provider metadata, canonical labels, provider-specific base URL environment variables, and provider default URLs are resolved through the provider catalog. An explicit `LLMETER_BASE_URL` remains authoritative when a command changes only the provider.
+
 Check provider status:
 
 ```bash
@@ -73,6 +75,8 @@ llmeter --provider ollama models
 llmeter --provider lmstudio models
 ```
 
+Model identity is the OpenAI-compatible `/v1/models` `id` field. Alternate historical model-name fields are not used as identity fallbacks.
+
 ## Built-In Help
 
 Use the regular CLI help:
@@ -81,6 +85,7 @@ Use the regular CLI help:
 llmeter --help
 llmeter bench --help
 llmeter bench run --help
+llmeter bench perf --help
 ```
 
 Use LLMeter's built-in help topics:
@@ -91,7 +96,6 @@ llmeter help providers
 llmeter help bench
 llmeter help reports
 llmeter help examples
-llmeter /help examples
 ```
 
 ## Command Reference
@@ -105,17 +109,19 @@ llmeter /help examples
 | `llmeter models` | List models exposed by the selected provider. |
 | `llmeter show <model>` | Show model metadata from `/v1/models`. |
 | `llmeter bench list [--suite <suite>]` | List benchmark IDs and descriptions. |
-| `llmeter bench run --suite llm --models all --benchmarks all` | Run benchmarks non-interactively. |
+| `llmeter bench run --suite llm --models all --benchmarks all` | Run standard benchmarks non-interactively. |
+| `llmeter bench perf --models all --profile <profile>` | Run native performance scenarios. |
 | `llmeter report list` | List saved raw results and generated reports. |
 | `llmeter report show [result]` | Render a saved JSON result in the terminal. |
 | `llmeter report generate [result] --format both` | Generate Markdown and/or HTML reports. |
+| `llmeter quality list` | List external quality benchmark tasks. |
+| `llmeter quality plan [options]` | Build a dry-run external quality benchmark plan. |
 | `llmeter install [--force]` | Install a managed CLI copy into `<LLMETER_HOME>/bin`. |
 | `llmeter update [--source <exe>]` | Update the managed CLI copy from a newer executable. |
 | `llmeter uninstall [--purge-home]` | Remove the managed CLI copy and optionally remove `LLMETER_HOME`. |
-| `llmeter help [topic]` | Show built-in help for `providers`, `bench`, `reports`, or `examples`. |
-| `llmeter /help [topic]` | Alias for built-in help. |
+| `llmeter help [topic]` | Show built-in help for `providers`, `bench`, `reports`, `install`, or `examples`. |
 
-## Running Benchmarks
+## Running Standard Benchmarks
 
 Run every benchmark against every exposed model:
 
@@ -152,6 +158,36 @@ Add extra provider request parameters:
 llmeter bench run --models all --benchmarks chat-generation --param top_p=0.9
 ```
 
+Performance safety controls are dedicated CLI flags and cannot be supplied through generic `--param` values.
+
+## Native Performance Benchmarks
+
+`llmeter bench perf` is the canonical native performance command. Available profiles are `smoke`, `latency`, `throughput`, and `sweep`.
+
+Run a smoke profile:
+
+```bash
+llmeter --provider ollama bench perf --models all --profile smoke --export both --report both
+```
+
+Preview a matrix without issuing benchmark requests:
+
+```bash
+llmeter bench perf \
+  --models llama3.1 \
+  --profile sweep \
+  --prompt-tokens 128,512 \
+  --output-tokens 64,128 \
+  --concurrency 1,2 \
+  --dry-run
+```
+
+The profile owns the default prompt sizes, output sizes, concurrency, warmup count, and measured run count. The same profile defaults are used by scriptable and guided performance flows.
+
+Capability probing and telemetry are opt-in. Telemetry defaults to `off`. The client-observed first-request versus warm-request load estimate defaults to `first-request-estimate`; disable it explicitly with `--load-measurement off` when it is not wanted.
+
+The default performance request budget is 500 warmup-plus-measured requests. Larger matrices require the explicit `--allow-large-matrix` override. Prompt or output sizes above the documented limits require `--allow-large-prompt`.
+
 ## Built-In Benchmarks
 
 Standard `llm` suite:
@@ -184,7 +220,11 @@ Default output directory: `<LLMETER_HOME>/benchmark_results/`
 <run-id>.report.html
 ```
 
+Current benchmark results use schema `3.0`. `schema_version` and `run_kind` are mandatory. Older or unversioned result schemas are rejected on load rather than silently normalized into the current representation.
+
 Reports include provider, base URL, models, benchmark IDs, aggregate latency/throughput, token usage, structured-output validity, tool-call validity, embedding dimensions, detailed records, and errors.
+
+Response previews are omitted from persisted output by default. Credential-shaped values and explicitly secret-named provider parameters are redacted, while non-secret benchmark metadata such as token-count settings is preserved.
 
 Report commands:
 
@@ -198,6 +238,15 @@ Use a custom output directory:
 
 ```bash
 llmeter --output-dir ./benchmark-runs bench run --models all --benchmarks all
+```
+
+## Quality Planning
+
+`llmeter quality` is a planning surface for external evaluators rather than a second benchmark-result implementation. Quality plans are emitted as dry-run planning output and are not persisted as an alternate `BenchmarkRun` shape.
+
+```bash
+llmeter quality list
+llmeter quality plan --framework lighteval --task "leaderboard|mmlu|5" --model llama3.1
 ```
 
 ## Configuration
@@ -253,4 +302,8 @@ For LM Studio, load a model and start the local server. For llama.cpp, start `ll
 
 Not every provider/model supports every OpenAI-compatible capability. `responses-generation`, `structured-output`, `tool-calling`, and `embeddings` may fail independently. These failures are saved as error records in JSON/CSV and shown in reports.
 
-Last updated: 2026-07-30
+### A saved result cannot be loaded
+
+Confirm that the selected JSON file uses the current schema `3.0` and contains mandatory `schema_version` and `run_kind` fields. Historical result schemas are not upgraded implicitly at runtime.
+
+Last updated: 2026-09-10
