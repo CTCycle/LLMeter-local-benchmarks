@@ -30,237 +30,167 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
-          def replace_once(path, old, new):
+          def sub_once(path, pattern, replacement, flags=0):
               p = Path(path)
               text = p.read_text()
-              if old not in text:
-                  raise SystemExit(f"Expected block not found in {path}: {old[:120]!r}")
-              p.write_text(text.replace(old, new, 1))
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one match in {path}, found {count}: {pattern[:100]!r}")
+              p.write_text(updated)
 
-          # Provider probe: model identity and probe target must come from canonical selected IDs.
-          replace_once(
+          # Provider probe: selected canonical model IDs are the only probe targets.
+          sub_once(
               "src/performance/provider_probe.rs",
-              '''    let probe_model = plan
-                  .models
-                  .first()
-                  .cloned()
-                  .or_else(|| first_model_id(&model_values));
-          ''',
-              '''    let probe_model = plan.models.first().cloned();
-          ''',
+              r'''    let probe_model = plan\s*\.models\s*\.first\(\)\s*\.cloned\(\)\s*\.or_else\(\|\| first_model_id\(&model_values\)\);''',
+              '    let probe_model = plan.models.first().cloned();',
           )
-          replace_once(
+          sub_once(
               "src/performance/provider_probe.rs",
-              '''            let id = model
-                      .get("id")
-                      .or_else(|| model.get("name"))
-                      .or_else(|| model.get("model"))
-                      .and_then(|value| value.as_str())?
-                      .to_string();
-          ''',
-              '''            let id = model.get("id").and_then(|value| value.as_str())?.to_string();
-          ''',
+              r'''            let id = model\s*\.get\("id"\)\s*\.or_else\(\|\| model\.get\("name"\)\)\s*\.or_else\(\|\| model\.get\("model"\)\)\s*\.and_then\(\|value\| value\.as_str\(\)\)\?\s*\.to_string\(\);''',
+              '            let id = model.get("id").and_then(|value| value.as_str())?.to_string();',
           )
-          replace_once(
+          sub_once(
               "src/performance/provider_probe.rs",
-              '''fn first_model_id(models: &[Value]) -> Option<String> {
-              parse_model_capabilities(models)
-                  .into_iter()
-                  .next()
-                  .map(|model| model.id)
+              r'''fn first_model_id\(models: &\[Value\]\) -> Option<String> \{.*?\}\n\n''',
+              '',
+              re.S,
+          )
+          sub_once(
+              "src/performance/provider_probe.rs",
+              r'''        warnings\s*\.push\("No model was available for chat, embeddings, or responses probes\."\.to_string\(\)\);''',
+              '''        warnings.push(
+              "No model was selected for chat, embeddings, or responses probes.".to_string(),
+          );''',
+          )
+          sub_once(
+              "src/performance/provider_probe.rs",
+              r'''    #\[test\]\n    fn endpoint_probe_marks_errors_as_unsupported\(\) \{''',
+              '''    #[test]
+          fn parse_model_capabilities_requires_canonical_id() {
+              let models = vec![
+                  json!({"name": "legacy-name", "context_length": 4096}),
+                  json!({"model": "legacy-model", "context_length": 4096}),
+              ];
+
+              assert!(parse_model_capabilities(&models).is_empty());
           }
 
-          ''',
+          #[test]
+          fn planned_probe_steps_without_selected_models_only_checks_catalog() {
+              let mut plan = test_plan(true, true);
+              plan.models.clear();
+              assert_eq!(planned_probe_steps(&plan), 1);
+          }
+
+          #[test]
+          fn endpoint_probe_marks_errors_as_unsupported() {''',
+          )
+
+          # Provider parsing and catalog iteration derive from one canonical variant/label definition.
+          sub_once(
+              "src/providers.rs",
+              r'''const PROVIDER_KINDS: \[ProviderKind; 12\] = \[.*?\];\n\n''',
               '',
+              re.S,
           )
-          replace_once(
-              "src/performance/provider_probe.rs",
-              '''        warnings
-                  .push("No model was available for chat, embeddings, or responses probes.".to_string());
-          ''',
-              '''        warnings.push(
-                  "No model was selected for chat, embeddings, or responses probes.".to_string(),
-              );
-          ''',
+          sub_once(
+              "src/providers.rs",
+              r'''        PROVIDER_KINDS\s*\.into_iter\(\)\s*\.map\(\|provider\| \{''',
+              '''        Self::value_variants()
+              .iter()
+              .copied()
+              .map(|provider| {''',
           )
-          replace_once(
-              "src/performance/provider_probe.rs",
-              '''    #[test]
-              fn endpoint_probe_marks_errors_as_unsupported() {
-          ''',
-              '''    #[test]
-              fn parse_model_capabilities_requires_canonical_id() {
-                  let models = vec![
-                      json!({"name": "legacy-name", "context_length": 4096}),
-                      json!({"model": "legacy-model", "context_length": 4096}),
-                  ];
-
-                  assert!(parse_model_capabilities(&models).is_empty());
-              }
-
-              #[test]
-              fn planned_probe_steps_without_selected_models_only_checks_catalog() {
-                  let mut plan = test_plan(true, true);
-                  plan.models.clear();
-                  assert_eq!(planned_probe_steps(&plan), 1);
-              }
-
-              #[test]
-              fn endpoint_probe_marks_errors_as_unsupported() {
-          ''',
-          )
-
-          # Provider parsing: derive parsing and catalog enumeration from canonical provider definitions.
-          providers = Path("src/providers.rs")
-          text = providers.read_text()
-          start = text.index("const PROVIDER_KINDS: [ProviderKind; 12] = [")
-          end = text.index("];", start) + 3
-          text = text[:start] + text[end:]
-          old = '''        PROVIDER_KINDS
-                  .into_iter()
-                  .map(|provider| {
-          '''
-          new = '''        Self::value_variants()
+          sub_once(
+              "src/providers.rs",
+              r'''    fn from_str\(value: &str\) -> Result<Self, Self::Err> \{\n        match value\.trim\(\)\.to_ascii_lowercase\(\)\.as_str\(\) \{.*?\n        \}\n    \}''',
+              '''    fn from_str(value: &str) -> Result<Self, Self::Err> {
+              let canonical = value.trim().to_ascii_lowercase();
+              Self::value_variants()
                   .iter()
                   .copied()
-                  .map(|provider| {
-          '''
-          if old not in text:
-              raise SystemExit("Provider catalog enumeration block not found")
-          text = text.replace(old, new, 1)
-          old = '''    fn from_str(value: &str) -> Result<Self, Self::Err> {
-                  match value.trim().to_ascii_lowercase().as_str() {
-                      "ollama" => Ok(ProviderKind::Ollama),
-                      "lmstudio" => Ok(ProviderKind::Lmstudio),
-                      "llama-cpp" => Ok(ProviderKind::LlamaCpp),
-                      "openai-compatible" => Ok(ProviderKind::OpenaiCompatible),
-                      "vllm" => Ok(ProviderKind::Vllm),
-                      "sglang" => Ok(ProviderKind::Sglang),
-                      "localai" => Ok(ProviderKind::Localai),
-                      "litellm" => Ok(ProviderKind::Litellm),
-                      "tgi" => Ok(ProviderKind::Tgi),
-                      "text-generation-webui" => Ok(ProviderKind::TextGenerationWebui),
-                      "jan" => Ok(ProviderKind::Jan),
-                      "mlx-lm" => Ok(ProviderKind::MlxLm),
-                      other => Err(LLMeterError::InvalidOption(format!(
-                          "Unknown provider '{other}'. Use `llmeter providers list` for supported presets."
-                      ))),
-                  }
-              }
-          '''
-          new = '''    fn from_str(value: &str) -> Result<Self, Self::Err> {
-                  let canonical = value.trim().to_ascii_lowercase();
-                  Self::value_variants()
-                      .iter()
-                      .copied()
-                      .find(|provider| provider.label() == canonical)
-                      .ok_or_else(|| {
-                          LLMeterError::InvalidOption(format!(
-                              "Unknown provider '{canonical}'. Use `llmeter providers list` for supported presets."
-                          ))
-                      })
-              }
-          '''
-          if old not in text:
-              raise SystemExit("Provider FromStr block not found")
-          text = text.replace(old, new, 1)
-          old = '''    use serde_json::json;
-
-              use super::{
-          '''
-          new = '''    use clap::ValueEnum;
+                  .find(|provider| provider.label() == canonical.as_str())
+                  .ok_or_else(|| {
+                      LLMeterError::InvalidOption(format!(
+                          "Unknown provider '{canonical}'. Use `llmeter providers list` for supported presets."
+                      ))
+                  })
+          }''',
+              re.S,
+          )
+          sub_once(
+              "src/providers.rs",
+              r'''    use serde_json::json;\n''',
+              '''    use clap::ValueEnum;
               use serde_json::json;
-
-              use super::{
-          '''
-          if old not in text:
-              raise SystemExit("Provider test import anchor not found")
-          text = text.replace(old, new, 1)
-          old = '''    #[test]
-              fn list_models_returns_friendly_provider_error() {
-          '''
-          new = '''    #[test]
-              fn provider_value_enum_names_match_canonical_labels() {
-                  for provider in ProviderKind::value_variants().iter().copied() {
-                      let possible = provider.to_possible_value().expect("provider value");
-                      assert_eq!(possible.get_name(), provider.label());
-                  }
-              }
-
-              #[test]
-              fn list_models_returns_friendly_provider_error() {
-          '''
-          if old not in text:
-              raise SystemExit("Provider test insertion anchor not found")
-          text = text.replace(old, new, 1)
-          providers.write_text(text)
-
-          # Performance profile parsing: use the profile labels as the sole parsing map.
-          replace_once(
-              "src/performance/config.rs",
-              '''    fn from_str(value: &str) -> Result<Self, Self::Err> {
-                  match value.trim().to_ascii_lowercase().as_str() {
-                      "smoke" => Ok(Self::Smoke),
-                      "latency" => Ok(Self::Latency),
-                      "throughput" => Ok(Self::Throughput),
-                      "sweep" => Ok(Self::Sweep),
-                      other => Err(format!("Unknown performance profile '{other}'.")),
-                  }
-              }
-          ''',
-              '''    fn from_str(value: &str) -> Result<Self, Self::Err> {
-                  let canonical = value.trim().to_ascii_lowercase();
-                  Self::value_variants()
-                      .iter()
-                      .copied()
-                      .find(|profile| profile.label() == canonical)
-                      .ok_or_else(|| format!("Unknown performance profile '{canonical}'."))
-              }
           ''',
           )
-          replace_once(
+          sub_once(
+              "src/providers.rs",
+              r'''    #\[test\]\n    fn list_models_returns_friendly_provider_error\(\) \{''',
+              '''    #[test]
+          fn provider_value_enum_names_match_canonical_labels() {
+              for provider in ProviderKind::value_variants().iter().copied() {
+                  let possible = provider.to_possible_value().expect("provider value");
+                  assert_eq!(possible.get_name(), provider.label());
+              }
+          }
+
+          #[test]
+          fn list_models_returns_friendly_provider_error() {''',
+          )
+
+          # Performance-profile parsing derives from the same canonical labels used by planning/UI.
+          sub_once(
               "src/performance/config.rs",
-              '''mod tests {
-              use super::PerformanceProfile;
-          ''',
+              r'''    fn from_str\(value: &str\) -> Result<Self, Self::Err> \{\n        match value\.trim\(\)\.to_ascii_lowercase\(\)\.as_str\(\) \{.*?\n        \}\n    \}''',
+              '''    fn from_str(value: &str) -> Result<Self, Self::Err> {
+              let canonical = value.trim().to_ascii_lowercase();
+              Self::value_variants()
+                  .iter()
+                  .copied()
+                  .find(|profile| profile.label() == canonical.as_str())
+                  .ok_or_else(|| format!("Unknown performance profile '{canonical}'."))
+          }''',
+              re.S,
+          )
+          sub_once(
+              "src/performance/config.rs",
+              r'''mod tests \{\n    use super::PerformanceProfile;''',
               '''mod tests {
               use clap::ValueEnum;
 
-              use super::PerformanceProfile;
-          ''',
+              use super::PerformanceProfile;''',
           )
-          replace_once(
+          sub_once(
               "src/performance/config.rs",
+              r'''    #\[test\]\n    fn performance_profile_defaults_are_canonical\(\) \{''',
               '''    #[test]
-              fn performance_profile_defaults_are_canonical() {
-          ''',
-              '''    #[test]
-              fn performance_profile_cli_names_match_canonical_labels() {
-                  for profile in PerformanceProfile::value_variants().iter().copied() {
-                      let possible = profile.to_possible_value().expect("profile value");
-                      assert_eq!(possible.get_name(), profile.label());
-                      assert_eq!(profile.label().parse::<PerformanceProfile>(), Ok(profile));
-                  }
+          fn performance_profile_cli_names_match_canonical_labels() {
+              for profile in PerformanceProfile::value_variants().iter().copied() {
+                  let possible = profile.to_possible_value().expect("profile value");
+                  assert_eq!(possible.get_name(), profile.label());
+                  assert_eq!(profile.label().parse::<PerformanceProfile>(), Ok(profile));
               }
+          }
 
-              #[test]
-              fn performance_profile_defaults_are_canonical() {
-          ''',
+          #[test]
+          fn performance_profile_defaults_are_canonical() {''',
           )
 
-          # Durable audit roadmap: record the current canonicalization pass without rewriting historical evidence.
-          replace_once(
+          # Keep historical release evidence, while making the active audit contract explicit.
+          sub_once(
               "assets/docs/runtime/audit_implementation_plan.md",
-              "Last updated: 2026-08-02",
-              "Last updated: 2026-09-10",
+              r'''Last updated: 2026-08-02''',
+              'Last updated: 2026-09-10',
           )
-          replace_once(
+          sub_once(
               "assets/docs/runtime/audit_implementation_plan.md",
+              r'''- `b49a567` - result schema `2\.4`, honest streaming and token-usage semantics, fresh model validation, hardened reports, and tag-gated release validation\.\n''',
               '''- `b49a567` - result schema `2.4`, honest streaming and token-usage semantics, fresh model validation, hardened reports, and tag-gated release validation.
-          ''',
-              '''- `b49a567` - result schema `2.4`, honest streaming and token-usage semantics, fresh model validation, hardened reports, and tag-gated release validation.
-              - PR #1 (`refactor/canonical-sources-of-truth`) supersedes the active runtime contract with strict result schema `3.0`, canonical provider/model identity, typed output choices, shared performance-profile defaults, and removal of obsolete aliases and runtime compatibility fallbacks. Historical `2.4` references below remain release-history evidence rather than current runtime behavior.
+          - PR #1 (`refactor/canonical-sources-of-truth`) supersedes the active runtime contract with strict result schema `3.0`, canonical provider/model identity, typed output choices, shared performance-profile defaults, and removal of obsolete aliases and runtime compatibility fallbacks. Historical `2.4` references below remain release-history evidence rather than current runtime behavior.
           ''',
           )
           PY
