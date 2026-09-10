@@ -94,15 +94,6 @@ pub struct PerformanceSafetyOptions {
     pub allow_large_matrix: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum PerformanceExportRequest {
-    Json,
-    Csv,
-    Both,
-    None,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PerformancePlan {
     pub provider: ProviderKind,
@@ -142,7 +133,7 @@ impl PerformancePlan {
         runs: Option<u32>,
         stream: bool,
         workload_jsonl: Option<String>,
-        mut extra_params: HashMap<String, Value>,
+        extra_params: HashMap<String, Value>,
         load_measurement: LoadMeasurementMode,
         load_probe_runs: u32,
         telemetry: TelemetryLevel,
@@ -155,16 +146,6 @@ impl PerformancePlan {
         detail: ReportDetailLevel,
         max_requests: Option<u32>,
     ) -> anyhow::Result<Self> {
-        let safety = PerformanceSafetyOptions {
-            allow_large_prompt: extra_params
-                .remove("unsafe_large_prompt")
-                .and_then(|value| value.as_bool())
-                .unwrap_or(false),
-            allow_large_matrix: extra_params
-                .remove("unsafe_large_matrix")
-                .and_then(|value| value.as_bool())
-                .unwrap_or(false),
-        };
         Self::from_cli_with_safety(
             provider,
             models,
@@ -177,7 +158,7 @@ impl PerformancePlan {
             stream,
             workload_jsonl,
             extra_params,
-            safety,
+            PerformanceSafetyOptions::default(),
             load_measurement,
             load_probe_runs,
             telemetry,
@@ -384,9 +365,9 @@ impl PerformancePlan {
 
     pub fn validate(
         &self,
-        unsafe_large_prompt: bool,
+        allow_large_prompt: bool,
         max_requests: Option<u32>,
-        unsafe_large_matrix: bool,
+        allow_large_matrix: bool,
     ) -> anyhow::Result<()> {
         if self.runs == 0 {
             return Err(LLMeterError::InvalidOption(
@@ -413,7 +394,7 @@ impl PerformancePlan {
             )
             .into());
         }
-        if !unsafe_large_prompt
+        if !allow_large_prompt
             && self
                 .prompt_sizes
                 .estimated_tokens
@@ -425,7 +406,7 @@ impl PerformancePlan {
             ))
             .into());
         }
-        if !unsafe_large_prompt
+        if !allow_large_prompt
             && self
                 .output_sizes
                 .estimated_tokens
@@ -438,7 +419,7 @@ impl PerformancePlan {
             .into());
         }
         if let Some(limit) = max_requests {
-            if self.total_requests() > limit && !unsafe_large_matrix {
+            if self.total_requests() > limit && !allow_large_matrix {
                 return Err(LLMeterError::InvalidOption(format!(
                     "Performance plan requests {} exceed --max-requests {limit}. Reduce the matrix, raise --max-requests, use --dry-run to inspect it, or pass --allow-large-matrix.",
                     self.total_requests()
