@@ -12,7 +12,6 @@
 | `llmeter bench list [--suite <suite>]` | List available benchmarks, optionally filtered by suite. |
 | `llmeter bench run [options]` | Run benchmarks non-interactively with live progress output. |
 | `llmeter bench perf [options]` | Run native performance scenarios with warmups, load estimates, endpoint probe progress, telemetry, and concurrency sweeps. |
-| `llmeter bench performance [options]` | Visible alias for `llmeter bench perf`. |
 | `llmeter report list` | List saved result and report files. |
 | `llmeter report show [result]` | Render a saved JSON result as a terminal report. |
 | `llmeter report generate [result]` | Generate Markdown and/or HTML reports. |
@@ -22,7 +21,6 @@
 | `llmeter update [--source <exe>]` | Refresh the managed CLI copy from a newer executable. |
 | `llmeter uninstall [--purge-home]` | Remove the managed CLI copy and optionally all LLMeter home data. |
 | `llmeter help [topic]` | Show built-in help. |
-| `llmeter /help [topic]` | Built-in help alias. |
 
 ## Automation patterns
 
@@ -34,7 +32,7 @@ Run everything against all models exposed by Ollama:
 llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export both --report both
 ```
 
-`bench run` now reports validation, planning, current benchmark step, and completion percentage while the run is in progress.
+`bench run` reports validation, planning, current benchmark step, and completion percentage while the run is in progress.
 
 Run selected capability benchmarks against LM Studio:
 
@@ -95,17 +93,17 @@ Disable streaming when TTFT is not needed or the provider streaming endpoint is 
 llmeter --provider ollama bench perf --models all --profile smoke --runs 1 --no-stream
 ```
 
-Add capability probing, client-side load overhead estimation, and detailed telemetry:
+Enable capability probing and detailed telemetry while retaining the default client-side load estimate:
 
 ```bash
-llmeter --provider ollama bench performance --models all --profile latency --runs 3 --warmup 1 --probe-capabilities --load-measurement first-request-estimate --telemetry detailed --report both --export both
+llmeter --provider ollama bench perf --models all --profile latency --runs 3 --warmup 1 --probe-capabilities --telemetry detailed --report both --export both
 ```
 
 When capability probing is enabled, LLMeter reports each validation step before timed scenarios begin so long provider checks remain visible in terminal output.
 
-Load-estimate probes, model inventory metadata/cache scans, and `llmeter report generate ...` now also emit progress updates instead of staying silent until completion.
+Load-estimate probes, model inventory metadata/cache scans, and `llmeter report generate ...` emit progress updates instead of staying silent until completion.
 
-Load overhead is always reported as an explicitly client-observed first-request versus warm-request estimate in this release; LLMeter does not infer provider-native lifecycle telemetry. Model cache scanning is opt-in with `--scan-model-cache` and never downloads or mutates model files.
+The default load mode is `first-request-estimate`; use `--load-measurement off` to disable it. Load overhead is always reported as an explicitly client-observed first-request versus warm-request estimate; LLMeter does not infer provider-native lifecycle telemetry. Model cache scanning is opt-in with `--scan-model-cache` and never downloads or mutates model files.
 
 `status`, `models`, standard benchmark validation, and measured probes use fresh model discovery. Use `models --json` when an automation caller needs provider data without terminal table formatting.
 
@@ -148,4 +146,4 @@ Example:
   run: ./llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export json --report md
 ```
 
-Last updated: 2026-08-02
+Last updated: 2026-09-10
