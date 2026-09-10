@@ -37,6 +37,21 @@ pub enum ProviderKind {
     MlxLm,
 }
 
+const PROVIDER_KINDS: [ProviderKind; 12] = [
+    ProviderKind::Ollama,
+    ProviderKind::Lmstudio,
+    ProviderKind::LlamaCpp,
+    ProviderKind::OpenaiCompatible,
+    ProviderKind::Vllm,
+    ProviderKind::Sglang,
+    ProviderKind::Localai,
+    ProviderKind::Litellm,
+    ProviderKind::Tgi,
+    ProviderKind::TextGenerationWebui,
+    ProviderKind::Jan,
+    ProviderKind::MlxLm,
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProviderCompatibilityTier {
@@ -58,6 +73,16 @@ impl ProviderCompatibilityTier {
 }
 
 #[derive(Debug, Clone, Copy)]
+struct ProviderDefinition {
+    label: &'static str,
+    display_name: &'static str,
+    default_base_url: &'static str,
+    tier: ProviderCompatibilityTier,
+    notes: &'static str,
+    base_url_env: Option<&'static str>,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct ProviderCatalogEntry {
     pub provider: ProviderKind,
     pub tier: ProviderCompatibilityTier,
@@ -66,93 +91,140 @@ pub struct ProviderCatalogEntry {
 }
 
 impl ProviderKind {
-    pub fn default_base_url(self) -> &'static str {
+    fn definition(self) -> ProviderDefinition {
         match self {
-            ProviderKind::Ollama => "http://localhost:11434/v1",
-            ProviderKind::Lmstudio => "http://localhost:1234/v1",
-            ProviderKind::LlamaCpp => "http://localhost:8080/v1",
-            ProviderKind::OpenaiCompatible => "http://localhost:8000/v1",
-            ProviderKind::Vllm => "http://localhost:8000/v1",
-            ProviderKind::Sglang => "http://localhost:30000/v1",
-            ProviderKind::Localai => "http://localhost:8080/v1",
-            ProviderKind::Litellm => "http://localhost:4000/v1",
-            ProviderKind::Tgi => "http://localhost:8080/v1",
-            ProviderKind::TextGenerationWebui => "http://localhost:5000/v1",
-            ProviderKind::Jan => "http://localhost:1337/v1",
-            ProviderKind::MlxLm => "http://localhost:8080/v1",
+            Self::Ollama => ProviderDefinition {
+                label: "ollama",
+                display_name: "Ollama",
+                default_base_url: "http://localhost:11434/v1",
+                tier: ProviderCompatibilityTier::FirstClass,
+                notes: "Existing first-class target",
+                base_url_env: Some("OLLAMA_HOST"),
+            },
+            Self::Lmstudio => ProviderDefinition {
+                label: "lmstudio",
+                display_name: "LM Studio",
+                default_base_url: "http://localhost:1234/v1",
+                tier: ProviderCompatibilityTier::FirstClass,
+                notes: "Existing first-class target",
+                base_url_env: Some("LMSTUDIO_BASE_URL"),
+            },
+            Self::LlamaCpp => ProviderDefinition {
+                label: "llama-cpp",
+                display_name: "llama.cpp",
+                default_base_url: "http://localhost:8080/v1",
+                tier: ProviderCompatibilityTier::FirstClass,
+                notes: "Existing first-class target",
+                base_url_env: Some("LLAMA_CPP_BASE_URL"),
+            },
+            Self::OpenaiCompatible => ProviderDefinition {
+                label: "openai-compatible",
+                display_name: "OpenAI-compatible",
+                default_base_url: "http://localhost:8000/v1",
+                tier: ProviderCompatibilityTier::Custom,
+                notes: "User-supplied local /v1 server",
+                base_url_env: None,
+            },
+            Self::Vllm => ProviderDefinition {
+                label: "vllm",
+                display_name: "vLLM",
+                default_base_url: "http://localhost:8000/v1",
+                tier: ProviderCompatibilityTier::OpenAiCompatibleKnown,
+                notes: "OpenAI-compatible server preset",
+                base_url_env: Some("VLLM_BASE_URL"),
+            },
+            Self::Sglang => ProviderDefinition {
+                label: "sglang",
+                display_name: "SGLang",
+                default_base_url: "http://localhost:30000/v1",
+                tier: ProviderCompatibilityTier::OpenAiCompatibleKnown,
+                notes: "OpenAI-compatible server preset",
+                base_url_env: Some("SGLANG_BASE_URL"),
+            },
+            Self::Localai => ProviderDefinition {
+                label: "localai",
+                display_name: "LocalAI",
+                default_base_url: "http://localhost:8080/v1",
+                tier: ProviderCompatibilityTier::OpenAiCompatibleKnown,
+                notes: "OpenAI-compatible server preset",
+                base_url_env: Some("LOCALAI_BASE_URL"),
+            },
+            Self::Litellm => ProviderDefinition {
+                label: "litellm",
+                display_name: "LiteLLM",
+                default_base_url: "http://localhost:4000/v1",
+                tier: ProviderCompatibilityTier::OpenAiCompatibleKnown,
+                notes: "OpenAI-compatible proxy preset",
+                base_url_env: Some("LITELLM_BASE_URL"),
+            },
+            Self::Tgi => ProviderDefinition {
+                label: "tgi",
+                display_name: "TGI",
+                default_base_url: "http://localhost:8080/v1",
+                tier: ProviderCompatibilityTier::OpenAiCompatibleBestEffort,
+                notes: "Requires OpenAI-compatible router mode",
+                base_url_env: Some("TGI_BASE_URL"),
+            },
+            Self::TextGenerationWebui => ProviderDefinition {
+                label: "text-generation-webui",
+                display_name: "text-generation-webui",
+                default_base_url: "http://localhost:5000/v1",
+                tier: ProviderCompatibilityTier::OpenAiCompatibleBestEffort,
+                notes: "API shape can vary by extension",
+                base_url_env: Some("TEXT_GENERATION_WEBUI_BASE_URL"),
+            },
+            Self::Jan => ProviderDefinition {
+                label: "jan",
+                display_name: "Jan",
+                default_base_url: "http://localhost:1337/v1",
+                tier: ProviderCompatibilityTier::OpenAiCompatibleBestEffort,
+                notes: "Local API behavior can vary by version",
+                base_url_env: Some("JAN_BASE_URL"),
+            },
+            Self::MlxLm => ProviderDefinition {
+                label: "mlx-lm",
+                display_name: "MLX-LM",
+                default_base_url: "http://localhost:8080/v1",
+                tier: ProviderCompatibilityTier::OpenAiCompatibleBestEffort,
+                notes: "OpenAI-compatible server shape can vary",
+                base_url_env: Some("MLX_LM_BASE_URL"),
+            },
         }
+    }
+
+    pub fn default_base_url(self) -> &'static str {
+        self.definition().default_base_url
     }
 
     pub fn label(self) -> &'static str {
-        match self {
-            ProviderKind::Ollama => "ollama",
-            ProviderKind::Lmstudio => "lmstudio",
-            ProviderKind::LlamaCpp => "llama-cpp",
-            ProviderKind::OpenaiCompatible => "openai-compatible",
-            ProviderKind::Vllm => "vllm",
-            ProviderKind::Sglang => "sglang",
-            ProviderKind::Localai => "localai",
-            ProviderKind::Litellm => "litellm",
-            ProviderKind::Tgi => "tgi",
-            ProviderKind::TextGenerationWebui => "text-generation-webui",
-            ProviderKind::Jan => "jan",
-            ProviderKind::MlxLm => "mlx-lm",
-        }
+        self.definition().label
     }
 
     pub fn display_name(self) -> &'static str {
-        match self {
-            ProviderKind::Ollama => "Ollama",
-            ProviderKind::Lmstudio => "LM Studio",
-            ProviderKind::LlamaCpp => "llama.cpp",
-            ProviderKind::OpenaiCompatible => "OpenAI-compatible",
-            ProviderKind::Vllm => "vLLM",
-            ProviderKind::Sglang => "SGLang",
-            ProviderKind::Localai => "LocalAI",
-            ProviderKind::Litellm => "LiteLLM",
-            ProviderKind::Tgi => "TGI",
-            ProviderKind::TextGenerationWebui => "text-generation-webui",
-            ProviderKind::Jan => "Jan",
-            ProviderKind::MlxLm => "MLX-LM",
-        }
+        self.definition().display_name
     }
 
     pub fn compatibility_tier(self) -> ProviderCompatibilityTier {
-        match self {
-            Self::Ollama | Self::Lmstudio | Self::LlamaCpp => ProviderCompatibilityTier::FirstClass,
-            Self::Vllm | Self::Sglang | Self::Localai | Self::Litellm => {
-                ProviderCompatibilityTier::OpenAiCompatibleKnown
-            }
-            Self::Tgi | Self::TextGenerationWebui | Self::Jan | Self::MlxLm => {
-                ProviderCompatibilityTier::OpenAiCompatibleBestEffort
-            }
-            Self::OpenaiCompatible => ProviderCompatibilityTier::Custom,
-        }
+        self.definition().tier
+    }
+
+    pub fn base_url_env(self) -> Option<&'static str> {
+        self.definition().base_url_env
     }
 
     pub fn catalog() -> Vec<ProviderCatalogEntry> {
-        [
-            (Self::Ollama, "Existing first-class target"),
-            (Self::Lmstudio, "Existing first-class target"),
-            (Self::LlamaCpp, "Existing first-class target"),
-            (Self::OpenaiCompatible, "User-supplied local /v1 server"),
-            (Self::Vllm, "OpenAI-compatible server preset"),
-            (Self::Sglang, "OpenAI-compatible server preset"),
-            (Self::Localai, "OpenAI-compatible server preset"),
-            (Self::Litellm, "OpenAI-compatible proxy preset"),
-            (Self::Tgi, "Requires OpenAI-compatible router mode"),
-            (Self::TextGenerationWebui, "API shape can vary by extension"),
-            (Self::Jan, "Local API behavior can vary by version"),
-            (Self::MlxLm, "OpenAI-compatible server shape can vary"),
-        ]
-        .into_iter()
-        .map(|(provider, notes)| ProviderCatalogEntry {
-            provider,
-            tier: provider.compatibility_tier(),
-            default_base_url: provider.default_base_url(),
-            notes,
-        })
-        .collect()
+        PROVIDER_KINDS
+            .into_iter()
+            .map(|provider| {
+                let definition = provider.definition();
+                ProviderCatalogEntry {
+                    provider,
+                    tier: definition.tier,
+                    default_base_url: definition.default_base_url,
+                    notes: definition.notes,
+                }
+            })
+            .collect()
     }
 }
 
@@ -187,17 +259,17 @@ impl std::str::FromStr for ProviderKind {
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.trim().to_ascii_lowercase().as_str() {
             "ollama" => Ok(ProviderKind::Ollama),
-            "lmstudio" | "lm-studio" | "lm_studio" => Ok(ProviderKind::Lmstudio),
-            "llama-cpp" | "llama.cpp" | "llamacpp" | "llama_cpp" => Ok(ProviderKind::LlamaCpp),
-            "openai-compatible" | "openai" | "custom" => Ok(ProviderKind::OpenaiCompatible),
-            "vllm" | "vllm-openai" => Ok(ProviderKind::Vllm),
-            "sglang" | "sgl" => Ok(ProviderKind::Sglang),
-            "localai" | "local-ai" => Ok(ProviderKind::Localai),
-            "litellm" | "lite-llm" => Ok(ProviderKind::Litellm),
-            "tgi" | "text-generation-inference" => Ok(ProviderKind::Tgi),
-            "text-generation-webui" | "oobabooga" => Ok(ProviderKind::TextGenerationWebui),
+            "lmstudio" => Ok(ProviderKind::Lmstudio),
+            "llama-cpp" => Ok(ProviderKind::LlamaCpp),
+            "openai-compatible" => Ok(ProviderKind::OpenaiCompatible),
+            "vllm" => Ok(ProviderKind::Vllm),
+            "sglang" => Ok(ProviderKind::Sglang),
+            "localai" => Ok(ProviderKind::Localai),
+            "litellm" => Ok(ProviderKind::Litellm),
+            "tgi" => Ok(ProviderKind::Tgi),
+            "text-generation-webui" => Ok(ProviderKind::TextGenerationWebui),
             "jan" => Ok(ProviderKind::Jan),
-            "mlx-lm" | "mlxlm" | "mlx_lm" => Ok(ProviderKind::MlxLm),
+            "mlx-lm" => Ok(ProviderKind::MlxLm),
             other => Err(LLMeterError::InvalidOption(format!(
                 "Unknown provider '{other}'. Use `llmeter providers list` for supported presets."
             ))),
@@ -454,12 +526,11 @@ impl ProviderClient {
         Ok(self
             .list_models_cached()?
             .iter()
-            .filter_map(|m| {
-                m.get("id")
-                    .or_else(|| m.get("name"))
-                    .or_else(|| m.get("model"))
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
+            .filter_map(|model| {
+                model
+                    .get("id")
+                    .and_then(|value| value.as_str())
+                    .map(str::to_string)
             })
             .collect())
     }
@@ -468,13 +539,7 @@ impl ProviderClient {
         let models = self.list_models_cached()?;
         models
             .into_iter()
-            .find(|m| {
-                m.get("id")
-                    .or_else(|| m.get("name"))
-                    .or_else(|| m.get("model"))
-                    .and_then(|v| v.as_str())
-                    == Some(model)
-            })
+            .find(|item| item.get("id").and_then(|value| value.as_str()) == Some(model))
             .ok_or_else(|| LLMeterError::ModelNotFound(format!("Model not found: {model}")).into())
     }
 
@@ -855,6 +920,16 @@ mod tests {
         parse_openai_stream_line, process_stream_event, read_stream_line_limited, ProviderClient,
         ProviderKind, StreamEvent, StreamKind,
     };
+
+    #[test]
+    fn provider_parsing_accepts_only_canonical_labels() {
+        for provider in ProviderKind::catalog() {
+            assert_eq!(provider.provider.label().parse(), Ok(provider.provider));
+        }
+        for alias in ["lm-studio", "llama.cpp", "custom", "sgl", "swebench"] {
+            assert!(alias.parse::<ProviderKind>().is_err(), "{alias}");
+        }
+    }
 
     #[test]
     fn list_models_returns_friendly_provider_error() {
