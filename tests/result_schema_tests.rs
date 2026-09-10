@@ -41,12 +41,11 @@ fn unsupported_explicit_schema_is_rejected_by_result_store() {
     });
     std::fs::write(&path, serde_json::to_vec(&old).unwrap()).unwrap();
 
-    let error = ResultStore::new(temp.path())
-        .load_json(&path)
-        .unwrap_err()
-        .to_string();
-    assert!(error.contains("Unsupported result schema"), "{error}");
-    assert!(error.contains("2.4"), "{error}");
+    let error = ResultStore::new(temp.path()).load_json(&path).unwrap_err();
+    let message = format!("{error:#}");
+    assert!(message.contains("Unsupported result schema"), "{message}");
+    assert!(message.contains("2.4"), "{message}");
+    assert!(message.contains(RESULT_SCHEMA_VERSION), "{message}");
 }
 
 #[test]
