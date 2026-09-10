@@ -1,5 +1,5 @@
 # Project index
-Last updated: 2026-08-17
+Last updated: 2026-09-10
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first, then open the smallest topic file that matches the task.
@@ -7,7 +7,7 @@ This file is the root index for `assets/docs`. Read it first, then open the smal
 ## Current codebase snapshot
 
 - Package version: `0.3.0` on the `develop` branch.
-- Persisted result schema: `2.4`, including explicit token-usage coverage and separate inter-chunk/inter-token timing semantics.
+- Persisted result schema: `3.0`, with mandatory schema identity and run kind; older result shapes are rejected rather than silently normalized.
 - Runtime surfaces: standard `llm` and `embeddings` suites, native `bench perf` scenarios, and dry-run external quality plans.
 - Provider catalogs use cached reads for ordinary interactive navigation and explicit fresh reads for status, model listing, benchmark validation, and measured probes.
 - Local convenience lifecycle commands (`install`, `update`, and `uninstall`) do not implement remote update or signature verification.
