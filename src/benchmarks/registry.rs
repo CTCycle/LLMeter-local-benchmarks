@@ -39,9 +39,11 @@ impl BenchmarkRegistry {
     }
 
     pub fn register(&mut self, benchmark: Box<dyn Benchmark>) {
-        if self.benchmarks.iter().any(|b| b.id() == benchmark.id()) {
-            return;
-        }
+        assert!(
+            !self.benchmarks.iter().any(|b| b.id() == benchmark.id()),
+            "Duplicate benchmark id '{}'. Benchmark ids must be globally unique.",
+            benchmark.id()
+        );
         self.benchmarks.push(benchmark);
     }
 
