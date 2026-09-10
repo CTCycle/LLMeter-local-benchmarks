@@ -11,7 +11,7 @@ LLMeter can save four artifact types per run:
 | Markdown report | `.report.md` | Human-readable report and terminal-renderable summary. |
 | HTML report | `.report.html` | Browser-friendly formatted report. |
 
-New runs persist result schema `2.4`. Older JSON files that omit newer optional fields remain readable.
+New runs persist result schema `3.0`. Schema identity and run kind are mandatory. Older JSON result schemas are rejected rather than silently upgraded or interpreted through legacy compatibility paths.
 
 Default output directory:
 
@@ -24,7 +24,7 @@ Both guided and scriptable benchmark execution can save:
 - raw exports with `json`, `csv`, `both`, or `none`
 - formatted reports with `md`, `html`, `both`, or `none`
 
-Response previews are not persisted by default. Add `--include-response-preview` only for runs whose model output is safe to retain. Credential-shaped values in diagnostic text and secret-named provider parameters are redacted before JSON, CSV, Markdown, or HTML is written.
+Response previews are not persisted by default. Add `--include-response-preview` only for runs whose model output is safe to retain. Credential-shaped values in diagnostic text and explicitly secret-named provider parameters are redacted before JSON, CSV, Markdown, or HTML is written. Measurement metadata such as token-count settings remains intact.
 
 The terminal prints a saved-file table after the run completes.
 
@@ -108,4 +108,4 @@ Environment snapshots record the host OS, CPU count, memory and swap ratios, dis
 
 All persisted formats are written through same-directory temporary files and atomic rename. Output preparation omits response previews by default and redacts credential-shaped values before writing; use `--include-response-preview` only when the output is safe to retain.
 
-Last updated: 2026-08-02
+Last updated: 2026-09-10
