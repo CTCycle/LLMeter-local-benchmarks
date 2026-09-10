@@ -6,6 +6,8 @@ Last updated: 2026-09-10
 
 LLMeter is a single-binary Rust CLI for measuring local OpenAI-compatible LLM providers. It combines a guided terminal workflow with scriptable commands for repeatable benchmark runs, native performance scenarios, and report generation.
 
+Current source release: `0.4.0`.
+
 It can benchmark providers such as Ollama, LM Studio, llama.cpp, and other servers that expose a compatible `/v1` API. LLMeter does not start provider servers, install models, or manage provider processes: start the provider externally, expose at least one model, and then point LLMeter at its base URL.
 
 ## What LLMeter provides
@@ -74,7 +76,7 @@ For a published release, Cargo provides the conventional installation path:
 cargo install llmeter --locked
 ```
 
-The first `0.3.0` publication is intentionally manual; until it appears on [crates.io](https://crates.io/crates/llmeter), install the checked-out source with `cargo install --path . --locked` or use a GitHub archive.
+The crates.io publication remains a manual owner-gated step. Until `llmeter` is published for this release, install the checked-out source with `cargo install --path . --locked` or use the matching GitHub release archive after the tag-gated workflow completes.
 
 ### Build from source
 

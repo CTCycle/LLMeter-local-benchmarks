@@ -1,6 +1,6 @@
 # Supported platforms
 
-Last updated: 2026-08-17
+Last updated: 2026-09-10
 
 ## Support tiers
 
@@ -22,4 +22,4 @@ LLMeter does not manage provider processes or model installation. The user must 
 
 ## Distribution status
 
-The release workflow is tag-gated and publishes the four archives above plus `SHA256SUMS` and GitHub artifact provenance attestations. The first `0.3.0` crates.io publication is manual; subsequent releases can use crates.io trusted publishing. Source builds and `cargo install --path . --locked` remain supported.
+The release workflow is tag-gated and publishes the four archives above plus `SHA256SUMS` and GitHub artifact provenance attestations. The `0.4.0` source release is locally prepared; hosted workflow execution and the first crates.io publication remain owner-gated. Source builds and `cargo install --path . --locked` remain supported.

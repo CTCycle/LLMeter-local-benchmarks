@@ -54,10 +54,18 @@ Create a managed install for `cmd.exe` usage after adding `<LLMETER_HOME>\bin` t
 llmeter install
 ```
 
+On Windows, the repository launcher can build when needed and forwards the
+same command-line arguments to the release binary:
+
+```powershell
+.\run_llmeter.ps1 --version
+.\run_llmeter.ps1 --provider ollama status
+```
+
 ## Verify it works
 
 `llmeter status` should show the selected provider, base URL, reachable API status, and model count.
 
 For providers that require authentication, set `LLMETER_API_KEY` for the process. The key is used ephemerally and is not saved in the LLMeter configuration or result files.
 
-Last updated: 2026-08-02
+Last updated: 2026-09-10

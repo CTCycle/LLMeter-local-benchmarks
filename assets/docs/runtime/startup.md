@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-09-01
+Last updated: 2026-09-10
 
 ## Prerequisites
 
@@ -50,6 +50,14 @@ Provider servers, model caches, externally selected output directories, and
 repository lockfiles are not removed. Normal remaining arguments continue to
 pass through to the binary unchanged; forwarded `uninstall` and
 `--purge-home` commands are confirmed by the wrapper as well.
+
+The wrapper accepts normal LLMeter flags and subcommands as positional
+pass-through arguments, including arguments that begin with `--`:
+
+```powershell
+.\run_llmeter.ps1 --version
+.\run_llmeter.ps1 --provider ollama status
+```
 
 CMD:
 
