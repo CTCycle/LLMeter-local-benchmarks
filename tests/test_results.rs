@@ -5,17 +5,20 @@ use llmeter::results::{
 use serde_json::json;
 
 fn sample_run() -> BenchmarkRun {
-    BenchmarkRun {
-        run_id: "test-run-id".to_string(),
-        created_at: "2026-06-12T12:00:00".to_string(),
-        models: vec!["llama3".to_string()],
-        benchmark_ids: vec!["chat-generation".to_string()],
-        config: {
+    BenchmarkRun::new(
+        "test-run-id".to_string(),
+        "2026-06-12T12:00:00".to_string(),
+        vec!["llama3".to_string()],
+        vec!["chat-generation".to_string()],
+        {
             let mut c = std::collections::HashMap::new();
             c.insert("runs".to_string(), json!(3));
+            c.insert("max_tokens".to_string(), json!(128));
+            c.insert("temperature".to_string(), json!(0.0));
+            c.insert("timeout".to_string(), json!(30.0));
             c
         },
-        results: vec![BenchmarkResultRecord {
+        vec![BenchmarkResultRecord {
             benchmark_id: "chat-generation".to_string(),
             benchmark_name: "Basic generation latency".to_string(),
             model: "llama3".to_string(),
@@ -31,16 +34,8 @@ fn sample_run() -> BenchmarkRun {
             error: None,
             metadata: None,
         }],
-        schema_version: "2.0".to_string(),
-        run_kind: Some(BenchmarkRunKind::Benchmark),
-        environment: None,
-        performance_plan: None,
-        quality_plan: None,
-        provider_capabilities: None,
-        model_load_measurements: None,
-        model_inventory_measurements: None,
-        telemetry_summary: None,
-    }
+        BenchmarkRunKind::Benchmark,
+    )
 }
 
 #[test]
@@ -54,6 +49,7 @@ fn test_result_store_saves_json_and_csv() {
     let content = std::fs::read_to_string(&json_path).unwrap();
     assert!(content.contains("test-run-id"));
     assert!(content.contains("chat-generation"));
+    assert!(content.contains("\"schema_version\": \"3.0\""));
 
     let csv_path = store.save_csv(&run).unwrap();
     assert!(csv_path.exists());
@@ -108,6 +104,7 @@ fn test_load_json_roundtrip() {
     assert_eq!(loaded.models, vec!["llama3"]);
     assert_eq!(loaded.results.len(), 1);
     assert_eq!(loaded.results[0].benchmark_id, "chat-generation");
+    assert_eq!(loaded.run_kind, BenchmarkRunKind::Benchmark);
 }
 
 #[test]
