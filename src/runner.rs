@@ -6,7 +6,7 @@ use crate::benchmarks::base::{
     Benchmark, BenchmarkContext, BenchmarkProgressSink, BenchmarkStepStatus, BenchmarkStepUpdate,
 };
 use crate::benchmarks::registry::{default_registry, BenchmarkSuite};
-use crate::cli::ReportCommands;
+use crate::cli::{ExportFormat, ReportCommands, ReportFormat};
 use crate::config::AppConfig;
 use crate::errors::LLMeterError;
 use crate::performance::load::planned_load_steps;
@@ -307,14 +307,11 @@ fn execute_benchmark_plan(
 pub fn save_outputs(
     config: &AppConfig,
     run: &BenchmarkRun,
-    export: &str,
-    report: &str,
+    export: ExportFormat,
+    report: ReportFormat,
     privacy: OutputPrivacyPolicy,
     progress: Option<&mut dyn ProgressSink>,
 ) -> anyhow::Result<Vec<PathBuf>> {
-    validate_output_choice(export, &["json", "csv", "both", "none"], "--export")?;
-    validate_output_choice(report, &["md", "html", "both", "none"], "--report")?;
-
     let mut null_sink = crate::progress::NullProgressSink;
     let sink = match progress {
         Some(sink) => sink,
@@ -331,7 +328,7 @@ pub fn save_outputs(
     sink.on_update(ProgressUpdate {
         kind: ProgressEventKind::Phase,
         phase: ProgressPhase::SavingResults,
-        message: format!("Saving raw result export setting: {export}"),
+        message: format!("Saving raw result export setting: {}", export.as_str()),
         completed_units,
         total_units,
         model_name: None,
@@ -347,10 +344,10 @@ pub fn save_outputs(
         prompt_name: None,
     });
 
-    if matches!(export, "json" | "both") {
+    if matches!(export, ExportFormat::Json | ExportFormat::Both) {
         saved.push(store.save_json(&prepared_run)?);
     }
-    if matches!(export, "csv" | "both") {
+    if matches!(export, ExportFormat::Csv | ExportFormat::Both) {
         saved.push(store.save_csv(&prepared_run)?);
     }
 
@@ -358,7 +355,10 @@ pub fn save_outputs(
     sink.on_update(ProgressUpdate {
         kind: ProgressEventKind::Phase,
         phase: ProgressPhase::GeneratingReports,
-        message: format!("Generating formatted report setting: {report}"),
+        message: format!(
+            "Generating formatted report setting: {}",
+            report.as_str()
+        ),
         completed_units,
         total_units,
         model_name: None,
@@ -374,10 +374,10 @@ pub fn save_outputs(
         prompt_name: None,
     });
 
-    if matches!(report, "md" | "both") {
+    if matches!(report, ReportFormat::Md | ReportFormat::Both) {
         saved.push(save_markdown_report(&prepared_run, &config.output_dir)?);
     }
-    if matches!(report, "html" | "both") {
+    if matches!(report, ReportFormat::Html | ReportFormat::Both) {
         saved.push(save_html_report(&prepared_run, &config.output_dir)?);
     }
 
@@ -401,18 +401,6 @@ pub fn save_outputs(
         prompt_name: None,
     });
     Ok(saved)
-}
-
-fn validate_output_choice(value: &str, allowed: &[&str], flag: &str) -> anyhow::Result<()> {
-    if allowed.contains(&value) {
-        return Ok(());
-    }
-
-    Err(LLMeterError::InvalidOption(format!(
-        "Invalid {flag} '{value}'. Use one of: {}.",
-        allowed.join(", ")
-    ))
-    .into())
 }
 
 pub fn command_report(config: &AppConfig, report_cmd: &ReportCommands) -> anyhow::Result<()> {
@@ -442,8 +430,8 @@ pub fn command_report(config: &AppConfig, report_cmd: &ReportCommands) -> anyhow
             let saved = save_outputs(
                 config,
                 &run,
-                "none",
-                format.as_str(),
+                ExportFormat::None,
+                *format,
                 OutputPrivacyPolicy {
                     include_response_preview: *include_response_preview,
                     redact_sensitive_values: true,
