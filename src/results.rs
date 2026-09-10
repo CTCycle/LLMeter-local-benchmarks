@@ -6,16 +6,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::benchmarks::base::BenchmarkResultRecord;
+use crate::errors::LLMeterError;
 use crate::performance::config::PerformancePlan;
 use crate::performance::load::ModelLoadMeasurement;
 use crate::performance::model_inventory::ModelInventoryMeasurement;
 use crate::performance::provider_probe::ProviderCapabilityReport;
 use crate::performance::resource::EnvironmentSnapshot;
 use crate::performance::telemetry::TelemetrySummary;
-use crate::quality::manifest::QualityPlan;
 use crate::utils;
 
-pub const RESULT_SCHEMA_VERSION: &str = "2.4";
+pub const RESULT_SCHEMA_VERSION: &str = "3.0";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OutputPrivacyPolicy {
@@ -32,16 +32,11 @@ impl Default for OutputPrivacyPolicy {
     }
 }
 
-fn default_schema_version() -> String {
-    RESULT_SCHEMA_VERSION.to_string()
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum BenchmarkRunKind {
     Benchmark,
     Performance,
-    QualityPlan,
 }
 
 impl BenchmarkRunKind {
@@ -49,7 +44,6 @@ impl BenchmarkRunKind {
         match self {
             Self::Benchmark => "benchmark",
             Self::Performance => "performance",
-            Self::QualityPlan => "quality-plan",
         }
     }
 }
@@ -62,16 +56,12 @@ pub struct BenchmarkRun {
     pub benchmark_ids: Vec<String>,
     pub config: HashMap<String, Value>,
     pub results: Vec<BenchmarkResultRecord>,
-    #[serde(default = "default_schema_version")]
     pub schema_version: String,
-    #[serde(default)]
-    pub run_kind: Option<BenchmarkRunKind>,
+    pub run_kind: BenchmarkRunKind,
     #[serde(default)]
     pub environment: Option<EnvironmentSnapshot>,
     #[serde(default)]
     pub performance_plan: Option<PerformancePlan>,
-    #[serde(default)]
-    pub quality_plan: Option<QualityPlan>,
     #[serde(default)]
     pub provider_capabilities: Option<ProviderCapabilityReport>,
     #[serde(default)]
@@ -80,6 +70,35 @@ pub struct BenchmarkRun {
     pub model_inventory_measurements: Option<Vec<ModelInventoryMeasurement>>,
     #[serde(default)]
     pub telemetry_summary: Option<TelemetrySummary>,
+}
+
+impl BenchmarkRun {
+    pub fn new(
+        run_id: String,
+        created_at: String,
+        models: Vec<String>,
+        benchmark_ids: Vec<String>,
+        config: HashMap<String, Value>,
+        results: Vec<BenchmarkResultRecord>,
+        run_kind: BenchmarkRunKind,
+    ) -> Self {
+        Self {
+            run_id,
+            created_at,
+            models,
+            benchmark_ids,
+            config,
+            results,
+            schema_version: RESULT_SCHEMA_VERSION.to_string(),
+            run_kind,
+            environment: None,
+            performance_plan: None,
+            provider_capabilities: None,
+            model_load_measurements: None,
+            model_inventory_measurements: None,
+            telemetry_summary: None,
+        }
+    }
 }
 
 pub struct ResultStore {
@@ -98,6 +117,7 @@ impl ResultStore {
     }
 
     pub fn save_json(&self, run: &BenchmarkRun) -> anyhow::Result<PathBuf> {
+        validate_current_schema(run)?;
         let path = self.output_dir.join(format!("{}.json", run.run_id));
         utils::ensure_dir(&self.output_dir).with_context(|| {
             format!(
@@ -112,6 +132,7 @@ impl ResultStore {
     }
 
     pub fn save_csv(&self, run: &BenchmarkRun) -> anyhow::Result<PathBuf> {
+        validate_current_schema(run)?;
         let path = self.output_dir.join(format!("{}.csv", run.run_id));
         utils::ensure_dir(&self.output_dir).with_context(|| {
             format!(
@@ -120,7 +141,6 @@ impl ResultStore {
             )
         })?;
 
-        // Collect all metric keys across all records
         let mut metric_keys_set: HashSet<String> = HashSet::new();
         for record in &run.results {
             for key in record.metrics.keys() {
@@ -132,7 +152,6 @@ impl ResultStore {
 
         let mut wtr = csv::Writer::from_writer(Vec::new());
 
-        // Write header row
         let mut header_row: Vec<String> = vec![
             "run_id".to_string(),
             "created_at".to_string(),
@@ -159,7 +178,6 @@ impl ResultStore {
         header_row.extend(metric_keys.iter().cloned());
         wtr.write_record(&header_row)?;
 
-        // Write data rows
         for record in &run.results {
             let load = run
                 .model_load_measurements
@@ -169,10 +187,7 @@ impl ResultStore {
                 run.run_id.clone(),
                 run.created_at.clone(),
                 run.schema_version.clone(),
-                run.run_kind
-                    .as_ref()
-                    .map(|kind| kind.label().to_string())
-                    .unwrap_or_default(),
+                run.run_kind.label().to_string(),
                 run.config
                     .get("provider")
                     .map(value_to_cell)
@@ -312,8 +327,21 @@ impl ResultStore {
             .with_context(|| format!("Failed to read {}", path.display()))?;
         let run: BenchmarkRun = serde_json::from_str(&content)
             .with_context(|| format!("Invalid JSON in {}", path.display()))?;
+        validate_current_schema(&run)
+            .with_context(|| format!("Unsupported result schema in {}", path.display()))?;
         Ok(run)
     }
+}
+
+fn validate_current_schema(run: &BenchmarkRun) -> anyhow::Result<()> {
+    if run.schema_version != RESULT_SCHEMA_VERSION {
+        return Err(LLMeterError::InvalidOption(format!(
+            "Unsupported result schema '{}'. Expected '{}'. Migrate the result before loading it.",
+            run.schema_version, RESULT_SCHEMA_VERSION
+        ))
+        .into());
+    }
+    Ok(())
 }
 
 fn value_to_cell(value: &Value) -> String {
