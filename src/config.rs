@@ -49,16 +49,13 @@ impl AppConfig {
             load_persisted_provider()?.unwrap_or(ProviderKind::Ollama)
         };
 
-        let explicit_base_url = cli.base_url.is_some();
-        let (base_url, base_url_source) = if let Some(value) = cli.base_url.clone() {
-            (value, "--base-url")
-        } else if let Some(value) = read_env("LLMETER_BASE_URL")? {
-            (value, "LLMETER_BASE_URL")
-        } else if let Some((value, source)) = provider_env_url(provider)? {
-            (value, source)
+        let explicit_base_url = if let Some(value) = cli.base_url.clone() {
+            Some((value, "--base-url"))
         } else {
-            (provider.default_base_url().to_string(), "provider default")
+            read_env("LLMETER_BASE_URL")?.map(|value| (value, "LLMETER_BASE_URL"))
         };
+        let has_explicit_base_url = explicit_base_url.is_some();
+        let (base_url, base_url_source) = resolve_base_url(provider, explicit_base_url)?;
 
         let timeout = match cli.timeout {
             Some(value) => validate_timeout(value, "--timeout")?,
@@ -94,18 +91,15 @@ impl AppConfig {
             default_runs,
             default_max_tokens,
             default_temperature,
-            explicit_base_url,
+            explicit_base_url: has_explicit_base_url,
         })
     }
 
     pub fn with_provider(&self, provider: ProviderKind) -> anyhow::Result<Self> {
-        let (base_url, base_url_source) = if self.explicit_base_url {
-            (self.base_url.clone(), "--base-url")
-        } else if let Some((value, source)) = provider_env_url(provider)? {
-            (value, source)
-        } else {
-            (provider.default_base_url().to_string(), "provider default")
-        };
+        let explicit_base_url = self
+            .explicit_base_url
+            .then(|| (self.base_url.clone(), "explicit base URL"));
+        let (base_url, base_url_source) = resolve_base_url(provider, explicit_base_url)?;
 
         Ok(Self {
             provider,
@@ -118,6 +112,21 @@ impl AppConfig {
             explicit_base_url: self.explicit_base_url,
         })
     }
+}
+
+fn resolve_base_url(
+    provider: ProviderKind,
+    explicit_base_url: Option<(String, &'static str)>,
+) -> anyhow::Result<(String, &'static str)> {
+    if let Some(explicit) = explicit_base_url {
+        return Ok(explicit);
+    }
+    if let Some(env_name) = provider.base_url_env() {
+        if let Some(value) = read_env(env_name)? {
+            return Ok((value, env_name));
+        }
+    }
+    Ok((provider.default_base_url().to_string(), "provider default"))
 }
 
 fn validate_timeout(value: f64, source: &str) -> anyhow::Result<f64> {
@@ -260,27 +269,6 @@ fn provider_from_env() -> anyhow::Result<Option<ProviderKind>> {
     })
 }
 
-fn provider_env_url(provider: ProviderKind) -> anyhow::Result<Option<(String, &'static str)>> {
-    match provider {
-        ProviderKind::Ollama => provider_url_env("OLLAMA_HOST"),
-        ProviderKind::Lmstudio => provider_url_env("LMSTUDIO_BASE_URL"),
-        ProviderKind::LlamaCpp => provider_url_env("LLAMA_CPP_BASE_URL"),
-        ProviderKind::OpenaiCompatible => Ok(None),
-        ProviderKind::Vllm => provider_url_env("VLLM_BASE_URL"),
-        ProviderKind::Sglang => provider_url_env("SGLANG_BASE_URL"),
-        ProviderKind::Localai => provider_url_env("LOCALAI_BASE_URL"),
-        ProviderKind::Litellm => provider_url_env("LITELLM_BASE_URL"),
-        ProviderKind::Tgi => provider_url_env("TGI_BASE_URL"),
-        ProviderKind::TextGenerationWebui => provider_url_env("TEXT_GENERATION_WEBUI_BASE_URL"),
-        ProviderKind::Jan => provider_url_env("JAN_BASE_URL"),
-        ProviderKind::MlxLm => provider_url_env("MLX_LM_BASE_URL"),
-    }
-}
-
-fn provider_url_env(name: &'static str) -> anyhow::Result<Option<(String, &'static str)>> {
-    Ok(read_env(name)?.map(|value| (value, name)))
-}
-
 fn read_env(name: &str) -> anyhow::Result<Option<String>> {
     match std::env::var(name) {
         Ok(value) => Ok(Some(value)),
@@ -352,6 +340,14 @@ mod tests {
             "OLLAMA_HOST",
             "LMSTUDIO_BASE_URL",
             "LLAMA_CPP_BASE_URL",
+            "VLLM_BASE_URL",
+            "SGLANG_BASE_URL",
+            "LOCALAI_BASE_URL",
+            "LITELLM_BASE_URL",
+            "TGI_BASE_URL",
+            "TEXT_GENERATION_WEBUI_BASE_URL",
+            "JAN_BASE_URL",
+            "MLX_LM_BASE_URL",
             "LLMETER_CONFIG_DIR",
             "LLMETER_OUTPUT_DIR",
             "LLMETER_TIMEOUT",
@@ -508,6 +504,20 @@ mod tests {
             .with_provider(ProviderKind::Lmstudio)
             .unwrap();
         assert_eq!(config.base_url, "http://localhost:9999/v1");
+    }
+
+    #[test]
+    fn global_base_url_env_is_retained_when_provider_changes() {
+        let _guard = env_lock().lock().unwrap();
+        clear_env();
+        std::env::set_var("LLMETER_BASE_URL", "http://localhost:9998/v1");
+        let cli = Cli::parse_from(["llmeter"]);
+        let config = AppConfig::from_env(&cli)
+            .unwrap()
+            .with_provider(ProviderKind::Lmstudio)
+            .unwrap();
+        assert_eq!(config.base_url, "http://localhost:9998/v1");
+        clear_env();
     }
 
     #[test]
