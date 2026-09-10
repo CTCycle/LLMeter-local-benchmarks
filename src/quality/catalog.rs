@@ -37,9 +37,9 @@ impl std::str::FromStr for QualityFramework {
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.trim().to_ascii_lowercase().as_str() {
             "lighteval" => Ok(Self::LightEval),
-            "inspect" | "inspect-ai" => Ok(Self::Inspect),
-            "lm-eval-harness" | "lm_eval" | "lm-eval" => Ok(Self::LmEvalHarness),
-            "swe-bench" | "swebench" => Ok(Self::SweBench),
+            "inspect-ai" => Ok(Self::Inspect),
+            "lm-eval-harness" => Ok(Self::LmEvalHarness),
+            "swe-bench" => Ok(Self::SweBench),
             other => Err(format!("Unknown framework '{other}'.")),
         }
     }
