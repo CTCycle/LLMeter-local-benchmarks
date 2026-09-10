@@ -37,21 +37,6 @@ pub enum ProviderKind {
     MlxLm,
 }
 
-const PROVIDER_KINDS: [ProviderKind; 12] = [
-    ProviderKind::Ollama,
-    ProviderKind::Lmstudio,
-    ProviderKind::LlamaCpp,
-    ProviderKind::OpenaiCompatible,
-    ProviderKind::Vllm,
-    ProviderKind::Sglang,
-    ProviderKind::Localai,
-    ProviderKind::Litellm,
-    ProviderKind::Tgi,
-    ProviderKind::TextGenerationWebui,
-    ProviderKind::Jan,
-    ProviderKind::MlxLm,
-];
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProviderCompatibilityTier {
@@ -213,8 +198,9 @@ impl ProviderKind {
     }
 
     pub fn catalog() -> Vec<ProviderCatalogEntry> {
-        PROVIDER_KINDS
-            .into_iter()
+        Self::value_variants()
+            .iter()
+            .copied()
             .map(|provider| {
                 let definition = provider.definition();
                 ProviderCatalogEntry {
@@ -257,23 +243,16 @@ impl std::str::FromStr for ProviderKind {
     type Err = LLMeterError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value.trim().to_ascii_lowercase().as_str() {
-            "ollama" => Ok(ProviderKind::Ollama),
-            "lmstudio" => Ok(ProviderKind::Lmstudio),
-            "llama-cpp" => Ok(ProviderKind::LlamaCpp),
-            "openai-compatible" => Ok(ProviderKind::OpenaiCompatible),
-            "vllm" => Ok(ProviderKind::Vllm),
-            "sglang" => Ok(ProviderKind::Sglang),
-            "localai" => Ok(ProviderKind::Localai),
-            "litellm" => Ok(ProviderKind::Litellm),
-            "tgi" => Ok(ProviderKind::Tgi),
-            "text-generation-webui" => Ok(ProviderKind::TextGenerationWebui),
-            "jan" => Ok(ProviderKind::Jan),
-            "mlx-lm" => Ok(ProviderKind::MlxLm),
-            other => Err(LLMeterError::InvalidOption(format!(
-                "Unknown provider '{other}'. Use `llmeter providers list` for supported presets."
-            ))),
-        }
+        let canonical = value.trim().to_ascii_lowercase();
+        Self::value_variants()
+        .iter()
+        .copied()
+        .find(|provider| provider.label() == canonical.as_str())
+        .ok_or_else(|| {
+            LLMeterError::InvalidOption(format!(
+                "Unknown provider '{canonical}'. Use `llmeter providers list` for supported presets."
+            ))
+        })
     }
 }
 
@@ -914,6 +893,7 @@ mod tests {
     use std::io::Cursor;
     use std::time::Instant;
 
+    use clap::ValueEnum;
     use serde_json::json;
 
     use super::{
@@ -928,6 +908,14 @@ mod tests {
         }
         for alias in ["lm-studio", "llama.cpp", "custom", "sgl", "swebench"] {
             assert!(alias.parse::<ProviderKind>().is_err(), "{alias}");
+        }
+    }
+
+    #[test]
+    fn provider_value_enum_names_match_canonical_labels() {
+        for provider in ProviderKind::value_variants().iter().copied() {
+            let possible = provider.to_possible_value().expect("provider value");
+            assert_eq!(possible.get_name(), provider.label());
         }
     }
 

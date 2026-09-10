@@ -71,13 +71,12 @@ impl std::str::FromStr for PerformanceProfile {
     type Err = String;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value.trim().to_ascii_lowercase().as_str() {
-            "smoke" => Ok(Self::Smoke),
-            "latency" => Ok(Self::Latency),
-            "throughput" => Ok(Self::Throughput),
-            "sweep" => Ok(Self::Sweep),
-            other => Err(format!("Unknown performance profile '{other}'.")),
-        }
+        let canonical = value.trim().to_ascii_lowercase();
+        Self::value_variants()
+            .iter()
+            .copied()
+            .find(|profile| profile.label() == canonical.as_str())
+            .ok_or_else(|| format!("Unknown performance profile '{canonical}'."))
     }
 }
 
@@ -475,7 +474,18 @@ fn parse_csv_u32(value: &str) -> anyhow::Result<Vec<u32>> {
 
 #[cfg(test)]
 mod tests {
+    use clap::ValueEnum;
+
     use super::PerformanceProfile;
+
+    #[test]
+    fn performance_profile_cli_names_match_canonical_labels() {
+        for profile in PerformanceProfile::value_variants().iter().copied() {
+            let possible = profile.to_possible_value().expect("profile value");
+            assert_eq!(possible.get_name(), profile.label());
+            assert_eq!(profile.label().parse::<PerformanceProfile>(), Ok(profile));
+        }
+    }
 
     #[test]
     fn performance_profile_defaults_are_canonical() {

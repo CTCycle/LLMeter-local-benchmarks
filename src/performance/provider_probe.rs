@@ -109,11 +109,7 @@ pub fn probe_provider_capabilities_with_progress(
     ));
     probe_progress.finish("Checked model catalog", None, "Models");
 
-    let probe_model = plan
-        .models
-        .first()
-        .cloned()
-        .or_else(|| first_model_id(&model_values));
+    let probe_model = plan.models.first().cloned();
 
     if let Some(model) = probe_model {
         probe_progress.start(
@@ -146,7 +142,7 @@ pub fn probe_provider_capabilities_with_progress(
         }
     } else {
         warnings
-            .push("No model was available for chat, embeddings, or responses probes.".to_string());
+            .push("No model was selected for chat, embeddings, or responses probes.".to_string());
     }
 
     if !plan.stream {
@@ -247,8 +243,6 @@ pub fn parse_model_capabilities(models: &[Value]) -> Vec<ModelCapability> {
         .filter_map(|model| {
             let id = model
                 .get("id")
-                .or_else(|| model.get("name"))
-                .or_else(|| model.get("model"))
                 .and_then(|value| value.as_str())?
                 .to_string();
             Some(ModelCapability {
@@ -348,13 +342,6 @@ fn probe_responses(client: &ProviderClient, model: &str) -> EndpointProbe {
     )
 }
 
-fn first_model_id(models: &[Value]) -> Option<String> {
-    parse_model_capabilities(models)
-        .into_iter()
-        .next()
-        .map(|model| model.id)
-}
-
 fn first_u64(value: &Value, keys: &[&str]) -> Option<u64> {
     keys.iter()
         .find_map(|key| value.get(*key).and_then(|item| item.as_u64()))
@@ -449,6 +436,23 @@ mod tests {
         assert_eq!(parsed[0].max_output_tokens, Some(2048));
         assert_eq!(parsed[0].architecture.as_deref(), Some("llama"));
         assert_eq!(parsed[0].quantization.as_deref(), Some("q4"));
+    }
+
+    #[test]
+    fn parse_model_capabilities_requires_canonical_id() {
+        let models = vec![
+            json!({"name": "legacy-name", "context_length": 4096}),
+            json!({"model": "legacy-model", "context_length": 4096}),
+        ];
+
+        assert!(parse_model_capabilities(&models).is_empty());
+    }
+
+    #[test]
+    fn planned_probe_steps_without_selected_models_only_checks_catalog() {
+        let mut plan = test_plan(true, true);
+        plan.models.clear();
+        assert_eq!(planned_probe_steps(&plan), 1);
     }
 
     #[test]

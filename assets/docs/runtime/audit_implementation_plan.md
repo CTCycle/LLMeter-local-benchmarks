@@ -1,6 +1,6 @@
 # LLMeter audit implementation plan
 
-Last updated: 2026-08-02
+Last updated: 2026-09-10
 
 ## Purpose
 
@@ -41,6 +41,7 @@ Completed in the current source state:
 - `f3d534f` - statistically explicit metrics and bounded telemetry.
 - `6bc563d` - support tiers, native CI, lifecycle policy, ephemeral authentication, and interruption contracts.
 - `b49a567` - result schema `2.4`, honest streaming and token-usage semantics, fresh model validation, hardened reports, and tag-gated release validation.
+- PR #1 (`refactor/canonical-sources-of-truth`) supersedes the active runtime contract with strict result schema `3.0`, canonical provider/model identity, typed output choices, shared performance-profile defaults, and removal of obsolete aliases and runtime compatibility fallbacks. Historical `2.4` references below remain release-history evidence rather than current runtime behavior.
 
 At the audit snapshot, package state was `0.3.0` on `develop`; the implementation was committed and pushed before hosted release validation.
 
