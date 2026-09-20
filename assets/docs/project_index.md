@@ -1,8 +1,8 @@
 # Project index
-Last updated: 2026-09-10
+Last updated: 2026-09-20
 
 ## Purpose
-This file is the root index for `assets/docs`. Read it first, then open the smallest topic file that matches the task.
+This file is the root index for `assets/docs`. Read it first, then read the [Project Status Ledger](project_status_ledger.md) when the task involves current behavior, validation, release readiness, known issues, or operational risk. Open the smallest topic file that matches the remaining task.
 
 ## Current codebase snapshot
 
@@ -14,11 +14,12 @@ This file is the root index for `assets/docs`. Read it first, then open the smal
 - Release artifacts are workflow-gated for authorized `v*` tags on Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon. The workflow publishes checksums and provenance attestations; the first crates.io publication remains manual.
 
 ## How To Navigate
-1. Start with this file only.
-2. Choose the topic branch that matches the task.
-3. Open the narrowest leaf document that answers the question.
-4. Expand to sibling files only when the task clearly crosses topic boundaries.
-5. Keep documentation updates aligned with implementation changes.
+1. Start with this file.
+2. Read `project_status_ledger.md` for the current operational state when relevant.
+3. Choose the topic branch that matches the task.
+4. Open the narrowest leaf document that answers the question.
+5. Expand to sibling files only when the task clearly crosses topic boundaries.
+6. Keep documentation updates aligned with implementation changes.
 
 ## Naming Rules
 - All files and folders under `assets/docs` use lower-case names.
@@ -29,6 +30,14 @@ This file is the root index for `assets/docs`. Read it first, then open the smal
 ### Root
 - `project_index.md`
   - Entry point and master index for the full documentation tree.
+- `project_status_ledger.md`
+  - Canonical current operational status catalog. It records component status, validation evidence, active issues, blockers, validation debt, resolved findings, and revalidation triggers.
+
+### Status and evidence
+- `project_status_ledger.md` is the source of truth for current project state. Update it after implementation changes, meaningful validation, regression discovery, issue remediation, or release-state changes.
+- Architecture documents describe intended behavior and module boundaries; the ledger records whether those capabilities are currently validated.
+- `runtime/audit_implementation_plan.md` records implementation phases and durable roadmap context; detailed QA records under `assets/QA/` and test files remain the evidence sources linked by the ledger.
+- Validation reports and long debugging narratives remain in their dedicated documents. The ledger summarizes their current conclusion and must not become a duplicate report or issue tracker.
 
 ### Architecture
 - `architecture/system_overview.md`
@@ -88,9 +97,10 @@ This file is the root index for `assets/docs`. Read it first, then open the smal
 
 ## Reading Order
 1. Read this root index.
-2. Open the smallest leaf file that covers the current question.
-3. Expand to adjacent files only when the task crosses topic boundaries.
-4. Return here when switching branches.
+2. Read `project_status_ledger.md` for current operational status when relevant.
+3. Open the smallest leaf file that covers the current question.
+4. Expand to adjacent files only when the task crosses topic boundaries.
+5. Return here when switching branches.
 
 ## Context Rules
 - Read documentation files only when required by the active task.
@@ -98,6 +108,8 @@ This file is the root index for `assets/docs`. Read it first, then open the smal
 - Keep all affected documents updated whenever behavior, architecture, runtime, or UX changes.
 - Always include a `Last updated: YYYY-MM-DD` line when modifying a document.
 - Pre-select files to read by folder structure and task intent before opening them.
+- Update `project_status_ledger.md` whenever a component's status, evidence, active issue, blocker, validation debt, or required revalidation changes.
+- Never promote an entry to `VALIDATED` from source inspection or unit-test existence alone; link meaningful evidence and state its boundary.
 
 ## Environment Rules
 - Windows is the default operating environment for this repository.
