@@ -1,0 +1,130 @@
+# Project status ledger
+
+Last updated: 2026-09-20
+
+This document is the canonical, current operational status catalog for LLMeter. It summarizes what is working, validated, partial, blocked, unvalidated, or intentionally limited. Detailed architecture documents define intended behavior; QA records, tests, and implementation plans provide the evidence behind these entries.
+
+## Maintenance rules
+
+Future coding agents must:
+
+1. Read this ledger before substantial implementation or validation work.
+2. Use it to find known defects and previously validated behavior.
+3. Update affected entries after implementation changes.
+4. Update evidence after meaningful tests, manual checks, or provider runs.
+5. Never mark a component `VALIDATED` without supporting evidence.
+6. Downgrade a status when a regression or narrower evidence boundary is discovered.
+7. Close or move an issue to the historical section only after remediation and revalidation.
+8. Avoid duplicate issue entries for the same underlying defect.
+9. Link detailed reports, plans, and tests instead of copying their narratives here.
+10. Keep this ledger synchronized with the repository, current branch, supported runtime, and actual external validation state.
+
+The ledger describes current truth. Fixed findings must leave the active issue catalog. Historical provenance belongs in [Resolved / historical findings](#resolved--historical-findings).
+
+## Status taxonomy
+
+| Status | Meaning |
+|---|---|
+| `VALIDATED` | Implemented and confirmed by meaningful evidence at the stated scope. |
+| `WORKING` | Believed to work from implementation or limited testing, but not fully validated. |
+| `PARTIAL` | Implemented but incomplete, degraded, or valid for only part of the expected behavior. |
+| `BROKEN` | Known not to work correctly at the stated scope. |
+| `BLOCKED` | Cannot currently be completed or validated because of an external dependency, missing approval or credential, unavailable service, hardware constraint, or similar blocker. |
+| `UNVALIDATED` | Implementation or configuration exists, but there is insufficient evidence to claim that it works. |
+| `NOT_IMPLEMENTED` | An expected capability is currently absent. |
+| `DEPRECATED` | Intentionally retained only for compatibility or scheduled for removal. |
+
+Status describes functional confidence, not severity. A `PARTIAL` component can have a low-severity limitation, and a `BLOCKED` component is not necessarily broken.
+
+## Evidence conventions
+
+- `Validation Level` is one of `None`, `unit`, `integration`, `E2E`, or `manual`; compound values show the evidence types actually used.
+- Evidence qualifiers matter: `fixture-only` does not certify a live provider, local Windows evidence does not certify hosted macOS/Linux execution, and a source build does not certify a public release.
+- `Last Validated` is the date of the latest meaningful evidence, not merely the date a document was edited.
+- A passing test suite validates the paths it exercises. It does not automatically validate every provider preset, model, platform, workload size, or deployment route.
+- Current local evidence from 2026-09-20: `cargo fmt --all -- --check`, warning-denied Clippy, and the locked all-target/all-feature suite passed 132 tests on Windows.
+- Current release evidence from 2026-09-10 is recorded in the [0.4.0 release report](../QA/release-0.4.0/release-report.md). It includes locked check, rustdoc, audit, package dry-run, release build, archive smoke, and live Ollama evidence.
+
+## Current snapshot
+
+| Area | Current truth |
+|---|---|
+| Source state | Package `0.4.0` on `develop`; local annotated tag `v0.4.0` resolves to commit `5d5e41c`. |
+| Local operational baseline | The Windows CLI, interactive ConPTY paths, scriptable contracts, mock-provider workflow, persistence/reporting, and lifecycle tests are passing at the stated scopes. |
+| Provider boundary | LLMeter expects a provider server and exposed model to be started externally. Recorded live evidence is for Ollama; compatibility outside the exercised endpoint/model remains conditional. |
+| Release boundary | The Windows `0.4.0` archive is locally built and checked. The tag is local only; hosted native execution, public assets, provenance verification, and crates.io publication remain open or blocked. |
+| Known broken components | No component is currently marked `BROKEN`. Unsupported provider endpoints are recorded as per-record errors and are not treated as a general application failure. |
+| Explicitly absent/deprecated capabilities | No current entry is `NOT_IMPLEMENTED` or `DEPRECATED`; live external quality-framework execution is represented as `PARTIAL` because dry-run planning exists but execution does not. |
+
+## Current component ledger
+
+| Component | Status | Scope | Evidence | Known Issues | Blocker | Last Validated | Validation Level | Related Docs | Next Action |
+|---|---|---|---|---|---|---|---|---|---|
+| `application.startup` | `VALIDATED` | Binary startup, configuration/provider resolution, `status` and `models`, non-TTY dispatch, and launcher argument pass-through. | 132-test run; CLI contract, mock-provider, and PTY suites; launcher smoke in the [release report](../QA/release-0.4.0/release-report.md). | Live status and benchmarks require an externally running provider. | `—` | 2026-09-20 | integration / E2E / manual | [startup](runtime/startup.md), [configuration](runtime/configuration.md), [CLI tests](../../tests/cli_contract_tests.rs) | Re-run provider and launcher smoke after startup or CLI changes. |
+| `cli.interactive` | `VALIDATED` | Main menu navigation, nested menus, cancellation, EOF, Ctrl+C, and clean exit on Windows ConPTY. | `tests/pty_menu_e2e.rs`: 9 tests passed in the current suite. | Current interactive E2E evidence is Windows-specific; non-Windows terminal behavior is not current evidence. | `—` | 2026-09-20 | E2E | [CLI flow](architecture/cli_flow.md), [PTY tests](../../tests/pty_menu_e2e.rs) | Re-run the PTY suite when menu structure, prompt handling, or terminal cleanup changes. |
+| `cli.scriptable` | `VALIDATED` | Non-interactive commands, JSON cleanliness, documented error exits, benchmark execution, and report generation. | Current CLI contract tests plus 11 mock-provider E2E tests; release binary smoke in the [release report](../QA/release-0.4.0/release-report.md). | Provider-backed results still depend on the external server and model. | `—` | 2026-09-20 | integration / E2E | [Modes](runtime/modes.md), [scriptable usage](user/scriptable_usage.md), [CLI tests](../../tests/cli_contract_tests.rs) | Re-run CLI and mock-provider E2E after command, output, or exit-code changes. |
+| `configuration.resolution` | `VALIDATED` | CLI, environment, persisted configuration precedence; URL normalization; timeout, numeric, and provider validation. | Unit configuration tests and invalid-configuration CLI tests passed in the current suite. | Malformed or unknown persisted values fail closed by design. | `—` | 2026-09-20 | unit / integration | [Configuration](runtime/configuration.md), [audit plan](runtime/audit_implementation_plan.md), [CLI tests](../../tests/cli_contract_tests.rs) | Re-run configuration and error-contract tests after changing precedence or validation. |
+| `provider.protocol` | `VALIDATED` | OpenAI-compatible client requests, canonical model identity, cached versus fresh catalog reads, streaming parsing, capability probes, and bounded errors. | Provider unit/probe tests and 11 mock-provider E2E tests passed; live Ollama smoke passed on 2026-09-10. | Optional endpoints and model capabilities vary by server; unsupported calls remain explicit benchmark error records. | External provider is required for live certification. | 2026-09-20 fixture; 2026-09-10 live | unit / integration / E2E / manual | [Provider integration](architecture/provider_integration.md), [provider probes](../../tests/provider_probe_tests.rs), [mock E2E](../../tests/mock_provider_e2e.rs) | Re-run fresh status, model, probe, and benchmark checks after provider-boundary changes. |
+| `provider.presets` | `PARTIAL` | Preset catalog, compatibility tiers, default URLs, and the baseline OpenAI-compatible fixture contract for registered presets. | Mock-provider E2E covers the baseline contract across all registered presets; catalog output is tested. | Fixture evidence is not live certification. Best-effort providers can vary by router, extension, model, and version. | Representative external servers and models are needed for live coverage. | 2026-09-20 | integration (fixture-only) | [Provider integration](architecture/provider_integration.md), [provider setup](user/provider_setup.md), [mock E2E](../../tests/mock_provider_e2e.rs) | Build a representative live provider matrix before making broad compatibility claims. |
+| `provider.best-effort.live` | `UNVALIDATED` | Real TGI, text-generation-webui, Jan, and MLX-LM interactions through their listed OpenAI-compatible shapes. | No live evidence is recorded; only preset metadata and fixture coverage exist. | Endpoint shape and capability support may vary by configuration or version. | External provider instances, models, and compatible configurations are not part of the current evidence set. | `—` | None / fixture-only baseline | [Provider setup](user/provider_setup.md), [validation debt](#validation-debt) | Run status, model discovery, capability probe, and a small benchmark against each selected target. |
+| `benchmark.llm` | `VALIDATED` | Standard `llm` suite, including generation, responses, consistency, prompt sizes, structured output, and tool calling at the exercised scope. | Mock-provider E2E passed; live Ollama report contains 8/8 successful records. See the [LLM report](../QA/runtime-ollama/benchmark_results/2026-09-10T173811.269676Z-p27232-qwen3.5-2b.report.md). | The recorded live result covers one Ollama endpoint/model; individual capabilities may be unsupported elsewhere. | External provider/model for new live runs. | 2026-09-20 fixture; 2026-09-10 live | integration / E2E / manual | [Benchmark execution](architecture/benchmark_execution.md), [benchmarks](user/benchmarks.md), [LLM report](../QA/runtime-ollama/benchmark_results/2026-09-10T173811.269676Z-p27232-qwen3.5-2b.report.md) | Re-run the suite after benchmark semantics, provider requests, or result-schema changes. |
+| `benchmark.embeddings` | `VALIDATED` | Embeddings suite and persisted/reportable vector metrics at the exercised scope. | Mock-provider unsupported-endpoint behavior passed; live Ollama report contains 1/1 successful record. See the [embeddings report](../QA/runtime-ollama/benchmark_results/2026-09-10T173938.607392Z-p9436-nomic-embed-text-latest.report.md). | Live evidence covers one Ollama embedding model; provider support is not universal. | External embedding-capable provider/model for broader validation. | 2026-09-20 fixture; 2026-09-10 live | integration / E2E / manual | [Benchmark execution](architecture/benchmark_execution.md), [reports and results](user/reports_and_results.md), [embeddings report](../QA/runtime-ollama/benchmark_results/2026-09-10T173938.607392Z-p9436-nomic-embed-text-latest.report.md) | Re-run after embeddings request, dimension, or report changes. |
+| `benchmark.performance` | `PARTIAL` | Performance planning, safety limits, capability probes, telemetry, metrics, and a smoke scenario. | Current performance CLI/metrics/probe tests passed; live Ollama performance report contains 1/1 successful scenario. See the [performance report](../QA/runtime-ollama/benchmark_results/2026-09-10T174011.769311Z-p2580-qwen3.5-2b.report.md). | Full profile/provider/workload coverage and production-sized statistical runs are not validated here; benchmark families remain serial. | Target provider and workload availability for meaningful runs. | 2026-09-20 fixture; 2026-09-10 live | unit / integration / manual | [Benchmark execution](architecture/benchmark_execution.md), [testing and quality](coding/testing_and_quality.md), [performance report](../QA/runtime-ollama/benchmark_results/2026-09-10T174011.769311Z-p2580-qwen3.5-2b.report.md) | Run the affected profile and a representative live workload after performance or metric changes. |
+| `quality.external-plans` | `PARTIAL` | External quality-framework catalog and resolved command/plan previews in dry-run mode. | `quality_cli_tests.rs` passed in the current suite; runtime docs define dry-run as the supported boundary. | No external framework is executed and no external quality score is produced by LLMeter. | Scope and integration contract for a live external runner are not approved. | 2026-09-20 | integration | [Benchmark execution](architecture/benchmark_execution.md), [quality test](../../tests/quality_cli_tests.rs), [open issues](#open-issues) | Decide whether live external execution is in scope; if yes, add an adapter and live integration evidence. |
+| `results.persistence` | `VALIDATED` | Strict result schema `3.0`, canonical run metadata, atomic JSON/CSV writes, privacy redaction, and response-preview policy. | Result-schema and result-store tests passed; release package validation passed. | Unsupported, unversioned, or malformed older result files are rejected intentionally; previews are opt-in. | `—` | 2026-09-20 | unit / integration | [Result storage](architecture/result_storage.md), [reports and results](user/reports_and_results.md), [result tests](../../tests/result_schema_tests.rs), [result-store tests](../../tests/test_results.rs) | Re-run schema, privacy, atomic-write, and round-trip tests after persistence changes. |
+| `reporting` | `VALIDATED` | Terminal summaries and Markdown/HTML report generation, including partial/error records and escaped content. | Reporting tests, mock-provider saved-run/report E2E, and live Ollama reports passed. | Truncated, malformed, or unsupported-schema JSON cannot be rendered; this is fail-closed behavior. | `—` | 2026-09-20 | integration / E2E / manual | [Report generation](architecture/report_generation.md), [reports and results](user/reports_and_results.md), [report tests](../../tests/test_reporting.rs) | Re-run report fixtures and saved-run smoke after output or schema changes. |
+| `lifecycle.local-install` | `VALIDATED` | Managed local install, update, uninstall, purge safety, launcher selection, and rollback-on-update-failure behavior. | Lifecycle unit tests passed; PowerShell version/status and noninteractive cleanup behavior passed in the [release report](../QA/release-0.4.0/release-report.md). | These are local file operations, not a verified remote updater; replacement executables remain user responsibility. | `—` | 2026-09-20 | unit / manual | [Deployment](runtime/deployment.md), [startup](runtime/startup.md), [audit plan](runtime/audit_implementation_plan.md) | Re-run lifecycle tests and launcher smoke after changing ownership, paths, or cleanup guards. |
+| `test.local-quality-gates` | `VALIDATED` | Windows local formatting, locked check, Clippy, serialized tests, rustdoc, audit, package dry-run, and release smoke at the recorded versions. | Current format, Clippy, and 132-test run passed; the [0.4.0 release report](../QA/release-0.4.0/release-report.md) records the remaining 2026-09-10 gates. | Local Windows evidence does not replace hosted matrix or public-release evidence. | `—` | 2026-09-20 | unit / integration / E2E / manual | [Testing and quality](coding/testing_and_quality.md), [release checklist](runtime/release_checklist.md), [0.4.0 release report](../QA/release-0.4.0/release-report.md) | Repeat the complete gate set before tagging or after release-sensitive changes. |
+| `release.cross-platform` | `PARTIAL` | CI/release workflow configuration and cross-platform archive process for Windows, GNU/Linux, and macOS targets. | The workflow defines the four-target matrix; hosted v0.3.0 evidence exists. `0.4.0` has only local Windows artifact evidence in the [release report](../QA/release-0.4.0/release-report.md). | Current v0.4.0 hosted native runs, public asset downloads, checksum/provenance verification, and macOS/Linux behavior are not recorded as complete. | Owner-gated hosted workflow execution and tag publication. | 2026-09-10 | manual / hosted evidence pending | [CI workflow](../../.github/workflows/ci.yml), [release checklist](runtime/release_checklist.md), [release report](../QA/release-0.4.0/release-report.md) | Run and record the v0.4.0 hosted matrix and independently verify every published artifact. |
+| `release.public-distribution` | `BLOCKED` | Public `v0.4.0` GitHub release publication and first crates.io publication/install path. | The local tag and Windows archive are validated, but the release report states the tag has not been pushed, no GitHub release exists, and crates.io publication was not performed. | Users must use a source checkout or independently verified archive; registry installation is not available as a current claim. | Owner approval, hosted release execution, public credentials, and manual crates.io publication. | 2026-09-10 | None / owner-gated | [Deployment](runtime/deployment.md), [release checklist](runtime/release_checklist.md), [open issues](#open-issues), [release report](../QA/release-0.4.0/release-report.md) | Follow the release checklist only after the owner authorizes public distribution; close after public assets and registry installation are independently verified. |
+
+## Open issues
+
+Severity and functional status are separate. The issues below are currently actionable and are not historical noise.
+
+| ID | Affected Component | Severity | Description | Current Impact | Evidence / Reproduction | Suspected Cause | Blocker | Remediation Status | Required Revalidation | Related Documentation |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `ISSUE-001` | `release.public-distribution` | `MEDIUM` | The `v0.4.0` tag and Windows archive are locally validated, but public GitHub release publication and the first crates.io publication are not complete. | No current evidence supports public `v0.4.0` downloads, provenance verification, or `cargo install llmeter`. | [0.4.0 release report](../QA/release-0.4.0/release-report.md), [deployment](runtime/deployment.md) | The release is intentionally owner-gated; this is not an application runtime defect. | Owner approval, hosted workflow, public credentials, and manual registry publication. | `OPEN — owner-gated` | Verify tag/version/changelog, run hosted release, check archive contents/checksums/attestations, independently download assets, then verify `cargo install` if publication is approved. | [Release checklist](runtime/release_checklist.md), [audit plan](runtime/audit_implementation_plan.md) |
+| `ISSUE-002` | `release.cross-platform` | `MEDIUM` | Current `0.4.0` evidence is Windows-local. The previous `0.3.0` hosted four-target result does not prove the current source release. | Linux and macOS artifact/runtime readiness for `0.4.0` remains uncertain. | [0.4.0 release report](../QA/release-0.4.0/release-report.md); [CI workflow](../../.github/workflows/ci.yml) | The current hosted matrix has not been recorded as executed for `0.4.0`. | Hosted runners and authorized tag/release execution. | `OPEN — validation pending` | Record all four hosted builds, packaged mock-provider suites, archive smoke, checksum, provenance, and public download verification. | [Release checklist](runtime/release_checklist.md), [0.3.0 readiness record](../QA/2026-08-17-release-readiness.md) |
+| `ISSUE-003` | `quality.external-plans` | `LOW` | Quality integrations currently stop at catalog and dry-run plan generation; LLMeter does not execute an external quality framework or publish its scores. | Users can inspect a plan but cannot obtain external-framework results through LLMeter. | [quality test](../../tests/quality_cli_tests.rs), [benchmark execution](architecture/benchmark_execution.md), [benchmarks](user/benchmarks.md) | The current local-single-user scope defines dry-run planning as the implemented boundary. | Product-scope decision and an external framework contract, if expansion is approved. | `OPEN — scope limitation` | If retained in scope, implement an adapter, define credentials/process ownership, and add live integration evidence; otherwise document the boundary as intentional. | [Audit plan](runtime/audit_implementation_plan.md), [modes](runtime/modes.md) |
+
+## Validation debt
+
+Validation debt is insufficient evidence, not proof of a defect.
+
+| Component | Current Confidence | Missing Validation | Priority |
+|---|---|---|---|
+| `provider.best-effort.live` | Low | Live status, model discovery, capability probes, and representative benchmark runs for TGI, text-generation-webui, Jan, and MLX-LM configurations. | `P2` |
+| `provider.optional-capabilities` | Medium | Cross-provider live evidence for responses, structured output, tool calling, streaming, and embeddings beyond the recorded Ollama/mock paths. | `P2` |
+| `benchmark.performance.full-profiles` | Medium | Production-sized workload runs across smoke, latency, throughput, and sweep profiles with interpretation of provider and host variance. | `P2` |
+| `cli.interactive.non-windows` | Low | Native terminal behavior and interruption cleanup on supported non-Windows targets. | `P2` |
+| `release.v0.4.0.cross-platform` | Low | Hosted Linux/macOS/Windows release execution, public artifact download, checksum, and provenance evidence for the current tag. | `P1` |
+| `quality.external-execution` | Low | A live external quality-framework run, if that capability is approved beyond the current dry-run boundary. | `P3` |
+
+## Resolved / historical findings
+
+These findings are retained for provenance only. They are not active issues.
+
+| Finding | Resolution now represented in the codebase | Evidence |
+|---|---|---|
+| Stale model catalogs could satisfy operational validation. | Interactive navigation may use cache, while status, benchmark validation, and measured probes require fresh catalog reads. | [Provider integration](architecture/provider_integration.md), [mock E2E](../../tests/mock_provider_e2e.rs) |
+| Streaming chunk timing and ITL semantics were easy to overstate. | Metrics distinguish streaming TTFT, inter-chunk timing, output-token coverage, and unsupported samples; result schema is now `3.0`. | [Result storage](architecture/result_storage.md), [performance metrics tests](../../tests/performance_metrics_tests.rs), [0.4.0 release report](../QA/release-0.4.0/release-report.md) |
+| Saved outputs could expose sensitive or partial data. | JSON/CSV/report writes are atomic, response previews are opt-in, and diagnostic/output redaction is tested. | [Result storage](architecture/result_storage.md), [result tests](../../tests/test_results.rs), [report tests](../../tests/test_reporting.rs) |
+| Non-TTY and interactive interruption behavior was under-specified. | Scriptable invocations fail with documented usage behavior, PTY cancellation restores control flow, and the launcher forwards arguments unchanged. | [Modes](runtime/modes.md), [PTY tests](../../tests/pty_menu_e2e.rs), [0.4.0 release report](../QA/release-0.4.0/release-report.md) |
+
+## Revalidation triggers
+
+Use these mappings to decide what to revalidate after a change:
+
+| Changed area | Revalidate |
+|---|---|
+| `src/providers.rs`, provider presets, catalog caching, auth, or probes | `provider.protocol`, `provider.presets`, `provider.best-effort.live` where applicable; run provider unit/probe tests, mock E2E, and a live provider smoke. |
+| CLI parsing, output modes, startup, launcher, or UI prompts | `application.startup`, `cli.interactive`, `cli.scriptable`, and `lifecycle.local-install`; run CLI contracts, PTY E2E, and launcher smoke. |
+| Benchmark registry, request construction, runner, or benchmark semantics | The affected `benchmark.*` entries plus provider protocol and reporting; run the relevant focused suite and mock-provider E2E. |
+| Performance plans, telemetry, metrics, or concurrency | `benchmark.performance` and `benchmark.performance.full-profiles`; run safety/metrics tests and a representative live scenario. |
+| Result schema, persistence, redaction, or report templates | `results.persistence` and `reporting`; run schema, result-store, reporting, mock saved-run, and report smoke tests. |
+| CI, packaging, version, release workflow, or supported-platform claims | `test.local-quality-gates`, `release.cross-platform`, and `release.public-distribution`; repeat the release checklist and update open issues. |
+
+## Source-of-truth relationship
+
+The [project index](project_index.md) is the ontology entry point and points agents here for current status. Architecture documents describe intended structure and contracts. The [audit implementation plan](runtime/audit_implementation_plan.md) records implementation phases and durable roadmap context. QA records under `assets/QA/` contain detailed logs, artifacts, and provider results. This ledger summarizes their current operational meaning without replacing them.
