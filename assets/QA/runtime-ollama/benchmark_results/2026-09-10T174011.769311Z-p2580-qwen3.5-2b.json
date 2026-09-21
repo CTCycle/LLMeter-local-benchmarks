@@ -1,0 +1,240 @@
+{
+  "run_id": "2026-09-10T174011.769311Z-p2580-qwen3.5-2b",
+  "created_at": "2026-09-10T17:40:13",
+  "models": [
+    "qwen3.5:2b"
+  ],
+  "benchmark_ids": [
+    "performance-scenario"
+  ],
+  "config": {
+    "provider": "ollama",
+    "stream": false,
+    "base_url": "http://localhost:11434/v1",
+    "profile": "smoke",
+    "response_previews_included": false,
+    "sensitive_values_redacted": true
+  },
+  "results": [
+    {
+      "benchmark_id": "performance-scenario",
+      "benchmark_name": "Performance scenario",
+      "model": "qwen3.5:2b",
+      "run_index": null,
+      "prompt_name": "16p-8o-c1",
+      "metrics": {
+        "output_tokens_per_second": 14.563431115243889,
+        "http_error_count": 0,
+        "wall_time_ms_max": 548.839,
+        "total_input_tokens": 29,
+        "input_token_sample_count": 1,
+        "empty_response_count": 0,
+        "successful_requests_per_second": 1.820428889405486,
+        "input_token_coverage": 1.0,
+        "output_token_coverage": 1.0,
+        "input_tokens_per_second": 52.792437792759095,
+        "successful_latency_sample_count": 1,
+        "error_count": 0,
+        "percentile_estimator": "nearest-rank",
+        "wall_time_ms_stddev": 0.0,
+        "wall_time_ms_mean": 548.839,
+        "requests_per_second": 1.820428889405486,
+        "requested_output_tokens": 8,
+        "error_rate": 0.0,
+        "total_output_tokens": 8,
+        "mean_output_tokens_per_request": 8.0,
+        "partial_failure": false,
+        "wall_time_ms_p90": 548.839,
+        "mean_input_tokens_per_request": 29.0,
+        "wall_time_ms_min": 548.839,
+        "output_token_sample_count": 1,
+        "estimated_prompt_tokens": 16,
+        "concurrency": 1,
+        "timeout_count": 0,
+        "request_count": 1,
+        "output_tokens_per_second_including_ttft": 14.576223628422905,
+        "wall_time_ms_p50": 548.839,
+        "success_count": 1,
+        "standard_deviation_kind": "population",
+        "provider_error_count": 0
+      },
+      "metadata": {
+        "request_traces_truncated": false,
+        "request_traces_omitted": false,
+        "scenario": "16p-8o-c1",
+        "request_traces": [
+          {
+            "chunk_timings": [],
+            "concurrency": 1,
+            "endpoint": "/v1/chat/completions",
+            "error": null,
+            "estimated_prompt_tokens": 16,
+            "http_status": 200,
+            "input_tokens": 29,
+            "model": "qwen3.5:2b",
+            "output_tokens": 8,
+            "prompt_id": "synthetic-16",
+            "provider": "ollama",
+            "request_id": "qwen3.5:2b-synthetic-16-c1-r1",
+            "requested_output_tokens": 8,
+            "run_index": 1,
+            "stream": false,
+            "success": true,
+            "timing": {
+              "generation_wall_ms": null,
+              "inter_chunk_latency_ms": null,
+              "itl_ms": null,
+              "output_tokens_per_second_excluding_ttft": null,
+              "output_tokens_per_second_including_ttft": 14.576223628422905,
+              "ttft_ms": null,
+              "ttlt_ms": null,
+              "wall_time_ms": 548.839
+            }
+          }
+        ],
+        "prompt_id": "synthetic-16",
+        "request_trace_count": 1
+      }
+    }
+  ],
+  "schema_version": "3.0",
+  "run_kind": "performance",
+  "environment": {
+    "os": "Windows",
+    "cpu_count": 12,
+    "total_memory": 33667739648,
+    "available_memory": 7826735104,
+    "used_memory": 25841004544,
+    "memory_used_ratio": 0.7675301286682921,
+    "total_swap": 3489660928,
+    "used_swap": 1856086016,
+    "swap_used_ratio": 0.5318814791165866,
+    "disk_count": 2,
+    "disk_available_bytes": 707860004864,
+    "process_memory_before": 24834048,
+    "process_memory_after": 27082752,
+    "provider_processes": [
+      {
+        "pid": 22540,
+        "name": "pwsh.exe",
+        "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe -Command try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}\n$env:LLMETER_HOME = 'G:\\Projects\\Repositories\\Active projects\\LLMeter local benchmarks\\assets\\QA\\runtime-ollama'; & '.\\target\\release\\llmeter.exe' --provider ollama bench perf --models 'qwen3.5:2b' --profile smoke --prompt-tokens 16 --output-tokens 8 --concurrency 1 --warmup 0 --runs 1 --no-stream --load-measurement off --telemetry off --export both --report both; exit $LASTEXITCODE",
+        "memory_bytes": 87740416,
+        "virtual_memory_bytes": 2271637712896,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 28528,
+        "name": "llama-server.exe",
+        "command": "C:\\Users\\Thomas V\\AppData\\Local\\Programs\\Ollama\\lib\\ollama\\llama-server.exe --model G:\\Database\\LLM models\\blobs\\sha256-970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6 --port 59103 --host 127.0.0.1 --no-webui --offline -c 2048 -np 1 --log-verbosity 4 --no-log-prefix --no-log-timestamps --load-mode none --flash-attn auto --embedding -b 2048 -ub 2048 --context-shift --keep 4",
+        "memory_bytes": 536702976,
+        "virtual_memory_bytes": 57950875648,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 2580,
+        "name": "llmeter.exe",
+        "command": "G:\\Projects\\Repositories\\Active projects\\LLMeter local benchmarks\\target\\release\\llmeter.exe --provider ollama bench perf --models qwen3.5:2b --profile smoke --prompt-tokens 16 --output-tokens 8 --concurrency 1 --warmup 0 --runs 1 --no-stream --load-measurement off --telemetry off --export both --report both",
+        "memory_bytes": 30298112,
+        "virtual_memory_bytes": 4508577792,
+        "cpu_usage_percent": 100.00001
+      },
+      {
+        "pid": 19248,
+        "name": "llama-server.exe",
+        "command": "C:\\Users\\Thomas V\\AppData\\Local\\Programs\\Ollama\\lib\\ollama\\llama-server.exe --model G:\\Database\\LLM models\\blobs\\sha256-b709d81508a078a686961de6ca07a953b895d9b286c46e17f00fb267f4f2d297 --port 52860 --host 127.0.0.1 --no-webui --offline -c 131072 -np 1 --log-verbosity 4 --no-log-prefix --no-log-timestamps --no-jinja --chat-template chatml --mmproj G:\\Database\\LLM models\\blobs\\sha256-b709d81508a078a686961de6ca07a953b895d9b286c46e17f00fb267f4f2d297 --load-mode none --flash-attn auto -b 512 -ub 512 --context-shift --keep 4",
+        "memory_bytes": 2039525376,
+        "virtual_memory_bytes": 63511183360,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 27640,
+        "name": "ollama.exe",
+        "command": "C:\\Users\\Thomas V\\AppData\\Local\\Programs\\Ollama\\ollama.exe serve",
+        "memory_bytes": 59830272,
+        "virtual_memory_bytes": 7013953536,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 27108,
+        "name": "cmd.exe",
+        "command": "c:\\Windows\\system32\\cmd.exe /c C:\\Users\\Thomas V\\AppData\\Local\\Programs\\Ollama\\ollama app.exe --hide --fast-startup",
+        "memory_bytes": 8200192,
+        "virtual_memory_bytes": 2203382018048,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 15184,
+        "name": "ollama app.exe",
+        "command": "C:\\Users\\Thomas V\\AppData\\Local\\Programs\\Ollama\\ollama app.exe --hide --fast-startup",
+        "memory_bytes": 4130910208,
+        "virtual_memory_bytes": 9816137728,
+        "cpu_usage_percent": 0.0
+      }
+    ],
+    "provider_base_url": "http://localhost:11434/v1",
+    "provider_kind": "ollama",
+    "llmeter_version": "0.3.0",
+    "gpu_probe_output": "NVIDIA GeForce RTX 3060 Laptop GPU, 6144, 4910, 22, 17.90",
+    "gpu_probe_error": null
+  },
+  "performance_plan": {
+    "provider": "ollama",
+    "models": [
+      "qwen3.5:2b"
+    ],
+    "profile": "smoke",
+    "prompt_sizes": {
+      "estimated_tokens": [
+        16
+      ]
+    },
+    "output_sizes": {
+      "estimated_tokens": [
+        8
+      ]
+    },
+    "concurrency": {
+      "levels": [
+        1
+      ]
+    },
+    "warmup": {
+      "requests": 0
+    },
+    "runs": 1,
+    "stream": false,
+    "workload_jsonl": null,
+    "extra_params": {},
+    "safety": {
+      "allow_large_prompt": false,
+      "allow_large_matrix": false
+    },
+    "load_measurement": "off",
+    "load_probe_runs": 2,
+    "telemetry": "off",
+    "sample_interval_ms": 1000,
+    "provider_process": null,
+    "probe_capabilities": false,
+    "probe_all_endpoints": false,
+    "model_cache_dir": null,
+    "scan_model_cache": false,
+    "detail": "detailed"
+  },
+  "provider_capabilities": null,
+  "model_load_measurements": null,
+  "model_inventory_measurements": [
+    {
+      "model": "qwen3.5:2b",
+      "provider": "ollama",
+      "metadata_latency_ms": 0.0391,
+      "metadata_payload_bytes": 78,
+      "cache_dir": null,
+      "cache_bytes": null,
+      "cache_scope": null,
+      "notes": [
+        "Skipped — enter a model cache directory path to measure disk usage"
+      ]
+    }
+  ],
+  "telemetry_summary": null
+}

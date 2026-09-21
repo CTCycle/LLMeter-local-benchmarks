@@ -76,7 +76,7 @@ For a published release, Cargo provides the conventional installation path:
 cargo install llmeter --locked
 ```
 
-The crates.io publication remains a manual owner-gated step. Until `llmeter` is published for this release, install the checked-out source with `cargo install --path . --locked` or use the matching GitHub release archive after the tag-gated workflow completes.
+The `v0.4.0` GitHub release is public with four native archives, checksums, and workflow provenance. The crates.io publication remains a manual owner-gated step; until `llmeter` is published there, install the checked-out source with `cargo install --path . --locked` or use the verified GitHub release archive.
 
 ### Build from source
 
