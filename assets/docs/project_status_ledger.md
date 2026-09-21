@@ -43,7 +43,7 @@ Status describes functional confidence, not severity. A `PARTIAL` component can 
 - `Last Validated` is the date of the latest meaningful evidence, not merely the date a document was edited.
 - A passing test suite validates the paths it exercises. It does not automatically validate every provider preset, model, platform, workload size, or deployment route.
 - Current local evidence from 2026-09-21: formatting, locked all-target/all-feature check, warning-denied Clippy, rustdoc, release build, the serialized all-target/all-feature suite, release-binary mock E2E, startup probes, and configuration precedence probes passed on Windows. The bounded launcher slice is recorded as `PARTIAL`.
-- Current hosted evidence: CI run `35526614502` passed on the current `develop` revision; release run `34574075684` passed the four-target `v0.4.0` workflow and publication. The [0.4.0 release report](../QA/release-0.4.0/release-report.md) now records the post-publication reconciliation, and the detailed Tier 0 record is in [validation-2026-09-21](../QA/validation-2026-09-21/validation_ledger.md).
+- Current hosted evidence: CI run `35619619837` passed across all four targets on the pushed documentation/evidence revision; baseline CI run `35526614502` passed on the pre-campaign source revision; release run `34574075684` passed the four-target `v0.4.0` workflow and publication. The [0.4.0 release report](../QA/release-0.4.0/release-report.md) now records the post-publication reconciliation, and the detailed Tier 0 record is in [validation-2026-09-21](../QA/validation-2026-09-21/validation_ledger.md).
 
 ## Current snapshot
 
