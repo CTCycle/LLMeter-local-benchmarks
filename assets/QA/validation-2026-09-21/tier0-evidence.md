@@ -10,7 +10,7 @@ All evidence below was collected from revision `9bbaacb09823383edf0b0ea4ba9fb8ee
 - `git rev-parse HEAD`: `9bbaacb09823383edf0b0ea4ba9fb8ee5f5ba2cc`.
 - `git ls-remote --heads origin`: `origin/develop` points to the same SHA; `origin/main` points to `5d5e41c2bb9d4c0c3181c0c9c5c21417b8bf91f6`.
 - `git ls-remote --tags origin 'v0.4.0*'`: annotated tag `v0.4.0` resolves to release commit `5d5e41c2bb9d4c0c3181c0c9c5c21417b8bf91f6`.
-- GitHub API confirmed CI run `35526614502` completed successfully on the current `develop` SHA.
+- GitHub API confirmed baseline CI run `35526614502` completed successfully on the pre-campaign `develop` SHA, and post-push CI run `35619619837` completed successfully on the committed documentation/evidence revision across Windows, Ubuntu, macOS Intel, and macOS ARM64.
 - GitHub API confirmed release run `34574075684` completed successfully, with validation, GNU/Linux, Windows, macOS Intel, macOS ARM64, and publication jobs all successful.
 - GitHub API confirmed public release `v0.4.0` is non-draft/non-prerelease and publishes four archives plus `SHA256SUMS`.
 
