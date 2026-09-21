@@ -28,7 +28,7 @@ cargo build --release --target-dir "$env:TEMP\\llmeter-release-target"
 
 The release workflow runs only from an authorized `v*` tag. It gates publication on the Cargo version, changelog heading, locked all-target/all-feature quality suite, dependency audit, package dry-run, native Windows/Linux/macOS all-feature builds, packaged mock-provider tests, archive extraction/content checks, and `--version`/`--help` smoke checks against the extracted binaries. It publishes four archives with filename-only `SHA256SUMS` entries and GitHub artifact provenance attestations for every archive and the checksum file.
 
-The local release-readiness validation for `0.4.0` covers the locked checks, package dry-run, release build, extracted-binary smoke, and provider-backed smoke gates. It does not publish a public release; hosted four-platform CI and release execution remain required gates.
+The local release-readiness validation for `0.4.0` covers the locked checks, package dry-run, release build, extracted-binary smoke, and provider-backed smoke gates. Hosted release run `34574075684` subsequently passed the four-target build, packaged mock-provider, checksum, provenance, and publication gates. Verify the resulting [public release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.4.0) independently before running downloaded binaries; crates.io publication remains a separate manual gate.
 
 ## Trust model
 
@@ -45,4 +45,4 @@ Local builds inherit the trust of the checked-out source and Rust dependency res
 7. Verify `cargo install llmeter --version <version> --locked --root <clean-temp-root>` and the installed binary.
 8. Configure crates.io trusted publishing for later releases. Stop publication if any hosted or registry verification fails.
 
-Last updated: 2026-09-10
+Last updated: 2026-09-21

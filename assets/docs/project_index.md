@@ -1,5 +1,5 @@
 # Project index
-Last updated: 2026-09-20
+Last updated: 2026-09-21
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first, then read the [Project Status Ledger](project_status_ledger.md) when the task involves current behavior, validation, release readiness, known issues, or operational risk. Open the smallest topic file that matches the remaining task.
@@ -76,6 +76,8 @@ This file is the root index for `assets/docs`. Read it first, then read the [Pro
   - Maintainer checklist for tagging, validation, checksummed artifacts, and release trust model.
 - `runtime/audit_implementation_plan.md`
   - Durable implementation roadmap for the Rust/CLI audit, scoped to the local single-user product.
+- `runtime/validation_campaign.md`
+  - Digest of the comprehensive validation campaign, evidence boundaries, tier gates, and execution order.
 - `runtime/troubleshooting.md`
   - Startup failures, provider connectivity, empty model catalogs, and output-path recovery.
 

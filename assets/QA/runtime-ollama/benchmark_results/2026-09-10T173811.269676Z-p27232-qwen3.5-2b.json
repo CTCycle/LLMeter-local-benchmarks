@@ -1,0 +1,269 @@
+{
+  "run_id": "2026-09-10T173811.269676Z-p27232-qwen3.5-2b",
+  "created_at": "2026-09-10T17:38:11",
+  "models": [
+    "qwen3.5:2b"
+  ],
+  "benchmark_ids": [
+    "chat-generation",
+    "responses-generation",
+    "consistency",
+    "prompt-sizes",
+    "structured-output",
+    "tool-calling"
+  ],
+  "config": {
+    "base_url": "http://localhost:11434/v1",
+    "max_tokens": 16,
+    "temperature": 0.0,
+    "suite": "llm",
+    "provider": "ollama",
+    "response_previews_included": false,
+    "timeout": 120.0,
+    "sensitive_values_redacted": true,
+    "runs": 1
+  },
+  "results": [
+    {
+      "benchmark_id": "chat-generation",
+      "benchmark_name": "Basic generation latency",
+      "model": "qwen3.5:2b",
+      "run_index": 1,
+      "prompt_name": "short",
+      "metrics": {
+        "input_tokens": 22,
+        "wall_time_ms": 64283.257,
+        "tokens_per_second": 0.24889840327925264,
+        "endpoint": "/v1/chat/completions",
+        "output_tokens": 16,
+        "response_chars": 0,
+        "total_tokens": 38
+      },
+      "metadata": {
+        "options": {}
+      }
+    },
+    {
+      "benchmark_id": "responses-generation",
+      "benchmark_name": "Responses API generation",
+      "model": "qwen3.5:2b",
+      "run_index": 1,
+      "prompt_name": "responses",
+      "metrics": {
+        "total_tokens": 42,
+        "wall_time_ms": 724.043,
+        "output_tokens": 16,
+        "input_tokens": 26,
+        "tokens_per_second": 22.098147263710725,
+        "endpoint": "/v1/responses",
+        "response_chars": 0
+      },
+      "metadata": {
+        "request": {}
+      }
+    },
+    {
+      "benchmark_id": "consistency",
+      "benchmark_name": "Response consistency",
+      "model": "qwen3.5:2b",
+      "run_index": null,
+      "prompt_name": "consistency",
+      "metrics": {
+        "min_pairwise_similarity": 1.0,
+        "max_pairwise_similarity": 1.0,
+        "wall_time_ms": 682.477,
+        "exact_match_ratio": 1.0,
+        "successful_runs": 2,
+        "mean_pairwise_similarity": 1.0,
+        "failed_runs": 0,
+        "mean_tokens_per_second": 47.415,
+        "requested_runs": 2,
+        "unique_responses": 1
+      },
+      "metadata": {
+        "options": {}
+      }
+    },
+    {
+      "benchmark_id": "prompt-sizes",
+      "benchmark_name": "Performance across prompt sizes",
+      "model": "qwen3.5:2b",
+      "run_index": 1,
+      "prompt_name": "short",
+      "metrics": {
+        "total_tokens": 38,
+        "response_chars": 0,
+        "endpoint": "/v1/chat/completions",
+        "tokens_per_second": 48.82173323865986,
+        "wall_time_ms": 327.723,
+        "input_tokens": 22,
+        "output_tokens": 16,
+        "prompt_chars": 77
+      },
+      "metadata": {
+        "options": {}
+      }
+    },
+    {
+      "benchmark_id": "prompt-sizes",
+      "benchmark_name": "Performance across prompt sizes",
+      "model": "qwen3.5:2b",
+      "run_index": 1,
+      "prompt_name": "medium",
+      "metrics": {
+        "output_tokens": 16,
+        "endpoint": "/v1/chat/completions",
+        "input_tokens": 49,
+        "tokens_per_second": 23.71778679844269,
+        "response_chars": 0,
+        "wall_time_ms": 674.599,
+        "total_tokens": 65,
+        "prompt_chars": 203
+      },
+      "metadata": {
+        "options": {}
+      }
+    },
+    {
+      "benchmark_id": "prompt-sizes",
+      "benchmark_name": "Performance across prompt sizes",
+      "model": "qwen3.5:2b",
+      "run_index": 1,
+      "prompt_name": "long",
+      "metrics": {
+        "wall_time_ms": 729.838,
+        "prompt_chars": 598,
+        "total_tokens": 140,
+        "output_tokens": 16,
+        "response_chars": 0,
+        "endpoint": "/v1/chat/completions",
+        "input_tokens": 124,
+        "tokens_per_second": 21.922661235692722
+      },
+      "metadata": {
+        "options": {}
+      }
+    },
+    {
+      "benchmark_id": "structured-output",
+      "benchmark_name": "Structured JSON output",
+      "model": "qwen3.5:2b",
+      "run_index": 1,
+      "prompt_name": "structured-json",
+      "metrics": {
+        "finish_reason": "length",
+        "endpoint": "/v1/chat/completions",
+        "wall_time_ms": 728.937,
+        "json_parse_success": false,
+        "output_tokens": 16,
+        "schema_valid": false,
+        "input_tokens": 42,
+        "total_tokens": 58,
+        "tokens_per_second": 21.94978273830673,
+        "response_chars": 0
+      },
+      "metadata": {
+        "request": {
+          "response_format": {
+            "json_schema": {
+              "name": "benchmark_analysis",
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "metrics": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 3,
+                    "minItems": 3,
+                    "type": "array"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "summary",
+                  "metrics",
+                  "recommendation"
+                ],
+                "type": "object"
+              },
+              "strict": true
+            },
+            "type": "json_schema"
+          }
+        }
+      }
+    },
+    {
+      "benchmark_id": "tool-calling",
+      "benchmark_name": "Function/tool calling",
+      "model": "qwen3.5:2b",
+      "run_index": 1,
+      "prompt_name": "tool-call",
+      "metrics": {
+        "finish_reason": "length",
+        "tokens_per_second": 35.19182071702895,
+        "wall_time_ms": 454.651,
+        "input_tokens": 325,
+        "endpoint": "/v1/chat/completions",
+        "output_tokens": 16,
+        "tool_call_valid": false,
+        "response_chars": 0,
+        "tool_call_returned": false,
+        "total_tokens": 341
+      },
+      "metadata": {
+        "request": {
+          "tool_choice": {
+            "function": {
+              "name": "record_benchmark_observation"
+            },
+            "type": "function"
+          },
+          "tools": [
+            {
+              "function": {
+                "description": "Record one benchmark observation.",
+                "name": "record_benchmark_observation",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "metric": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "provider",
+                    "metric",
+                    "value"
+                  ],
+                  "type": "object"
+                }
+              },
+              "type": "function"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "schema_version": "3.0",
+  "run_kind": "benchmark",
+  "environment": null,
+  "performance_plan": null,
+  "provider_capabilities": null,
+  "model_load_measurements": null,
+  "model_inventory_measurements": null,
+  "telemetry_summary": null
+}

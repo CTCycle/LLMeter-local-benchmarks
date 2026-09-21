@@ -1,6 +1,6 @@
 # LLMeter audit implementation plan
 
-Last updated: 2026-09-10
+Last updated: 2026-09-21
 
 ## Purpose
 
@@ -43,11 +43,15 @@ Completed in the current source state:
 - `b49a567` - result schema `2.4`, honest streaming and token-usage semantics, fresh model validation, hardened reports, and tag-gated release validation.
 - PR #1 (`refactor/canonical-sources-of-truth`) supersedes the active runtime contract with strict result schema `3.0`, canonical provider/model identity, typed output choices, shared performance-profile defaults, and removal of obsolete aliases and runtime compatibility fallbacks. Historical `2.4` references below remain release-history evidence rather than current runtime behavior.
 
-At the original audit snapshot, package state was `0.3.0` on `develop`; that implementation was committed and pushed before hosted release validation.
+At the original audit snapshot, package state was `0.3.0` on `develop`; that implementation was committed and pushed before hosted release validation. The current source state is package `0.4.0` on `develop` at `9bbaacb`, while the public `v0.4.0` release commit is `5d5e41c`.
 
 Earlier local validation evidence (2026-07-30): formatting, locked all-target/all-feature check, Clippy, rustdoc with warnings denied, release build, package dry-run, and the serialized all-target/all-feature suite passed 118 tests. The Windows release binary and extracted archive also passed the mock-provider and CLI smoke checks.
 
-Current release validation evidence (2026-09-10): package version `0.4.0` passes formatting, locked all-target/all-feature check, Clippy, rustdoc with warnings denied, release build, dependency audit, package dry-run, and 132 serialized all-target/all-feature tests on Windows. The release binary passes `--version`, `--help`, the packaged mock-provider E2E suite, and isolated CLI/report smoke checks. A live Ollama pass completed the standard LLM suite (8/8 records), embeddings (1/1), and a performance smoke scenario (1/1); the PowerShell launcher forwards documented flags correctly after a focused fix. Hosted four-platform CI and public release publication remain separate gates.
+Current release validation evidence (2026-09-10): package version `0.4.0` passes formatting, locked all-target/all-feature check, Clippy, rustdoc with warnings denied, release build, dependency audit, package dry-run, and 132 serialized all-target/all-feature tests on Windows. The release binary passes `--version`, `--help`, the packaged mock-provider E2E suite, and isolated CLI/report smoke checks. A live Ollama pass completed the standard LLM suite (8/8 records), embeddings (1/1), and a performance smoke scenario (1/1); the PowerShell launcher forwards documented flags correctly after a focused fix.
+
+The 2026-09-21 Tier 0 campaign reran the current source quality/startup/configuration boundaries and retained sanitized evidence in [`assets/QA/validation-2026-09-21/`](../../QA/validation-2026-09-21/). Hosted CI run `35526614502` passed on the current `develop` revision. Hosted release run `34574075684` passed all four native build jobs and publication, and the public `v0.4.0` GitHub release is now confirmed. crates.io publication remains a separate owner-gated gate.
+
+The long-term validation order and stopping criteria are maintained in [`validation_campaign.md`](validation_campaign.md); the current operational summary remains [`project_status_ledger.md`](../project_status_ledger.md).
 
 The validated commands are:
 
@@ -77,10 +81,10 @@ Status: complete.
 
 ### Completed
 
-- `SUPPORTED_PLATFORMS.md` defines Windows x86-64 Tier 1, Ubuntu GNU/Linux Tier 2, compatibility-only macOS/musl targets, and external runtime prerequisites.
-- README, user manual, deployment, startup, and release guidance explicitly distinguish GNU/glibc from musl and no longer claim unapproved public artifacts.
+- `SUPPORTED_PLATFORMS.md` defines Windows x86-64 Tier 1, Ubuntu GNU/Linux and macOS targets at Tier 2, compatibility-only musl candidates, and external runtime prerequisites.
+- README, user manual, deployment, startup, and release guidance explicitly distinguish GNU/glibc from musl and separate the verified public GitHub release from the still-unpublished crates.io package.
 - The minimum supported Rust version remains intentionally undeclared until an MSRV support commitment is approved.
-- Public package-manager and binary publication remain explicitly deferred pending an owner decision.
+- Public GitHub binary publication is verified for `v0.4.0`; package-manager publication remains explicitly deferred pending an owner decision.
 
 ### Scope
 
@@ -90,7 +94,7 @@ Define what “supported local CLI” means before adding infrastructure. Keep t
 
 - Documentation does not claim the GNU Linux binary is fully static.
 - The supported target list and runtime prerequisites are explicit.
-- No package-manager or public-release work is represented as complete without an owner decision.
+- No package-manager publication or remote self-update is represented as complete without an owner decision; the verified GitHub `v0.4.0` release is recorded separately.
 
 ## Phase 1 - Finish configuration and input validation
 
@@ -271,7 +275,7 @@ Status: complete.
 
 ## Phase 7 - CI and maintainer validation
 
-Status: native Ubuntu and Windows CI implemented; hosted execution remains separate from local validation evidence.
+Status: native four-target CI and the hosted `v0.4.0` release workflow are implemented and verified; local evidence remains separate from hosted evidence.
 
 ### Required local/repository gates
 
@@ -298,7 +302,7 @@ cargo test --target-dir "$env:TEMP\llmeter-codex-test-target" --all-targets --al
 - Add package validation (`cargo package`, extracted-package build) only when crates.io or source packaging is approved.
 - Pin third-party actions to reviewed commit SHAs when public release trust becomes in scope.
 
-Current CI uses a non-fail-fast Ubuntu/Windows matrix with locked all-target/all-feature check, Clippy, tests, and rustdoc. Formatting runs once on Ubuntu. MSRV, packaging, macOS release evidence, and action-SHA pinning remain gated on the corresponding support/distribution decisions.
+Current CI uses a non-fail-fast four-target matrix with locked all-target/all-feature check, Clippy, tests, and rustdoc. Formatting runs once on Ubuntu. MSRV, crates.io packaging/install, and future action-SHA review remain gated on the corresponding support/distribution decisions.
 
 ### Acceptance
 
@@ -308,7 +312,7 @@ Current CI uses a non-fail-fast Ubuntu/Windows matrix with locked all-target/all
 
 ## Phase 8 - Lifecycle and distribution policy
 
-Status: complete for the current local-only policy; public distribution remains owner-gated.
+Status: complete for local lifecycle semantics; GitHub binary distribution is verified for `v0.4.0`, while crates.io and any future remote updater remain owner-gated.
 
 ### Recommended local-single-user policy
 
@@ -329,13 +333,13 @@ Do not implement remote update metadata, rollback, signatures, or release channe
 
 - Documentation clearly labels managed lifecycle commands as convenience behavior.
 - No claim suggests the CLI can securely self-update from arbitrary local or remote executables.
-- Public distribution work remains visibly deferred rather than half-implemented.
+- Crates.io publication and remote self-update work remain visibly deferred rather than half-implemented.
 
 Deployment, README, and user-manual guidance now label lifecycle commands as local convenience file operations, require the user to verify replacement executables, and explicitly state that LLMeter does not download, authenticate, channel-select, or roll back remote updates.
 
 ## Remaining closeout
 
-All locally actionable audit phases are implemented. Hosted release run `32050420660` passed the four-target build, packaged mock-provider, checksum, and provenance gates, and published `v0.3.0` on 2026-08-17. The `0.4.0` source release is locally prepared; hosted four-platform execution, public tag publication, and crates.io publication remain owner-gated steps. MSRV is still not declared.
+All locally actionable audit phases are implemented. Hosted release run `34574075684` passed the four-target build, packaged mock-provider, checksum, provenance, and publication gates, and published `v0.4.0` on 2026-09-11. The current validation campaign has completed Tier 0 at a `PARTIAL` boundary because launcher fallback/protected-path evidence remains open. crates.io publication/install remains unverified, and MSRV is still not declared.
 
 ## Definition of done for the local CLI
 
