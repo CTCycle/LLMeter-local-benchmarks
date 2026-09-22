@@ -19,7 +19,19 @@ $legacyCachePaths = @(
 )
 $script:NextProgressId = 1
 $script:ActiveProgressActivities = [Collections.Generic.Dictionary[int, string]]::new()
-$script:LauncherInteractive = -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected
+
+function Test-LauncherInteractive {
+    if (-not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
+        return $true
+    }
+
+    # Windows ConPTY presents redirected standard handles to PowerShell even
+    # though Read-Host remains interactive. The Rust binary uses this marker
+    # for the same ConPTY boundary.
+    return $env:LLMETER_CONPTY -eq '1'
+}
+
+$script:LauncherInteractive = Test-LauncherInteractive
 
 function Start-LauncherProgress {
     param([Parameter(Mandatory)][string]$Activity, [Parameter(Mandatory)][string]$Status)
@@ -63,11 +75,89 @@ function Clear-LauncherProgress {
     }
 }
 
+function Read-ConptyConfirmationKey {
+    if (-not ('LlmeterConptyInput' -as [type])) {
+        Add-Type @'
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+
+[StructLayout(LayoutKind.Explicit, Size = 20)]
+public struct LlmeterInputRecord {
+    [FieldOffset(0)] public ushort EventType;
+    [FieldOffset(4)] public int KeyDown;
+    [FieldOffset(8)] public ushort RepeatCount;
+    [FieldOffset(10)] public ushort VirtualKeyCode;
+    [FieldOffset(12)] public ushort VirtualScanCode;
+    [FieldOffset(14)] public ushort UnicodeChar;
+    [FieldOffset(16)] public uint ControlKeyState;
+}
+
+public static class LlmeterConptyInput {
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr CreateFile(string name, uint access, uint share, IntPtr security, uint creation, uint flags, IntPtr template);
+
+    [DllImport("kernel32.dll", EntryPoint = "ReadConsoleInputW", SetLastError = true)]
+    private static extern bool ReadConsoleInput(IntPtr input, [Out] LlmeterInputRecord[] records, uint length, out uint read);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetConsoleMode(IntPtr input, out uint mode);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool SetConsoleMode(IntPtr input, uint mode);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(IntPtr handle);
+
+    public static string ReadKey() {
+        IntPtr input = CreateFile("CONIN$", 0x80000000u | 0x40000000u, 0x1u | 0x2u, IntPtr.Zero, 3u, 0u, IntPtr.Zero);
+        if (input == new IntPtr(-1))
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+
+        uint originalMode = 0;
+        bool restoreMode = GetConsoleMode(input, out originalMode);
+        try {
+            if (restoreMode) {
+                uint rawMode = (originalMode & ~(1u | 2u | 4u | 16u)) | 32u | 64u | 128u | 512u;
+                if (!SetConsoleMode(input, rawMode))
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+
+            var records = new LlmeterInputRecord[1];
+            while (true) {
+                uint read;
+                if (!ReadConsoleInput(input, records, 1, out read))
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                if (read == 1 && records[0].EventType == 1 && records[0].KeyDown != 0)
+                    return ((char)records[0].UnicodeChar).ToString();
+            }
+        }
+        finally {
+            if (restoreMode)
+                SetConsoleMode(input, originalMode);
+            CloseHandle(input);
+        }
+    }
+}
+'@
+    }
+    return [LlmeterConptyInput]::ReadKey()
+}
+
 function Confirm-DestructiveAction([string]$Description) {
     if (-not $script:LauncherInteractive) {
         throw "The destructive action '$Description' requires an interactive console; no files were changed."
     }
-    $confirmation = ([string](Read-Host "Continue to $($Description)? [y/N]")).Trim()
+    $prompt = "Continue to $($Description)? [y/N]"
+    if ($env:LLMETER_CONPTY -eq '1') {
+        Write-Host $prompt -NoNewline
+        $confirmation = Read-ConptyConfirmationKey
+        Write-Host ''
+    }
+    else {
+        $confirmation = Read-Host $prompt
+    }
+    $confirmation = ([string]$confirmation).Trim()
     if ($confirmation -notmatch '^(?i:y|yes)$') {
         Write-Host '[INFO] Operation cancelled. No changes were made.' -ForegroundColor DarkGray
         return $false
@@ -84,14 +174,19 @@ function Get-LlmeterHomePath {
     if (-not [IO.Path]::IsPathRooted($configuredHome)) {
         $configuredHome = Join-Path $repoRoot $configuredHome
     }
-    $home = [IO.Path]::GetFullPath($configuredHome).TrimEnd('\')
-    $filesystemRoot = ([IO.Path]::GetPathRoot($home)).TrimEnd('\')
-    $userProfile = [IO.Path]::GetFullPath([Environment]::GetFolderPath('UserProfile')).TrimEnd('\')
-    $repository = [IO.Path]::GetFullPath($repoRoot).TrimEnd('\')
-    if ($home -eq $filesystemRoot -or $home -eq $userProfile -or $home -eq $repository) {
-        throw "Refusing to remove broad or protected LLMeter home '$home'. Set LLMETER_HOME to a dedicated directory."
+    $llmeterHome = [IO.Path]::GetFullPath($configuredHome).TrimEnd('\')
+    $filesystemRoot = ([IO.Path]::GetPathRoot($llmeterHome)).TrimEnd('\')
+    $userProfilePath = [Environment]::GetFolderPath('UserProfile')
+    $userProfile = if ([string]::IsNullOrWhiteSpace($userProfilePath)) {
+        ''
+    } else {
+        [IO.Path]::GetFullPath($userProfilePath).TrimEnd('\')
     }
-    return $home
+    $repository = [IO.Path]::GetFullPath($repoRoot).TrimEnd('\')
+    if ($llmeterHome -eq $filesystemRoot -or $llmeterHome -eq $userProfile -or $llmeterHome -eq $repository) {
+        throw "Refusing to remove broad or protected LLMeter home '$llmeterHome'. Set LLMETER_HOME to a dedicated directory."
+    }
+    return $llmeterHome
 }
 
 function Remove-LauncherPath([string]$Path) {
@@ -113,15 +208,15 @@ function Get-LauncherCleanupTargets {
     param([switch]$IncludeHomeData)
 
     $targets = [Collections.Generic.List[string]]::new()
-    $targets.Add($defaultTargetDir)
-    $targets.Add($fallbackTargetDir)
+    [void]$targets.Add($defaultTargetDir)
+    [void]$targets.Add($fallbackTargetDir)
     foreach ($legacyCachePath in $legacyCachePaths) {
-        $targets.Add($legacyCachePath)
+        [void]$targets.Add($legacyCachePath)
     }
     if ($IncludeHomeData) {
-        $home = Get-LlmeterHomePath
+        $llmeterHome = Get-LlmeterHomePath
         foreach ($relative in @('bin', 'config', 'benchmark_results')) {
-            $targets.Add((Join-Path $home $relative))
+            [void]$targets.Add((Join-Path $llmeterHome $relative))
         }
     }
     return @($targets | Select-Object -Unique)
