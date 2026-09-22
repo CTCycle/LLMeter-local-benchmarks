@@ -1,6 +1,6 @@
 # LLMeter validation campaign
 
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 
 ## Purpose and authority
 
@@ -48,13 +48,13 @@ This is the first campaign tier. It makes later results trustworthy.
 
 | Slice | Gate | Current campaign state | Evidence / next action |
 |---|---|---|---|
-| `T0-01` | Reconcile revision, CI, release, QA references, and documentation truth. | `PASS` | Current `develop` SHA, remote refs, CI/release API records, and corrected docs are recorded in the [2026-09-21 ledger](../../QA/validation-2026-09-21/validation_ledger.md). |
-| `T0-02` | Formatting, locked check, Clippy, serialized all-target/all-feature tests, and rustdoc. | `PASS` | Windows local run passed 132 tests; command results are in [Tier 0 evidence](../../QA/validation-2026-09-21/tier0-evidence.md). |
-| `T0-03` | Release-binary version/help/startup, non-TTY behavior, exit codes, and invalid configuration. | `PASS` | Release binary returned the expected `0`/`2`/`1` boundaries; see the evidence record. |
-| `T0-04` | Configuration precedence, persisted provider state, URL normalization, and fail-closed validation. | `PASS` at exercised local boundary | Persisted `lmstudio`, environment `llama.cpp`, CLI `openai-compatible`, normalized `/v1`, and embedded-credential rejection were exercised; malformed persisted JSON remains regression-test evidence. |
-| `T0-05` | PowerShell launcher reuse/build selection, forwarding, destructive-operation protection, and owned cleanup. | `PARTIAL` | Version/status forwarding and noninteractive refusal passed. Fallback-target selection and an interactive protected-path mutation check remain unrun because the latter would confirm a destructive action. |
+| `T0-01` | Reconcile revision, CI, release, QA references, and documentation truth. | `PASS` | Current SHA, remote branch, exact-commit four-target CI, tagged-release boundary, and QA links are recorded in the [2026-09-22 ledger](../../QA/validation-2026-09-22/validation_ledger.md). |
+| `T0-02` | Formatting, locked check, Clippy, serialized all-target/all-feature tests, and rustdoc. | `PASS` | Windows local run passed 137 tests; command results are in [Tier 0 evidence](../../QA/validation-2026-09-22/tier0-evidence.md). |
+| `T0-03` | Release-binary version/help/startup, non-TTY behavior, exit codes, and invalid configuration. | `PASS` | Release-binary probes returned the expected `0`/`2`/`1` boundaries, and 11 mock-provider cases passed; see the [evidence record](../../QA/validation-2026-09-22/tier0-evidence.md). |
+| `T0-04` | Configuration precedence, persisted provider state, URL normalization, and fail-closed validation. | `PASS` at exercised local boundary | Persisted `lmstudio`, environment `llama-cpp`, CLI `openai-compatible`, normalized `/v1`, and embedded-credential rejection were exercised in an isolated home; see the [evidence record](../../QA/validation-2026-09-22/tier0-evidence.md). |
+| `T0-05` | PowerShell launcher reuse/build selection, forwarding, destructive-operation protection, and owned cleanup. | `PASS` | Five Windows E2E scenarios passed, including fallback selection and ConPTY confirmation/refusal checks in disposable fixtures; see the [evidence record](../../QA/validation-2026-09-22/tier0-evidence.md). |
 
-Tier 0 is therefore `PARTIAL` as a whole until the remaining launcher boundary is either safely exercised or explicitly accepted as an evidence limitation.
+Tier 0 is `PASS` on revision e21dd0ec271a9a1e009bf257771715d948c6cf92. The former launcher evidence gap was covered by deterministic fallback and isolated ConPTY scenarios; the complete current-revision gate is recorded in the [2026-09-22 ledger](../../QA/validation-2026-09-22/validation_ledger.md).
 
 ### Tier 1 — application foundations
 
@@ -108,4 +108,4 @@ Run the full locked all-target/all-feature suite once at each tier boundary and 
 
 Do not call a revision comprehensively validated until Tier 0–3 are green except for intentional product limitations, the JSONL accounting risk is disproven or fixed/regression-tested, every standard benchmark has real-CLI evidence, at least one live provider/model path is retained, provider-specific availability is explicit, interruption/persistence are safe, Windows and current CI remain green, release documentation matches GitHub, stale QA references are repaired, and every `PARTIAL`, `BLOCKED`, `UNKNOWN`, or `UNRUN` entry has a named boundary.
 
-The current campaign does not make that comprehensive claim. It records Tier 0 as `PARTIAL` solely because of the named launcher boundary and schedules Tier 1 next.
+The current campaign does not make that comprehensive claim. Tier 0 passed at its recorded boundary; Tier 1 is next.
