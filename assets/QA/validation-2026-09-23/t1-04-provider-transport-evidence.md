@@ -50,4 +50,4 @@ The launcher masks `--base-url` values in its display log while forwarding the a
 
 ## Remaining boundary
 
-T1-04 passes for the official Windows PowerShell launcher with this deterministic HTTP mock. Live-provider compatibility, other launchers, and T1-05 through T1-07 remain separate validation work.
+T1-04 passes for the official Windows PowerShell launcher with this deterministic HTTP mock. T1-05 has since passed at its dedicated result-persistence boundary. Live-provider compatibility, other launchers, and T1-06/T1-07 remain separate validation work.
