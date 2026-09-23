@@ -63,14 +63,14 @@ The next tranche exercises the provider-independent CLI, Windows terminal worksp
 | Slice | Focus | Required boundary | Current campaign state |
 |---|---|---|---|
 | `T1-01` | Provider, benchmark, quality, and built-in help catalogs. | Real CLI stdout snapshots, including invalid topics. | `PASS` on tested tree revision `0568177`; see [2026-09-23 stdout evidence](../../QA/validation-2026-09-23/tier1-evidence.md). |
-| `T1-02` | Main menu, nested workspaces, Back/Escape, EOF, Ctrl+C, and confirmation interruption. | Windows ConPTY plus one retained manual navigation record. | `UNRUN` at the dedicated boundary. |
+| `T1-02` | Main menu, nested workspaces, Back/Escape, EOF, Ctrl+C, and confirmation interruption. | Windows ConPTY plus one retained manual navigation record. | `PASS` on revision `46be1d2`; see [2026-09-23 T1-02 evidence](../../QA/validation-2026-09-23/t1-02-interactive-evidence.md). |
 | `T1-03` | `/v1/models`, cached navigation, fresh operational validation, and missing models. | Mock request sequence and output/error evidence. | `UNRUN` at the dedicated boundary. |
 | `T1-04` | HTTP status, redirects, reserved fields, SSE assembly, response limits, auth, and URL safety. | Mock capture plus persisted-output secret inspection. | `UNRUN` at the dedicated boundary. |
 | `T1-05` | Schema `3.0`, JSON/CSV, IDs, redaction, previews, formulas, and atomic replacement. | Generated files and failure-path directory inspection. | `UNRUN` at the dedicated boundary. |
 | `T1-06` | Report list/show/generate roundtrip for standard/performance/error/adversarial data. | Markdown, HTML, and terminal output. | `UNRUN` at the dedicated boundary. |
 | `T1-07` | Isolated install/update/uninstall/purge and rollback behavior. | Complete before/after tree in a dedicated temporary home. | `UNRUN` at the dedicated boundary. |
 
-The current automated suite already supplies meaningful evidence for much of Tier 1, but a tier claim requires the dedicated scenario/evidence boundary above. T1-01 passed; Tier 1 remains incomplete, and the next execution order is T1-02 through T1-07.
+The current automated suite already supplies meaningful evidence for much of Tier 1, but a tier claim requires the dedicated scenario/evidence boundary above. T1-01 and T1-02 passed at their recorded boundaries; Tier 1 remains incomplete. Continue with T1-03 through T1-07.
 
 ### Tier 2 — core benchmark workflows
 
