@@ -370,7 +370,7 @@ fn stage_temp_copy(source: &Path, prefix: &str) -> anyhow::Result<PathBuf> {
 fn build_windows_update_script(staged_source: &Path, target: &Path) -> String {
     let backup = target.with_extension(format!("llmeter-backup-{}", utils::utc_now_run_id_stamp()));
     format!(
-        "@echo off\r\nsetlocal\r\nping 127.0.0.1 -n 3 >nul\r\nset \"staged={}\"\r\nset \"target={}\"\r\nset \"backup={}\"\r\nif exist \"%target%\" move /Y \"%target%\" \"%backup%\" >nul\r\nif errorlevel 1 goto :restore\r\nmove /Y \"%staged%\" \"%target%\" >nul\r\nif errorlevel 1 goto :restore\r\nif exist \"%backup%\" del /F /Q \"%backup%\"\r\nif exist \"%staged%\" del /F /Q \"%staged%\"\r\n(goto) 2>nul & del \"%~f0\"\r\nexit /b 0\r\n:restore\r\nif exist \"%backup%\" move /Y \"%backup%\" \"%target%\" >nul\r\nif exist \"%staged%\" del /F /Q \"%staged%\"\r\nexit /b 1\r\n",
+        "@echo off\r\nsetlocal\r\nping 127.0.0.1 -n 3 >nul\r\nset \"staged={}\"\r\nset \"target={}\"\r\nset \"backup={}\"\r\nif exist \"%target%\" move /Y \"%target%\" \"%backup%\" >nul\r\nif errorlevel 1 goto :restore\r\nmove /Y \"%staged%\" \"%target%\" >nul\r\nif errorlevel 1 goto :restore\r\nif exist \"%backup%\" del /F /Q \"%backup%\"\r\nif exist \"%staged%\" del /F /Q \"%staged%\"\r\n(goto) 2>nul & del \"%~f0\"\r\nexit /b 0\r\n:restore\r\nif exist \"%backup%\" move /Y \"%backup%\" \"%target%\" >nul\r\nif exist \"%staged%\" del /F /Q \"%staged%\"\r\n(goto) 2>nul & del \"%~f0\"\r\nexit /b 1\r\n",
         staged_source.display(),
         target.display(),
         backup.display()
