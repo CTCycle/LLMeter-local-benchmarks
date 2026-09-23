@@ -19,6 +19,7 @@ use tempfile::TempDir;
 const T1_04_SENTINEL_API_KEY: &str = "llmeter-t1-04-synthetic-token";
 
 #[derive(Clone, Debug)]
+#[cfg_attr(not(windows), allow(dead_code))]
 struct MockRequest {
     method: String,
     path: String,
@@ -27,6 +28,7 @@ struct MockRequest {
 }
 
 #[derive(Clone, Copy)]
+#[cfg_attr(not(windows), allow(dead_code))]
 enum MockScenario {
     Standard,
     CreatedResponses,
