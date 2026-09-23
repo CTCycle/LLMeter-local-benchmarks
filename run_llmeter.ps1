@@ -293,6 +293,30 @@ function Invoke-CargoBuild {
     return $exitCode
 }
 
+function Format-LlmeterArgsForDisplay {
+    param([string[]]$Arguments)
+
+    if ($null -eq $Arguments -or $Arguments.Count -eq 0) { return '(no arguments)' }
+    $displayArguments = [Collections.Generic.List[string]]::new()
+    for ($index = 0; $index -lt $Arguments.Count; $index++) {
+        $argument = $Arguments[$index]
+        if ($argument -ieq '--base-url') {
+            [void]$displayArguments.Add($argument)
+            if ($index + 1 -lt $Arguments.Count) {
+                [void]$displayArguments.Add('[redacted]')
+                $index++
+            }
+            continue
+        }
+        if ($argument.StartsWith('--base-url=', [StringComparison]::OrdinalIgnoreCase)) {
+            [void]$displayArguments.Add('--base-url=[redacted]')
+            continue
+        }
+        [void]$displayArguments.Add($argument)
+    }
+    return [string]::Join(' ', $displayArguments)
+}
+
 Push-Location $repoRoot
 try {
     if (-not (Test-Path -LiteralPath $manifestPath)) {
@@ -367,7 +391,7 @@ try {
         throw "Build completed, but $selectedBinaryPath was not found."
     }
 
-    $displayArgs = if ($LlmeterArgs.Count -gt 0) { $LlmeterArgs -join ' ' } else { '(no arguments)' }
+    $displayArgs = Format-LlmeterArgsForDisplay -Arguments $LlmeterArgs
     $activity = "LLMeter: run release binary ($displayArgs)"
     Write-Host "[RUN] $activity" -ForegroundColor Cyan
     & $selectedBinaryPath @LlmeterArgs

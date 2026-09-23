@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -15,15 +16,39 @@ use llmeter::runner::validate_models;
 use serde_json::Value;
 use tempfile::TempDir;
 
+const T1_04_SENTINEL_API_KEY: &str = "llmeter-t1-04-synthetic-token";
+
+#[derive(Clone, Debug)]
+struct MockRequest {
+    method: String,
+    path: String,
+    headers: HashMap<String, String>,
+    body: String,
+}
+
+#[derive(Clone, Copy)]
+enum MockScenario {
+    Standard,
+    CreatedResponses,
+    RedirectModels,
+    OversizedModels,
+    OversizedStream,
+    UnauthorizedEcho,
+}
+
 struct MockProvider {
     base_url: String,
-    requests: Arc<Mutex<Vec<String>>>,
+    requests: Arc<Mutex<Vec<MockRequest>>>,
     stop: Arc<AtomicBool>,
     handle: Option<thread::JoinHandle<()>>,
 }
 
 impl MockProvider {
     fn start() -> Self {
+        Self::start_with_scenario(MockScenario::Standard)
+    }
+
+    fn start_with_scenario(scenario: MockScenario) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock provider");
         let port = listener.local_addr().expect("mock provider address").port();
         let requests = Arc::new(Mutex::new(Vec::new()));
@@ -33,7 +58,9 @@ impl MockProvider {
         let handle = thread::spawn(move || {
             while !thread_stop.load(Ordering::SeqCst) {
                 match listener.accept() {
-                    Ok((mut stream, _)) => handle_connection(&mut stream, &thread_requests),
+                    Ok((mut stream, _)) => {
+                        handle_connection(&mut stream, &thread_requests, scenario)
+                    }
                     Err(_) => break,
                 }
             }
@@ -47,8 +74,15 @@ impl MockProvider {
         }
     }
 
-    fn request_paths(&self) -> Vec<String> {
+    fn requests(&self) -> Vec<MockRequest> {
         self.requests.lock().expect("mock requests").clone()
+    }
+
+    fn request_paths(&self) -> Vec<String> {
+        self.requests()
+            .into_iter()
+            .map(|request| request.path)
+            .collect()
     }
 }
 
@@ -68,7 +102,11 @@ impl Drop for MockProvider {
     }
 }
 
-fn handle_connection(stream: &mut TcpStream, requests: &Arc<Mutex<Vec<String>>>) {
+fn handle_connection(
+    stream: &mut TcpStream,
+    requests: &Arc<Mutex<Vec<MockRequest>>>,
+    scenario: MockScenario,
+) {
     let mut buffer = Vec::new();
     let mut chunk = [0_u8; 4096];
     let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
@@ -84,49 +122,98 @@ fn handle_connection(stream: &mut TcpStream, requests: &Arc<Mutex<Vec<String>>>)
         }
     }
 
-    let request = String::from_utf8_lossy(&buffer);
-    let mut first_line = request
-        .lines()
-        .next()
-        .unwrap_or_default()
-        .split_whitespace();
-    let method = first_line.next().unwrap_or_default();
-    let path = first_line.next().unwrap_or_default();
-    requests
-        .lock()
-        .expect("mock requests")
-        .push(path.to_string());
+    let request_text = String::from_utf8_lossy(&buffer);
+    let header_end = request_text.find("\r\n\r\n").unwrap_or(request_text.len());
+    let mut request_lines = request_text[..header_end].split("\r\n");
+    let mut first_line = request_lines.next().unwrap_or_default().split_whitespace();
+    let method = first_line.next().unwrap_or_default().to_string();
+    let path = first_line.next().unwrap_or_default().to_string();
+    let headers = request_lines
+        .filter_map(|line| line.split_once(':'))
+        .map(|(name, value)| (name.trim().to_ascii_lowercase(), value.trim().to_string()))
+        .collect::<HashMap<_, _>>();
+    let body_start = header_end.saturating_add(4).min(buffer.len());
+    let body = String::from_utf8_lossy(&buffer[body_start..]).into_owned();
+    requests.lock().expect("mock requests").push(MockRequest {
+        method: method.clone(),
+        path: path.clone(),
+        headers,
+        body: body.clone(),
+    });
 
-    match method {
-        "GET" if path.ends_with("/v1/models") => write_json(
+    match (method.as_str(), path.as_str()) {
+        ("GET", path) if path.ends_with("/v1/models") => match scenario {
+            MockScenario::RedirectModels => write_redirect(stream, "/v1/redirect-target"),
+            MockScenario::OversizedModels => {
+                let padding = "x".repeat(10 * 1024 * 1024 + 1);
+                let body = format!(
+                    r#"{{"object":"list","data":[{{"id":"mock-model"}}],"padding":"{padding}"}}"#
+                );
+                write_json(stream, 200, &body);
+            }
+            _ => write_json(
+                stream,
+                200,
+                r#"{"object":"list","data":[{"id":"mock-model","object":"model","owned_by":"mock"}]}"#,
+            ),
+        },
+        ("GET", path) if path.ends_with("/v1/redirect-target") => write_json(
             stream,
             200,
-            r#"{"object":"list","data":[{"id":"mock-model","object":"model","owned_by":"mock"}]}"#,
+            r#"{"object":"list","data":[{"id":"should-not-follow"}]}"#,
         ),
-        "POST"
-            if path.ends_with("/v1/chat/completions") && request.contains(r#""stream":true"#) =>
+        ("POST", path)
+            if path.ends_with("/v1/chat/completions") && body.contains(r#""stream":true"#) =>
         {
-            write_sse(
-                stream,
-                &[
-                    r#"data: {"choices":[{"delta":{"content":"Hello"}}]}"#,
-                    r#"data: {"choices":[{"delta":{"content":" from mock"}}]}"#,
-                    r#"data: {"usage":{"prompt_tokens":4,"completion_tokens":3,"total_tokens":7},"choices":[{"delta":{}}]}"#,
-                    "data: [DONE]",
-                ],
-            )
+            match scenario {
+                MockScenario::OversizedStream => {
+                    let content = "x".repeat(1024 * 1024 + 1);
+                    let event =
+                        format!(r#"data: {{"choices":[{{"delta":{{"content":"{content}"}}}}]}}"#);
+                    write_sse_body(stream, &format!("{event}\n\n"));
+                }
+                MockScenario::UnauthorizedEcho => write_json(
+                    stream,
+                    401,
+                    &format!(
+                        r#"{{"error":{{"message":"Unauthorized Bearer {T1_04_SENTINEL_API_KEY} {}"}}}}"#,
+                        "x".repeat(64 * 1024 + 1)
+                    ),
+                ),
+                _ => write_sse(
+                    stream,
+                    &[
+                        &[
+                            r#"data: {"choices":["#,
+                            r#"data: {"delta":{"content":"Hello"}}]}"#,
+                        ],
+                        &[r#"data: {"choices":[{"delta":{"content":" from mock"}}]}"#],
+                        &[
+                            r#"data: {"usage":{"prompt_tokens":4,"completion_tokens":3,"total_tokens":7},"choices":[{"delta":{}}]}"#,
+                        ],
+                        &["data: [DONE]"],
+                    ],
+                ),
+            }
         }
-        "POST" if path.ends_with("/v1/chat/completions") => write_json(
+        ("POST", path) if path.ends_with("/v1/chat/completions") => write_json(
             stream,
             201,
             r#"{"choices":[{"message":{"content":"{\"summary\":\"mock\",\"metrics\":[\"latency\",\"ttft\",\"throughput\"],\"recommendation\":\"ok\"}"}}],"usage":{"prompt_tokens":4,"completion_tokens":5,"total_tokens":9}}"#,
         ),
-        "POST" if path.ends_with("/v1/responses") => write_json(
-            stream,
-            501,
-            r#"{"error":{"message":"responses endpoint unsupported by mock"}}"#,
-        ),
-        "POST" if path.ends_with("/v1/embeddings") => write_json(
+        ("POST", path) if path.ends_with("/v1/responses") => match scenario {
+            MockScenario::CreatedResponses => write_json(
+                stream,
+                201,
+                r#"{"output_text":"Created response","usage":{"input_tokens":4,"output_tokens":3,"total_tokens":7}}"#,
+            ),
+            _ => write_json(
+                stream,
+                501,
+                r#"{"error":{"message":"responses endpoint unsupported by mock"}}"#,
+            ),
+        },
+        ("POST", path) if path.ends_with("/v1/embeddings") => write_json(
             stream,
             501,
             r#"{"error":{"message":"embeddings endpoint unsupported by mock"}}"#,
@@ -144,10 +231,15 @@ fn request_complete(buffer: &[u8]) -> bool {
     let Some(header_end) = request.find("\r\n\r\n") else {
         return false;
     };
-    let content_length = request
-        .lines()
-        .find_map(|line| line.strip_prefix("Content-Length: "))
-        .and_then(|value| value.trim().parse::<usize>().ok())
+    let content_length = request[..header_end]
+        .split("\r\n")
+        .skip(1)
+        .find_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            name.eq_ignore_ascii_case("content-length")
+                .then(|| value.trim().parse::<usize>().ok())
+                .flatten()
+        })
         .unwrap_or(0);
     buffer.len() >= header_end + 4 + content_length
 }
@@ -156,6 +248,7 @@ fn write_json(stream: &mut TcpStream, status: u16, body: &str) {
     let status_text = match status {
         200 => "OK",
         201 => "Created",
+        401 => "Unauthorized",
         _ => "Error",
     };
     let response = format!(
@@ -165,8 +258,26 @@ fn write_json(stream: &mut TcpStream, status: u16, body: &str) {
     let _ = stream.write_all(response.as_bytes());
 }
 
-fn write_sse(stream: &mut TcpStream, lines: &[&str]) {
-    let body = format!("{}\n\n", lines.join("\n\n"));
+fn write_redirect(stream: &mut TcpStream, location: &str) {
+    let response = format!(
+        "HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+    );
+    let _ = stream.write_all(response.as_bytes());
+}
+
+fn write_sse(stream: &mut TcpStream, events: &[&[&str]]) {
+    let body = format!(
+        "{}\n\n",
+        events
+            .iter()
+            .map(|lines| lines.join("\n"))
+            .collect::<Vec<_>>()
+            .join("\n\n")
+    );
+    write_sse_body(stream, &body);
+}
+
+fn write_sse_body(stream: &mut TcpStream, body: &str) {
     let response = format!(
         "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
         body.len()
@@ -200,6 +311,88 @@ fn json_result_files(output_dir: &Path) -> Vec<PathBuf> {
         .collect::<Vec<_>>();
     files.sort();
     files
+}
+
+#[cfg(windows)]
+struct WindowsAppHarness {
+    root: TempDir,
+    script: PathBuf,
+    home: PathBuf,
+}
+
+#[cfg(windows)]
+impl WindowsAppHarness {
+    fn new() -> Self {
+        let qa_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("assets")
+            .join("QA");
+        let root = TempDir::new_in(qa_dir).expect("create isolated app harness");
+        let script = root.path().join("run_llmeter.ps1");
+        fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("run_llmeter.ps1"),
+            &script,
+        )
+        .expect("copy official launcher into fixture");
+        fs::write(
+            root.path().join("Cargo.toml"),
+            "[package]\nname = \"llmeter-t1-04-fixture\"\nversion = \"0.0.0\"\nedition = \"2021\"\n",
+        )
+        .expect("write fixture manifest");
+
+        let binary = root
+            .path()
+            .join("target")
+            .join("release")
+            .join("llmeter.exe");
+        fs::create_dir_all(binary.parent().expect("binary parent"))
+            .expect("create fixture binary directory");
+        fs::copy(env!("CARGO_BIN_EXE_llmeter"), &binary)
+            .expect("stage real llmeter executable in launcher fixture");
+        fs::OpenOptions::new()
+            .append(true)
+            .open(&binary)
+            .expect("open staged llmeter executable")
+            .set_modified(std::time::SystemTime::now())
+            .expect("set staged executable timestamp");
+
+        let home = root.path().join("home");
+        fs::create_dir_all(&home).expect("create isolated app home");
+        Self { root, script, home }
+    }
+
+    fn output_dir(&self, name: &str) -> PathBuf {
+        self.root.path().join(name)
+    }
+
+    fn command(&self, base_url: &str, output_dir: &Path) -> Command {
+        let mut command = Command::new("powershell.exe");
+        command
+            .arg("-NoProfile")
+            .arg("-File")
+            .arg(&self.script)
+            .arg("--provider")
+            .arg("openai-compatible")
+            .arg("--base-url")
+            .arg(base_url)
+            .arg("--timeout")
+            .arg("3")
+            .env("LLMETER_HOME", &self.home)
+            .env("LLMETER_OUTPUT_DIR", output_dir)
+            .env_remove("LLMETER_PROVIDER")
+            .env_remove("LLMETER_BASE_URL")
+            .env_remove("LLMETER_TIMEOUT")
+            .env_remove("LLMETER_API_KEY");
+        command
+    }
+}
+
+#[cfg(windows)]
+fn output_text(output: &std::process::Output) -> String {
+    format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    )
 }
 
 #[test]
@@ -646,5 +839,282 @@ fn every_registered_preset_obeys_the_baseline_openai_contract_fixture() {
             )
             .expect("fixture non-streamed chat");
         assert_eq!(non_streaming.http_status, Some(201), "{}", entry.provider);
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn t1_04_official_launcher_captures_multiline_sse_and_accepts_created_responses() {
+    let harness = WindowsAppHarness::new();
+    let provider = MockProvider::start();
+    let output_dir = harness.output_dir("t1-04-stream-output");
+
+    let chat = harness
+        .command(&provider.base_url, &output_dir)
+        .args([
+            "bench",
+            "run",
+            "--suite",
+            "llm",
+            "--models",
+            "mock-model",
+            "--benchmarks",
+            "chat-generation",
+            "--runs",
+            "1",
+            "--export",
+            "json",
+            "--report",
+            "none",
+            "--include-response-preview",
+        ])
+        .output()
+        .expect("run streaming benchmark through official launcher");
+    assert_eq!(chat.status.code(), Some(0), "{}", output_text(&chat));
+    let chat_files = json_result_files(&output_dir);
+    assert_eq!(chat_files.len(), 1);
+    let chat_run: Value =
+        serde_json::from_slice(&fs::read(&chat_files[0]).expect("read launcher streaming result"))
+            .expect("parse launcher streaming result");
+    assert_eq!(chat_run["results"][0]["error"], Value::Null);
+    assert!(chat_run["results"][0]["response_preview"]
+        .as_str()
+        .unwrap_or_default()
+        .contains("Hello from mock"));
+
+    let chat_request = provider
+        .requests()
+        .into_iter()
+        .find(|request| request.path.ends_with("/v1/chat/completions"))
+        .expect("capture chat request");
+    assert_eq!(chat_request.method, "POST");
+    let chat_body: Value = serde_json::from_str(&chat_request.body).expect("parse chat request");
+    assert_eq!(chat_body["model"], "mock-model");
+    assert!(chat_body["messages"].as_array().is_some());
+    assert_eq!(chat_body["stream"], true);
+
+    let response_provider = MockProvider::start_with_scenario(MockScenario::CreatedResponses);
+    let response_output = harness.output_dir("t1-04-created-response-output");
+    let responses = harness
+        .command(&response_provider.base_url, &response_output)
+        .args([
+            "bench",
+            "run",
+            "--suite",
+            "llm",
+            "--models",
+            "mock-model",
+            "--benchmarks",
+            "responses-generation",
+            "--runs",
+            "1",
+            "--export",
+            "json",
+            "--report",
+            "none",
+            "--include-response-preview",
+        ])
+        .output()
+        .expect("run responses benchmark through official launcher");
+    assert_eq!(
+        responses.status.code(),
+        Some(0),
+        "{}",
+        output_text(&responses)
+    );
+    let response_files = json_result_files(&response_output);
+    assert_eq!(response_files.len(), 1);
+    let response_run: Value = serde_json::from_slice(
+        &fs::read(&response_files[0]).expect("read launcher responses result"),
+    )
+    .expect("parse launcher responses result");
+    assert_eq!(response_run["results"][0]["error"], Value::Null);
+    assert!(response_run["results"][0]["response_preview"]
+        .as_str()
+        .unwrap_or_default()
+        .contains("Created response"));
+    assert!(response_provider
+        .requests()
+        .iter()
+        .any(|request| request.method == "POST" && request.path.ends_with("/v1/responses")));
+}
+
+#[cfg(windows)]
+#[test]
+fn t1_04_official_launcher_rejects_redirects_and_unsafe_urls() {
+    let harness = WindowsAppHarness::new();
+    let redirect_provider = MockProvider::start_with_scenario(MockScenario::RedirectModels);
+    let redirect = harness
+        .command(
+            &redirect_provider.base_url,
+            &harness.output_dir("t1-04-redirect-output"),
+        )
+        .arg("status")
+        .output()
+        .expect("check redirected provider through official launcher");
+    assert_eq!(
+        redirect.status.code(),
+        Some(1),
+        "{}",
+        output_text(&redirect)
+    );
+    assert!(output_text(&redirect).contains("HTTP 302"));
+    let redirect_requests = redirect_provider.requests();
+    assert_eq!(redirect_requests.len(), 1);
+    assert_eq!(redirect_requests[0].path, "/v1/models");
+
+    let url_provider = MockProvider::start();
+    let authority = url_provider
+        .base_url
+        .strip_prefix("http://")
+        .expect("mock provider URL scheme");
+    let unsafe_urls = [
+        format!("{}?token=t1-04-url-query-secret", url_provider.base_url),
+        format!("http://user:t1-04-url-user-secret@{authority}"),
+        "file:///provider/v1".to_string(),
+    ];
+    for (index, base_url) in unsafe_urls.iter().enumerate() {
+        let result = harness
+            .command(
+                base_url,
+                &harness.output_dir(&format!("t1-04-unsafe-url-{index}")),
+            )
+            .arg("status")
+            .output()
+            .expect("run invalid URL through official launcher");
+        assert!(!result.status.success(), "{}", output_text(&result));
+        let text = output_text(&result);
+        assert!(!text.contains("t1-04-url-query-secret"), "{text}");
+        assert!(!text.contains("t1-04-url-user-secret"), "{text}");
+    }
+    assert!(url_provider.requests().is_empty());
+}
+
+#[cfg(windows)]
+#[test]
+fn t1_04_official_launcher_bounds_json_and_streaming_responses() {
+    let harness = WindowsAppHarness::new();
+    let json_provider = MockProvider::start_with_scenario(MockScenario::OversizedModels);
+    let oversized_json = harness
+        .command(
+            &json_provider.base_url,
+            &harness.output_dir("t1-04-oversized-json-output"),
+        )
+        .arg("status")
+        .output()
+        .expect("run oversized JSON status through official launcher");
+    assert_eq!(
+        oversized_json.status.code(),
+        Some(1),
+        "{}",
+        output_text(&oversized_json)
+    );
+    assert!(output_text(&oversized_json).contains("response exceeded the 10485760 byte limit"));
+
+    let stream_provider = MockProvider::start_with_scenario(MockScenario::OversizedStream);
+    let stream_output = harness.output_dir("t1-04-oversized-stream-output");
+    let oversized_stream = harness
+        .command(&stream_provider.base_url, &stream_output)
+        .args([
+            "bench",
+            "run",
+            "--suite",
+            "llm",
+            "--models",
+            "mock-model",
+            "--benchmarks",
+            "chat-generation",
+            "--runs",
+            "1",
+            "--export",
+            "json",
+            "--report",
+            "none",
+        ])
+        .output()
+        .expect("run oversized SSE benchmark through official launcher");
+    assert_eq!(
+        oversized_stream.status.code(),
+        Some(0),
+        "{}",
+        output_text(&oversized_stream)
+    );
+    let stream_files = json_result_files(&stream_output);
+    assert_eq!(stream_files.len(), 1);
+    let stream_run: Value =
+        serde_json::from_slice(&fs::read(&stream_files[0]).expect("read oversized stream result"))
+            .expect("parse oversized stream result");
+    assert!(stream_run["results"][0]["error"]
+        .as_str()
+        .unwrap_or_default()
+        .contains("Streaming event line exceeded the 1048576 byte limit"));
+}
+
+#[cfg(windows)]
+#[test]
+fn t1_04_official_launcher_auth_is_captured_and_secrets_are_not_persisted() {
+    let harness = WindowsAppHarness::new();
+    let provider = MockProvider::start_with_scenario(MockScenario::UnauthorizedEcho);
+    let output_dir = harness.output_dir("t1-04-auth-output");
+    let result = harness
+        .command(&provider.base_url, &output_dir)
+        .env("LLMETER_API_KEY", T1_04_SENTINEL_API_KEY)
+        .args([
+            "bench",
+            "run",
+            "--suite",
+            "llm",
+            "--models",
+            "mock-model",
+            "--benchmarks",
+            "chat-generation",
+            "--runs",
+            "1",
+            "--export",
+            "both",
+            "--report",
+            "both",
+        ])
+        .output()
+        .expect("run authenticated benchmark through official launcher");
+    assert_eq!(result.status.code(), Some(0), "{}", output_text(&result));
+
+    let requests = provider.requests();
+    let chat_request = requests
+        .iter()
+        .find(|request| request.path.ends_with("/v1/chat/completions"))
+        .expect("capture authenticated chat request");
+    assert_eq!(
+        chat_request
+            .headers
+            .get("authorization")
+            .map(String::as_str),
+        Some("Bearer llmeter-t1-04-synthetic-token")
+    );
+
+    let result_files = json_result_files(&output_dir);
+    assert_eq!(result_files.len(), 1);
+    let run: Value = serde_json::from_slice(&fs::read(&result_files[0]).expect("read auth result"))
+        .expect("parse auth result");
+    let error = run["results"][0]["error"].as_str().unwrap_or_default();
+    assert!(error.contains("HTTP 401"), "{error}");
+    assert!(error.contains("[body truncated]"), "{error}");
+    assert!(error.contains("[redacted]"), "{error}");
+
+    let saved_files = fs::read_dir(&output_dir)
+        .expect("read all persisted outputs")
+        .map(|entry| entry.expect("read persisted output entry").path())
+        .filter(|path| path.is_file())
+        .collect::<Vec<_>>();
+    for path in &saved_files {
+        let contents = fs::read_to_string(path).expect("read persisted output text");
+        assert!(
+            !contents.contains(T1_04_SENTINEL_API_KEY),
+            "raw API key persisted in {}",
+            path.display()
+        );
+    }
+    for extension in ["csv", "report.md", "report.html"] {
+        assert!(result_files[0].with_extension(extension).is_file());
     }
 }

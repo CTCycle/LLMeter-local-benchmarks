@@ -894,7 +894,7 @@ mod tests {
     use std::time::Instant;
 
     use clap::ValueEnum;
-    use serde_json::json;
+    use serde_json::{json, Value};
 
     use super::{
         parse_openai_stream_line, process_stream_event, read_stream_line_limited, ProviderClient,
@@ -947,18 +947,30 @@ mod tests {
     fn reserved_chat_fields_cannot_be_overridden_by_extra_parameters() {
         let client =
             ProviderClient::new(ProviderKind::Ollama, "http://127.0.0.1:1/v1", 1.0).unwrap();
-        let error = client
-            .chat_completion(
-                "model",
-                json!([{"role": "user", "content": "hi"}]),
-                2,
-                0.0,
-                false,
-                Some(&json!({"model": "attacker"})),
-            )
-            .unwrap_err()
-            .to_string();
-        assert!(error.contains("reserved"), "{error}");
+        for key in [
+            "model",
+            "messages",
+            "stream",
+            "stream_options",
+            "max_tokens",
+            "temperature",
+        ] {
+            let mut extra = serde_json::Map::new();
+            extra.insert(key.to_string(), json!("attacker"));
+            let error = client
+                .chat_completion(
+                    "model",
+                    json!([{"role": "user", "content": "hi"}]),
+                    2,
+                    0.0,
+                    false,
+                    Some(&Value::Object(extra)),
+                )
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains(key), "{error}");
+            assert!(error.contains("reserved"), "{error}");
+        }
     }
 
     #[test]
