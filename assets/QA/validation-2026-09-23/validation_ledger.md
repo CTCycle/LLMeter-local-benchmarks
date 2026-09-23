@@ -12,6 +12,7 @@ Last updated: 2026-09-23
 | Package | llmeter 0.4.0 |
 | Environment | Windows x86-64, PowerShell 7.6.6, Cargo 1.98.0, Rust 1.98.0 |
 | Build | `cargo build --locked --bin llmeter` passed |
+| Hosted CI | [Run 35830958376](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/35830958376) passed Windows, Ubuntu, macOS Intel, and macOS ARM64 at commit `1222ba621e1c921f6a792be5c27688773a8c0625` |
 | Provider/model | None; these catalog and help commands did not contact a provider |
 | Campaign boundary | Tier 1: application foundations, slice T1-01 |
 | Canonical summary | [Project status ledger](../../docs/project_status_ledger.md) |
