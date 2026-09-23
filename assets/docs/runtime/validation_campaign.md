@@ -1,6 +1,6 @@
 # LLMeter validation campaign
 
-Last updated: 2026-09-22
+Last updated: 2026-09-23
 
 ## Purpose and authority
 
@@ -60,17 +60,17 @@ Tier 0 is `PASS` on revision e21dd0ec271a9a1e009bf257771715d948c6cf92. The forme
 
 The next tranche exercises the provider-independent CLI, Windows terminal workspaces, provider catalog freshness, HTTP/SSE/authentication limits, persistence/privacy, reports, and local lifecycle semantics.
 
-| Slice | Focus | Required boundary |
-|---|---|---|
-| `T1-01` | Provider, benchmark, quality, and built-in help catalogs. | Real CLI stdout snapshots, including invalid topics. |
-| `T1-02` | Main menu, nested workspaces, Back/Escape, EOF, Ctrl+C, and confirmation interruption. | Windows ConPTY plus one retained manual navigation record. |
-| `T1-03` | `/v1/models`, cached navigation, fresh operational validation, and missing models. | Mock request sequence and output/error evidence. |
-| `T1-04` | HTTP status, redirects, reserved fields, SSE assembly, response limits, auth, and URL safety. | Mock capture plus persisted-output secret inspection. |
-| `T1-05` | Schema `3.0`, JSON/CSV, IDs, redaction, previews, formulas, and atomic replacement. | Generated files and failure-path directory inspection. |
-| `T1-06` | Report list/show/generate roundtrip for standard/performance/error/adversarial data. | Markdown, HTML, and terminal output. |
-| `T1-07` | Isolated install/update/uninstall/purge and rollback behavior. | Complete before/after tree in a dedicated temporary home. |
+| Slice | Focus | Required boundary | Current campaign state |
+|---|---|---|---|
+| `T1-01` | Provider, benchmark, quality, and built-in help catalogs. | Real CLI stdout snapshots, including invalid topics. | `PASS` on tested tree revision `0568177`; see [2026-09-23 stdout evidence](../../QA/validation-2026-09-23/tier1-evidence.md). |
+| `T1-02` | Main menu, nested workspaces, Back/Escape, EOF, Ctrl+C, and confirmation interruption. | Windows ConPTY plus one retained manual navigation record. | `UNRUN` at the dedicated boundary. |
+| `T1-03` | `/v1/models`, cached navigation, fresh operational validation, and missing models. | Mock request sequence and output/error evidence. | `UNRUN` at the dedicated boundary. |
+| `T1-04` | HTTP status, redirects, reserved fields, SSE assembly, response limits, auth, and URL safety. | Mock capture plus persisted-output secret inspection. | `UNRUN` at the dedicated boundary. |
+| `T1-05` | Schema `3.0`, JSON/CSV, IDs, redaction, previews, formulas, and atomic replacement. | Generated files and failure-path directory inspection. | `UNRUN` at the dedicated boundary. |
+| `T1-06` | Report list/show/generate roundtrip for standard/performance/error/adversarial data. | Markdown, HTML, and terminal output. | `UNRUN` at the dedicated boundary. |
+| `T1-07` | Isolated install/update/uninstall/purge and rollback behavior. | Complete before/after tree in a dedicated temporary home. | `UNRUN` at the dedicated boundary. |
 
-The current automated suite already supplies meaningful evidence for much of Tier 1, but a tier claim requires the dedicated scenario/evidence boundary above. The next execution order is `T1-01` through `T1-07`.
+The current automated suite already supplies meaningful evidence for much of Tier 1, but a tier claim requires the dedicated scenario/evidence boundary above. T1-01 passed; Tier 1 remains incomplete, and the next execution order is T1-02 through T1-07.
 
 ### Tier 2 — core benchmark workflows
 
