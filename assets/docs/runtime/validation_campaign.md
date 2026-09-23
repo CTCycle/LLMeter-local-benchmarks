@@ -67,26 +67,34 @@ The next tranche exercises the provider-independent CLI, Windows terminal worksp
 | `T1-03` | `/v1/models`, cached navigation, fresh operational validation, and missing models. | Mock request sequence and output/error evidence. | `PASS` on revision `eeb10fc`; see [2026-09-23 model catalog evidence](../../QA/validation-2026-09-23/t1-03-model-catalog-evidence.md). |
 | `T1-04` | HTTP status, redirects, reserved fields, SSE assembly, response limits, auth, and URL safety. | Official Windows launcher, deterministic mock capture, unit-boundary reserved-field check, and persisted-output secret inspection. | `PASS` on revision `5e900ed`; Windows launcher evidence and the separate four-platform hosted CI run are recorded in the [T1-04 evidence note](../../QA/validation-2026-09-23/t1-04-provider-transport-evidence.md). |
 | `T1-05` | Schema `3.0`, JSON/CSV, IDs, redaction, previews, formulas, and atomic replacement. | Generated files and failure-path directory inspection. | `PASS` on revision `0f2ea40`; see the [T1-05 result persistence evidence note](../../QA/validation-2026-09-23/t1-05-result-persistence-evidence.md). |
-| `T1-06` | Report list/show/generate roundtrip for standard/performance/error/adversarial data. | Markdown, HTML, and terminal output. | `UNRUN` at the dedicated boundary. |
-| `T1-07` | Isolated install/update/uninstall/purge and rollback behavior. | Complete before/after tree in a dedicated temporary home. | `UNRUN` at the dedicated boundary. |
+| `T1-06` | Report list/show/generate roundtrip for standard/performance/error/adversarial data. | Markdown, HTML, and terminal output. | `PASS` on Windows revision `d8e9c94`; the real CLI covered both run kinds, controlled errors, escaping, privacy, and listing the generated reports. See [T1-06 evidence](../../QA/validation-2026-09-23/t1-06-report-cli-evidence.md). |
+| `T1-07` | Isolated install/update/uninstall/purge and rollback behavior. | Complete before/after tree in a dedicated temporary home. | `PASS` on Windows revision `d8e9c94`; real-CLI install, refusal, rollback, successful update, and purge passed. The failed-update helper cleanup defect was fixed and regression-tested. See [T1-07 evidence](../../QA/validation-2026-09-23/t1-07-lifecycle-evidence.md). |
 
-The current automated suite already supplies meaningful evidence for much of Tier 1, but a tier claim requires the dedicated scenario/evidence boundary above. T1-01 through T1-05 passed at their recorded boundaries; Tier 1 remains incomplete. Continue with T1-06 and T1-07.
+The current automated suite already supplies meaningful evidence for much of Tier 1, but a tier claim requires the dedicated scenario/evidence boundary above. T1-01 through T1-07 now pass at their recorded boundaries. Tier 1 is complete. Continue with Tier 2's real-CLI standard benchmark workflows; keep T3-02 JSONL accounting as the stop gate before performance workloads.
 
 ### Tier 2 — core benchmark workflows
 
 Exercise every built-in standard path through the real CLI: streaming chat generation, `/v1/responses`, consistency and prompt sizes, structured output and tool calling, embeddings, and multi-model/multi-benchmark orchestration. Positive behavior and controlled unsupported/error records must both be retained where applicable. Record progress, request order, persisted records, and reports.
 
+Current campaign state: `UNRUN` at the dedicated Tier 2 boundary. Existing mock-provider and limited Ollama runs do not cover every standard path and orchestration case. Begin with a bounded real-CLI subset using the currently exposed Ollama models, then complete the remaining workflows in manageable groups.
+
 ### Tier 3 — performance subsystem
 
 Validate profile planning and safety guards before measured runs. The critical stop gate is `T3-02`: compare actual JSONL prompt count with scenario count, request-budget validation, progress total, HTTP request count, and persisted records. If the suspected synthetic-count mismatch reproduces, stop the campaign and fix it before smoke, latency, throughput, or sweep workloads. Then validate statistics, bounded concurrency, capability/model inventory, telemetry/resource probes, and full profile progression.
+
+Current campaign state: `PARTIAL`; planning, safety, metrics, probes, and one smoke scenario have prior evidence, but the dedicated profile progression is incomplete. `T3-02` remains `UNRUN` and is the stop gate before any broader workload.
 
 ### Tier 4 — providers, quality planning, and distribution
 
 Run one independent slice per available live provider/model. Preserve exact provider and model identity; mark unavailable targets `BLOCKED` rather than inheriting fixture evidence. Keep quality-framework integrations at their current dry-run planning boundary unless execution is explicitly approved. Verify tagged release archives, checksums, provenance, public downloads, and—if approved—clean `cargo install` from crates.io as separate gates.
 
+Current campaign state: `PARTIAL`. Ollama status and model discovery currently pass and earlier LLM, embeddings, and performance smokes are recorded. The best-effort provider matrix and cross-provider optional capabilities remain unvalidated; external quality execution and crates.io publication remain scope/owner gated.
+
 ### Tier 5 — resilience and edge cases
 
 Exercise transport/protocol failures, filesystem and atomic-write failures, repeated operations and restart/state restoration, long-running interruption, scale/safety ceilings, and native non-Windows terminal behavior. The expected result is bounded, readable failure with no corrupted or convincing partial artifact.
+
+Current campaign state: `UNRUN` at the dedicated Tier 5 boundary. Some focused transport, persistence, and lifecycle failure paths have coverage in earlier slices, but the broader resilience and native-terminal sweep remains open.
 
 ## Regression map
 
