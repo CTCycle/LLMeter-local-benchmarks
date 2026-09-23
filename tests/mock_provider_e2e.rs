@@ -526,7 +526,6 @@ fn cli_bench_run_streams_and_generates_report_from_saved_json() {
             "both",
             "--report",
             "both",
-            "--include-response-preview",
         ])
         .output()
         .expect("run llmeter bench");
@@ -540,13 +539,20 @@ fn cli_bench_run_streams_and_generates_report_from_saved_json() {
     assert_eq!(result_files.len(), 1);
     let run: Value =
         serde_json::from_slice(&fs::read(&result_files[0]).expect("read run")).expect("run json");
+    let run_id = run["run_id"].as_str().expect("run id");
+    assert_eq!(
+        result_files[0].file_stem().and_then(|stem| stem.to_str()),
+        Some(run_id)
+    );
     assert_eq!(run["schema_version"], "3.0");
     assert_eq!(run["results"][0]["error"], Value::Null);
-    assert!(run["results"][0]["response_preview"]
-        .as_str()
-        .unwrap_or_default()
-        .contains("Hello from mock"));
-    assert!(result_files[0].with_extension("csv").exists());
+    assert_eq!(run["config"]["response_previews_included"], false);
+    assert_eq!(run["config"]["sensitive_values_redacted"], true);
+    assert!(run["results"][0]["response_preview"].is_null());
+    let csv_path = result_files[0].with_extension("csv");
+    assert!(csv_path.exists());
+    let csv_content = fs::read_to_string(csv_path).expect("read CSV result");
+    assert!(!csv_content.contains("Hello from mock"));
     assert!(result_files[0].with_extension("report.md").exists());
     assert!(result_files[0].with_extension("report.html").exists());
 
