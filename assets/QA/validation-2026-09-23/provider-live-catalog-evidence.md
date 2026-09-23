@@ -8,6 +8,7 @@ Last updated: 2026-09-23
 |---|---|
 | Repository | CTCycle/LLMeter-local-benchmarks |
 | Branch | `develop` |
+| Tested revision | `d8e9c94c467941324673e1df124f425a2815251e` |
 | Environment | Windows x86-64; Cargo 1.98.0; Rust 1.98.0 |
 | Provider | Ollama at `http://localhost:11434/v1` |
 | Scope | Current live provider status and fresh model discovery through the LLMeter CLI. No benchmark request was sent. |

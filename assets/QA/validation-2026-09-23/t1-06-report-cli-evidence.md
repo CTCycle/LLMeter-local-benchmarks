@@ -8,6 +8,7 @@ Last updated: 2026-09-23
 |---|---|
 | Repository | CTCycle/LLMeter-local-benchmarks |
 | Branch | `develop` |
+| Tested revision | `d8e9c94c467941324673e1df124f425a2815251e` |
 | Package | llmeter 0.4.0 |
 | Environment | Windows x86-64; Cargo 1.98.0; Rust 1.98.0 |
 | Provider/model | Synthetic schema 3.0 fixtures only; the T1-06 report scenario made no provider calls. A separate live Ollama status/catalog probe is recorded in [provider live evidence](provider-live-catalog-evidence.md). |

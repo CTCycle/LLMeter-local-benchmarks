@@ -8,6 +8,7 @@ Last updated: 2026-09-23
 |---|---|
 | Repository | CTCycle/LLMeter-local-benchmarks |
 | Branch | `develop` |
+| Tested revision | `d8e9c94c467941324673e1df124f425a2815251e` |
 | Package | llmeter 0.4.0 |
 | Environment | Windows x86-64; Cargo 1.98.0; Rust 1.98.0 |
 | Provider/model | No provider was called. |
@@ -19,6 +20,10 @@ Last updated: 2026-09-23
 |---|---|
 | `cargo test --locked --all-features --test lifecycle_cli_e2e -- --test-threads=1` | 1 passed |
 | `cargo test --locked --all-targets --all-features -- --test-threads=1` | Passed; includes this lifecycle scenario and the existing lifecycle unit and launcher suites. |
+| `cargo fmt --all -- --check` | Passed |
+| `cargo check --locked --all-targets --all-features` | Passed |
+| `cargo clippy --locked --all-targets --all-features -- -D warnings` | Passed |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps --all-features` | Passed |
 
 The test created its home and helper temp directory under a temporary `assets/QA/` fixture. The fixture was removed after the helper scripts completed.
 
