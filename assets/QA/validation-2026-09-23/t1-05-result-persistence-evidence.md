@@ -30,6 +30,10 @@ Formatting and all focused tests passed on the tested revision:
 
 Total: 18 focused tests passed, 0 failed.
 
+## Hosted CI
+
+[CI run 35866354499](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/35866354499) passed on the pushed revision `9026d48b4c07d2245bb32219c02c944f6a636ba5` across Windows, Ubuntu, macOS Apple silicon, and macOS Intel. The workflow passed formatting, locked all-target/all-feature checks, Clippy, serialized tests, and warning-denied rustdoc. This hosted gate is separate from live-provider evidence.
+
 ## Scenarios and results
 
 | Scenario | Evidence | Result |
