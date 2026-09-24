@@ -620,6 +620,203 @@ fn unsupported_endpoint_benchmark_records_controlled_errors() {
 }
 
 #[test]
+fn jsonl_performance_accounting_matches_planning_requests_progress_and_results() {
+    let provider = MockProvider::start();
+    let temp = TempDir::new().expect("tempdir");
+    let output = temp.path().join("results");
+    let workload = temp.path().join("workload.jsonl");
+    fs::write(
+        &workload,
+        concat!(
+            "{\"id\":\"prompt-a\",\"prompt\":\"first prompt\"}\n",
+            "{\"id\":\"prompt-b\",\"prompt\":\"second prompt\"}\n",
+            "{\"id\":\"prompt-c\",\"prompt\":\"third prompt\"}\n",
+        ),
+    )
+    .expect("write JSONL workload");
+
+    let over_budget = llmeter_command(temp.path(), &output, &provider.base_url)
+        .args([
+            "bench",
+            "perf",
+            "--profile",
+            "smoke",
+            "--models",
+            "mock-model",
+            "--output-tokens",
+            "1",
+            "--concurrency",
+            "1",
+            "--warmup",
+            "0",
+            "--runs",
+            "1",
+            "--jsonl",
+        ])
+        .arg(&workload)
+        .args(["--max-requests", "2", "--dry-run"])
+        .output()
+        .expect("reject an undercounted JSONL performance plan");
+    assert!(!over_budget.status.success());
+    assert!(
+        String::from_utf8_lossy(&over_budget.stderr).contains("requests 3 exceed --max-requests 2")
+    );
+    assert!(
+        provider
+            .requests()
+            .iter()
+            .all(|request| request.method != "POST"),
+        "a rejected request budget must not issue workload requests"
+    );
+
+    let dry_run = llmeter_command(temp.path(), &output, &provider.base_url)
+        .args([
+            "bench",
+            "perf",
+            "--profile",
+            "smoke",
+            "--models",
+            "mock-model",
+            "--output-tokens",
+            "1",
+            "--concurrency",
+            "1",
+            "--warmup",
+            "0",
+            "--runs",
+            "1",
+            "--jsonl",
+        ])
+        .arg(&workload)
+        .args(["--max-requests", "3", "--dry-run"])
+        .output()
+        .expect("inspect JSONL performance plan");
+    assert!(
+        dry_run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&dry_run.stderr)
+    );
+    let estimate = String::from_utf8_lossy(&dry_run.stdout);
+    assert!(estimate.contains("Scenarios: 3"), "{estimate}");
+    assert!(estimate.contains("Measured requests: 3"), "{estimate}");
+    assert!(estimate.contains("Total requests: 3"), "{estimate}");
+    assert!(
+        provider
+            .requests()
+            .iter()
+            .all(|request| request.method != "POST"),
+        "dry-run must not issue workload requests"
+    );
+
+    let run = llmeter_command(temp.path(), &output, &provider.base_url)
+        .args([
+            "bench",
+            "perf",
+            "--profile",
+            "smoke",
+            "--models",
+            "mock-model",
+            "--output-tokens",
+            "1",
+            "--concurrency",
+            "1",
+            "--warmup",
+            "0",
+            "--runs",
+            "1",
+            "--jsonl",
+        ])
+        .arg(&workload)
+        .args([
+            "--max-requests",
+            "3",
+            "--load-measurement",
+            "off",
+            "--telemetry",
+            "off",
+            "--export",
+            "json",
+            "--report",
+            "none",
+        ])
+        .output()
+        .expect("run JSONL performance scenarios");
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+
+    let progress = String::from_utf8_lossy(&run.stderr);
+    let scenario_progress = progress
+        .lines()
+        .filter(|line| line.contains("Running scenario"))
+        .collect::<Vec<_>>();
+    assert_eq!(scenario_progress.len(), 3, "{progress}");
+    let scenario_steps = scenario_progress
+        .iter()
+        .filter_map(|line| {
+            let step = line.rsplit_once("Step ")?.1.split_whitespace().next()?;
+            let (current, total) = step.split_once('/')?;
+            Some((current.parse::<u32>().ok()?, total.parse::<u32>().ok()?))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(scenario_steps, [(2, 5), (3, 5), (4, 5)], "{progress}");
+    assert!(progress.contains("100% Completed"), "{progress}");
+
+    let chat_requests = provider
+        .requests()
+        .into_iter()
+        .filter(|request| request.method == "POST" && request.path == "/v1/chat/completions")
+        .collect::<Vec<_>>();
+    assert_eq!(chat_requests.len(), 3);
+    let request_prompts = chat_requests
+        .iter()
+        .map(|request| {
+            serde_json::from_str::<Value>(&request.body).expect("chat request JSON")["messages"][0]
+                ["content"]
+                .as_str()
+                .expect("request prompt")
+                .to_string()
+        })
+        .collect::<std::collections::HashSet<_>>();
+    assert_eq!(
+        request_prompts,
+        ["first prompt", "second prompt", "third prompt"]
+            .into_iter()
+            .map(str::to_string)
+            .collect()
+    );
+
+    let result_files = json_result_files(&output);
+    assert_eq!(result_files.len(), 1);
+    let saved: Value =
+        serde_json::from_slice(&fs::read(&result_files[0]).expect("read performance result"))
+            .expect("performance result JSON");
+    assert_eq!(saved["results"].as_array().expect("scenario rows").len(), 3);
+    assert_eq!(
+        saved["performance_plan"]["prompt_sizes"]["estimated_tokens"]
+            .as_array()
+            .expect("planned prompt sizes")
+            .len(),
+        3
+    );
+    let persisted_prompt_ids = saved["results"]
+        .as_array()
+        .expect("scenario rows")
+        .iter()
+        .filter_map(|record| record["metadata"]["prompt_id"].as_str().map(str::to_string))
+        .collect::<std::collections::HashSet<_>>();
+    assert_eq!(
+        persisted_prompt_ids,
+        ["prompt-a", "prompt-b", "prompt-c"]
+            .into_iter()
+            .map(str::to_string)
+            .collect()
+    );
+}
+
+#[test]
 fn benchmark_surfaces_output_path_failures() {
     let provider = MockProvider::start();
     let temp = TempDir::new().expect("tempdir");

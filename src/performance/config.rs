@@ -1,10 +1,12 @@
 use std::collections::{BTreeSet, HashMap};
+use std::path::Path;
 
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::errors::LLMeterError;
+use crate::performance::workload::load_jsonl_workload;
 use crate::providers::ProviderKind;
 
 pub const DOCUMENTED_MAX_PROMPT_TOKENS: u32 = 32768;
@@ -354,6 +356,28 @@ impl PerformancePlan {
             plan.runs = value;
         }
 
+        if let Some(path) = plan.workload_jsonl.as_deref() {
+            if prompt_tokens.is_some() {
+                return Err(LLMeterError::InvalidOption(
+                    "--prompt-tokens cannot be combined with --jsonl; workload prompts define their own sizes."
+                        .to_string(),
+                )
+                .into());
+            }
+
+            let prompts = load_jsonl_workload(Path::new(path))?.prompts;
+            if prompts.is_empty() {
+                return Err(LLMeterError::InvalidOption(
+                    "The JSONL workload must contain at least one prompt.".to_string(),
+                )
+                .into());
+            }
+            plan.prompt_sizes.estimated_tokens = prompts
+                .iter()
+                .map(|prompt| prompt.estimated_prompt_tokens)
+                .collect();
+        }
+
         plan.validate(
             safety.allow_large_prompt,
             max_requests,
@@ -363,8 +387,11 @@ impl PerformancePlan {
     }
 
     pub fn scenario_count(&self) -> u32 {
-        self.models
-            .len()
+        self.scenario_count_for_models(self.models.len())
+    }
+
+    pub fn scenario_count_for_models(&self, model_count: usize) -> u32 {
+        model_count
             .saturating_mul(self.prompt_sizes.estimated_tokens.len())
             .saturating_mul(self.output_sizes.estimated_tokens.len())
             .saturating_mul(self.concurrency.levels.len()) as u32
