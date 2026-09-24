@@ -17,6 +17,7 @@ Campaign entry points:
 - [2026-09-24 Tier 2 and T3-02 validation ledger](validation-2026-09-24/validation_ledger.md)
 - [2026-09-24 Tier 2 live standard benchmark evidence](validation-2026-09-24/t2-standard-workflows-evidence.md)
 - [2026-09-24 T3-02 JSONL accounting and smoke evidence](validation-2026-09-24/t3-02-jsonl-accounting-evidence.md)
+- [2026-09-24 T3-03 profile progression and telemetry fixture evidence](validation-2026-09-24/t3-profile-progression-evidence.md)
 - [Release 0.4.0 report](release-0.4.0/release-report.md)
 - [Ollama LLM report](runtime-ollama/benchmark_results/2026-09-10T173811.269676Z-p27232-qwen3.5-2b.report.md)
 

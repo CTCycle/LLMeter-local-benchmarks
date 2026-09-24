@@ -999,6 +999,124 @@ fn performance_load_estimate_runs_before_capability_chat_probes() {
 }
 
 #[test]
+fn performance_profiles_persist_bounded_scenarios_telemetry_and_capabilities() {
+    let provider = MockProvider::start();
+    let temp = TempDir::new().expect("tempdir");
+
+    for profile in ["smoke", "latency", "throughput", "sweep"] {
+        let output = temp.path().join(format!("results-{profile}"));
+        let mut command = llmeter_command(temp.path(), &output, &provider.base_url);
+        command.args([
+            "bench",
+            "perf",
+            "--profile",
+            profile,
+            "--models",
+            "mock-model",
+            "--prompt-tokens",
+            "1",
+            "--output-tokens",
+            "2",
+            "--concurrency",
+            "1,2",
+            "--warmup",
+            "0",
+            "--runs",
+            "2",
+            "--load-measurement",
+            "off",
+            "--telemetry",
+            "standard",
+            "--sample-interval-ms",
+            "100",
+            "--export",
+            "json",
+            "--report",
+            "none",
+        ]);
+        if profile == "smoke" {
+            command.arg("--probe-all-endpoints");
+        }
+        let run_output = command.output().expect("run bounded performance profile");
+        assert!(
+            run_output.status.success(),
+            "{profile} profile failed: {}",
+            String::from_utf8_lossy(&run_output.stderr)
+        );
+
+        let result_files = json_result_files(&output);
+        assert_eq!(result_files.len(), 1, "{profile} result file");
+        let run: Value =
+            serde_json::from_slice(&fs::read(&result_files[0]).expect("read performance result"))
+                .expect("performance result JSON");
+        assert_eq!(run["run_kind"], "performance");
+        assert_eq!(run["performance_plan"]["profile"], profile);
+        assert_eq!(
+            run["performance_plan"]["concurrency"]["levels"]
+                .as_array()
+                .expect("planned concurrency levels"),
+            &[serde_json::json!(1), serde_json::json!(2)]
+        );
+        assert_eq!(run["performance_plan"]["runs"], 2);
+
+        let scenarios = run["results"].as_array().expect("scenario records");
+        assert_eq!(scenarios.len(), 2, "{profile} scenario count");
+        for (scenario, concurrency) in scenarios.iter().zip([1, 2]) {
+            assert_eq!(scenario["metrics"]["concurrency"], concurrency);
+            assert_eq!(scenario["metrics"]["request_count"], 2);
+            assert_eq!(scenario["metrics"]["success_count"], 2);
+            let traces = scenario["metadata"]["request_traces"]
+                .as_array()
+                .expect("request traces");
+            assert_eq!(traces.len(), 2);
+            assert!(traces.iter().all(|trace| {
+                trace["concurrency"] == concurrency
+                    && trace["success"] == true
+                    && trace["http_status"] == 200
+            }));
+        }
+
+        let telemetry = run["telemetry_summary"]
+            .as_object()
+            .expect("telemetry summary");
+        assert!(telemetry["sample_count"].as_u64().unwrap_or_default() >= 2);
+        assert!(telemetry["max_memory_used_ratio"].as_f64().is_some());
+        assert_eq!(
+            run["model_inventory_measurements"][0]["model"],
+            "mock-model"
+        );
+        assert!(run["environment"]["cpu_count"].as_u64().unwrap_or_default() > 0);
+
+        if profile == "smoke" {
+            let endpoints = run["provider_capabilities"]["endpoints"]
+                .as_array()
+                .expect("capability endpoints");
+            assert_eq!(endpoints.len(), 5);
+            for (name, supported) in [
+                ("Models", true),
+                ("Chat completions", true),
+                ("Chat completions streaming", true),
+                ("Embeddings", false),
+                ("Responses", false),
+            ] {
+                let endpoint = endpoints
+                    .iter()
+                    .find(|endpoint| endpoint["name"] == name)
+                    .unwrap_or_else(|| panic!("missing {name} capability result"));
+                assert_eq!(endpoint["supported"], supported, "{name} capability");
+            }
+        }
+    }
+
+    let measured_and_probe_chat_requests = provider
+        .requests()
+        .iter()
+        .filter(|request| request.method == "POST" && request.path == "/v1/chat/completions")
+        .count();
+    assert_eq!(measured_and_probe_chat_requests, 18);
+}
+
+#[test]
 fn every_registered_preset_obeys_the_baseline_openai_contract_fixture() {
     let provider = MockProvider::start();
 
