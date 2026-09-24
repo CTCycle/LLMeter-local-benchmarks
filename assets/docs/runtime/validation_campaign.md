@@ -1,6 +1,6 @@
 # LLMeter validation campaign
 
-Last updated: 2026-09-23
+Last updated: 2026-09-24
 
 ## Purpose and authority
 
@@ -70,25 +70,25 @@ The next tranche exercises the provider-independent CLI, Windows terminal worksp
 | `T1-06` | Report list/show/generate roundtrip for standard/performance/error/adversarial data. | Markdown, HTML, and terminal output. | `PASS` on Windows revision `d8e9c94`; the real CLI covered both run kinds, controlled errors, escaping, privacy, and listing the generated reports. See [T1-06 evidence](../../QA/validation-2026-09-23/t1-06-report-cli-evidence.md). |
 | `T1-07` | Isolated install/update/uninstall/purge and rollback behavior. | Complete before/after tree in a dedicated temporary home. | `PASS` on Windows revision `d8e9c94`; real-CLI install, refusal, rollback, successful update, and purge passed. The failed-update helper cleanup defect was fixed and regression-tested. See [T1-07 evidence](../../QA/validation-2026-09-23/t1-07-lifecycle-evidence.md). |
 
-The current automated suite already supplies meaningful evidence for much of Tier 1, but a tier claim requires the dedicated scenario/evidence boundary above. T1-01 through T1-07 now pass at their recorded boundaries. Tier 1 is complete. Continue with Tier 2's real-CLI standard benchmark workflows; keep T3-02 JSONL accounting as the stop gate before performance workloads.
+The current automated suite already supplies meaningful evidence for much of Tier 1, but a tier claim requires the dedicated scenario/evidence boundary above. T1-01 through T1-07 pass at their recorded boundaries. Tier 1 is complete. Tier 2 now passes at the exercised live Ollama boundary; continue with Tier 3 after keeping the T3-02 JSONL accounting regression in place.
 
 ### Tier 2 — core benchmark workflows
 
 Exercise every built-in standard path through the real CLI: streaming chat generation, `/v1/responses`, consistency and prompt sizes, structured output and tool calling, embeddings, and multi-model/multi-benchmark orchestration. Positive behavior and controlled unsupported/error records must both be retained where applicable. Record progress, request order, persisted records, and reports.
 
-Current campaign state: `UNRUN` at the dedicated Tier 2 boundary. Existing mock-provider and limited Ollama runs do not cover every standard path and orchestration case. Begin with a bounded real-CLI subset using the currently exposed Ollama models, then complete the remaining workflows in manageable groups.
+Current campaign state: `PASS` at the exercised Ollama boundary on revision `c7438db`. The live CLI covered streaming chat, `/v1/responses`, consistency, prompt sizes, structured output, tool calling, embeddings, and a two-model/two-benchmark orchestration run. The two unsupported chat calls from the embeddings-only model were retained as controlled error records. See the [2026-09-24 Tier 2 evidence](../../QA/validation-2026-09-24/t2-standard-workflows-evidence.md). Other providers and unselected model combinations remain outside this pass.
 
 ### Tier 3 — performance subsystem
 
-Validate profile planning and safety guards before measured runs. The critical stop gate is `T3-02`: compare actual JSONL prompt count with scenario count, request-budget validation, progress total, HTTP request count, and persisted records. If the suspected synthetic-count mismatch reproduces, stop the campaign and fix it before smoke, latency, throughput, or sweep workloads. Then validate statistics, bounded concurrency, capability/model inventory, telemetry/resource probes, and full profile progression.
+Validate profile planning and safety guards before measured runs. The critical stop gate `T3-02` now passes on revision `c7438db`: a three-prompt JSONL workload matched scenario count, request-budget validation, progress total, mock HTTP request count, and persisted records. The mismatched synthetic-count risk was fixed before the live smoke. A one-scenario live Ollama smoke passed afterward. Then validate statistics, bounded concurrency, capability/model inventory, telemetry/resource probes, and full profile progression.
 
-Current campaign state: `PARTIAL`; planning, safety, metrics, probes, and one smoke scenario have prior evidence, but the dedicated profile progression is incomplete. `T3-02` remains `UNRUN` and is the stop gate before any broader workload.
+Current campaign state: `PARTIAL`; `T3-02` is `PASS`, and the small live smoke and current local quality gates passed. Full profile progression, concurrency and telemetry coverage, and production-sized workload interpretation remain incomplete. See the [2026-09-24 JSONL accounting and smoke evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md).
 
 ### Tier 4 — providers, quality planning, and distribution
 
 Run one independent slice per available live provider/model. Preserve exact provider and model identity; mark unavailable targets `BLOCKED` rather than inheriting fixture evidence. Keep quality-framework integrations at their current dry-run planning boundary unless execution is explicitly approved. Verify tagged release archives, checksums, provenance, public downloads, and—if approved—clean `cargo install` from crates.io as separate gates.
 
-Current campaign state: `PARTIAL`. Ollama status and model discovery currently pass and earlier LLM, embeddings, and performance smokes are recorded. The best-effort provider matrix and cross-provider optional capabilities remain unvalidated; external quality execution and crates.io publication remain scope/owner gated.
+Current campaign state: `PARTIAL`. Current Ollama status/discovery, all standard benchmark families, and one small performance smoke passed. The best-effort provider matrix and cross-provider optional capabilities remain unvalidated; external quality execution and crates.io publication remain scope/owner gated.
 
 ### Tier 5 — resilience and edge cases
 

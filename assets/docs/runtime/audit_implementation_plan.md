@@ -1,6 +1,6 @@
 # LLMeter audit implementation plan
 
-Last updated: 2026-09-21
+Last updated: 2026-09-24
 
 ## Purpose
 
@@ -339,7 +339,7 @@ Deployment, README, and user-manual guidance now label lifecycle commands as loc
 
 ## Remaining closeout
 
-All locally actionable audit phases are implemented. Hosted release run `34574075684` passed the four-target build, packaged mock-provider, checksum, provenance, and publication gates, and published `v0.4.0` on 2026-09-11. The current validation campaign has completed Tier 0 at a `PARTIAL` boundary because launcher fallback/protected-path evidence remains open. crates.io publication/install remains unverified, and MSRV is still not declared.
+All locally actionable audit phases are implemented. Hosted release run `34574075684` passed the four-target build, packaged mock-provider, checksum, provenance, and publication gates, and published `v0.4.0` on 2026-09-11. The current campaign has Tier 0 through Tier 2 complete at their recorded boundaries. Tier 3 remains PARTIAL after the T3-02 JSONL accounting risk was fixed and a small live smoke passed; full profile progression is still open. Tier 4 provider breadth remains partial, Tier 5 resilience remains unrun, crates.io publication/install is owner-gated, and MSRV is still not declared. See the [validation campaign](validation_campaign.md) and [current status ledger](../project_status_ledger.md).
 
 ## Definition of done for the local CLI
 
