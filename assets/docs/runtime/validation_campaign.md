@@ -80,15 +80,15 @@ Current campaign state: `PASS` at the exercised Ollama boundary on revision `c74
 
 ### Tier 3 — performance subsystem
 
-Validate profile planning and safety guards before measured runs. The critical stop gate `T3-02` now passes on revision `c7438db`: a three-prompt JSONL workload matched scenario count, request-budget validation, progress total, mock HTTP request count, and persisted records. The mismatched synthetic-count risk was fixed before the live smoke. A one-scenario live Ollama smoke passed afterward. Then validate statistics, bounded concurrency, capability/model inventory, telemetry/resource probes, and full profile progression.
+Validate profile planning and safety guards before measured runs. The critical stop gate `T3-02` passes on revision `c7438db`: a three-prompt JSONL workload matched scenario count, request-budget validation, progress total, mock HTTP request count, and persisted records. The mismatched synthetic-count risk was fixed before the one-scenario live Ollama smoke. T3-03 passes its default-plan checks, bounded fixture runs, and bounded live `qwen3.5:2b` progression for all four profile names at concurrency 1 and 2. The live runs persisted successful request traces, telemetry, environment snapshots, inventory, and capability results. The first cold non-stream capability probe timed out and succeeded on a warmed repeat; Ollama returned HTTP 501 for embeddings on this generation model.
 
-Current campaign state: `PARTIAL`; `T3-02` is `PASS`, and the small live smoke and current local quality gates passed. Full profile progression, concurrency and telemetry coverage, and production-sized workload interpretation remain incomplete. See the [2026-09-24 JSONL accounting and smoke evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md).
+Current campaign state: `PARTIAL`; `T3-02`, deterministic T3-03, and bounded one-model live profile progression pass, as do the current local quality gates. The live runs used a single small prompt/output configuration and two measured requests at each concurrency level. Full default-size profile matrices, more statistically useful samples, provider/model/host variance, and production-sized interpretation remain open. See the [T3-02 evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md) and [T3-03 evidence](../../QA/validation-2026-09-24/t3-profile-progression-evidence.md).
 
 ### Tier 4 — providers, quality planning, and distribution
 
 Run one independent slice per available live provider/model. Preserve exact provider and model identity; mark unavailable targets `BLOCKED` rather than inheriting fixture evidence. Keep quality-framework integrations at their current dry-run planning boundary unless execution is explicitly approved. Verify tagged release archives, checksums, provenance, public downloads, and—if approved—clean `cargo install` from crates.io as separate gates.
 
-Current campaign state: `PARTIAL`. Current Ollama status/discovery, all standard benchmark families, and one small performance smoke passed. The best-effort provider matrix and cross-provider optional capabilities remain unvalidated; external quality execution and crates.io publication remain scope/owner gated.
+Current campaign state: `PARTIAL`. Ollama status/discovery, all standard benchmark families, and bounded performance profile probes passed for one generation model. That model's embeddings probe returned HTTP 501, while prior live evidence covers a separate Ollama embedding model. The best-effort provider matrix and cross-provider optional capabilities remain unvalidated; external quality execution and crates.io publication remain scope/owner gated.
 
 ### Tier 5 — resilience and edge cases
 
@@ -116,4 +116,4 @@ Run the full locked all-target/all-feature suite once at each tier boundary and 
 
 Do not call a revision comprehensively validated until Tier 0–3 are green except for intentional product limitations, the JSONL accounting risk is disproven or fixed/regression-tested, every standard benchmark has real-CLI evidence, at least one live provider/model path is retained, provider-specific availability is explicit, interruption/persistence are safe, Windows and current CI remain green, release documentation matches GitHub, stale QA references are repaired, and every `PARTIAL`, `BLOCKED`, `UNKNOWN`, or `UNRUN` entry has a named boundary.
 
-The current campaign does not make that comprehensive claim. Tier 0 passed at its recorded boundary; Tier 1 is next.
+The current campaign does not make that comprehensive claim. Tiers 0–2 pass at their recorded boundaries; Tier 3 remains partial pending larger repeated workloads and broader provider/host evidence. Tiers 4–5 and the owner-gated release and external-quality items remain incomplete.

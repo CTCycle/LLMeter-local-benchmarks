@@ -5,6 +5,34 @@ use llmeter::performance::config::{
 use llmeter::providers::ProviderKind;
 use std::collections::HashMap;
 
+fn default_plan(profile: PerformanceProfile) -> PerformancePlan {
+    PerformancePlan::from_cli(
+        ProviderKind::Ollama,
+        vec!["mock-model".to_string()],
+        profile,
+        None,
+        None,
+        None,
+        None,
+        None,
+        true,
+        None,
+        HashMap::new(),
+        LoadMeasurementMode::Off,
+        1,
+        TelemetryLevel::Off,
+        1000,
+        None,
+        false,
+        false,
+        None,
+        false,
+        ReportDetailLevel::Detailed,
+        None,
+    )
+    .expect("default profile plan")
+}
+
 #[test]
 fn performance_plan_normalizes_and_validates_csv_values() {
     let plan = PerformancePlan::from_cli(
@@ -35,6 +63,63 @@ fn performance_plan_normalizes_and_validates_csv_values() {
 
     assert_eq!(plan.prompt_sizes.estimated_tokens, vec![128, 512]);
     assert_eq!(plan.concurrency.levels, vec![1, 2, 4]);
+}
+
+#[test]
+fn performance_profiles_keep_distinct_default_matrices_with_bounded_request_totals() {
+    let cases = [
+        (
+            PerformanceProfile::Smoke,
+            vec![128, 512],
+            vec![128],
+            vec![1],
+            3,
+            2,
+            8,
+        ),
+        (
+            PerformanceProfile::Latency,
+            vec![128, 512, 2048],
+            vec![128],
+            vec![1],
+            5,
+            3,
+            18,
+        ),
+        (
+            PerformanceProfile::Throughput,
+            vec![512],
+            vec![256],
+            vec![1, 2, 4, 8],
+            4,
+            4,
+            20,
+        ),
+        (
+            PerformanceProfile::Sweep,
+            vec![128, 512, 2048],
+            vec![64, 128, 256],
+            vec![1, 2, 4],
+            3,
+            27,
+            108,
+        ),
+    ];
+
+    for (profile, prompts, outputs, concurrency, runs, scenarios, total_requests) in cases {
+        let plan = default_plan(profile);
+        assert_eq!(plan.prompt_sizes.estimated_tokens, prompts, "{profile:?}");
+        assert_eq!(plan.output_sizes.estimated_tokens, outputs, "{profile:?}");
+        assert_eq!(plan.concurrency.levels, concurrency, "{profile:?}");
+        assert_eq!(plan.warmup.requests, 1, "{profile:?}");
+        assert_eq!(plan.runs, runs, "{profile:?}");
+        assert_eq!(plan.scenario_count(), scenarios, "{profile:?}");
+        assert_eq!(plan.total_requests(), total_requests, "{profile:?}");
+        assert!(
+            plan.total_requests() <= DEFAULT_MAX_PERFORMANCE_REQUESTS,
+            "{profile:?} must remain within the default request budget"
+        );
+    }
 }
 
 #[test]
