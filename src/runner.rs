@@ -500,10 +500,7 @@ fn planned_steps_for_run(run: &BenchmarkRun) -> anyhow::Result<u32> {
                 "Current performance result is missing its performance plan.".to_string(),
             )
         })?;
-        let scenario_units = (run.models.len()
-            * plan.prompt_sizes.estimated_tokens.len()
-            * plan.output_sizes.estimated_tokens.len()
-            * plan.concurrency.levels.len()) as u32;
+        let scenario_units = plan.scenario_count_for_models(run.models.len());
         let probe_units = if plan.probe_capabilities || plan.probe_all_endpoints {
             planned_probe_steps(plan)
         } else {

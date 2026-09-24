@@ -59,7 +59,9 @@ pub fn run_performance_plan(
     };
     let load_units = planned_load_steps(&plan, plan.models.len());
     let inventory_units = planned_inventory_steps(&plan, plan.models.len());
-    let total_units = planned_units(&plan)
+    let prompts = build_prompts(&plan)?;
+    ensure_prompts_match_plan(&plan, &prompts)?;
+    let total_units = plan.scenario_count_for_models(plan.models.len())
         + probe_units
         + load_units
         + inventory_units
@@ -87,7 +89,6 @@ pub fn run_performance_plan(
         prompt_name: None,
     });
 
-    let prompts = build_prompts(&plan)?;
     let available = crate::runner::validate_models(client, &plan.models)?;
     let store = ResultStore::new(&config.output_dir);
     let run_id = store.new_run_id(&available);
@@ -269,11 +270,22 @@ fn build_prompts(plan: &PerformancePlan) -> anyhow::Result<Vec<PerformancePrompt
     }
 }
 
-fn planned_units(plan: &PerformancePlan) -> u32 {
-    (plan.models.len()
-        * plan.prompt_sizes.estimated_tokens.len()
-        * plan.output_sizes.estimated_tokens.len()
-        * plan.concurrency.levels.len()) as u32
+fn ensure_prompts_match_plan(
+    plan: &PerformancePlan,
+    prompts: &[PerformancePrompt],
+) -> anyhow::Result<()> {
+    let actual_sizes = prompts
+        .iter()
+        .map(|prompt| prompt.estimated_prompt_tokens)
+        .collect::<Vec<_>>();
+    if actual_sizes != plan.prompt_sizes.estimated_tokens {
+        return Err(LLMeterError::InvalidOption(
+            "The performance workload changed after planning; rebuild the plan from the current workload file."
+                .to_string(),
+        )
+        .into());
+    }
+    Ok(())
 }
 
 fn run_warmup_requests(

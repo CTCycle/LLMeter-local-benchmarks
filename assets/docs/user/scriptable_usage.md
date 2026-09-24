@@ -119,6 +119,12 @@ Run a full matrix sweep:
 llmeter bench perf --models llama3.1 --profile sweep --prompt-tokens 128,512 --output-tokens 64,128 --concurrency 1,2
 ```
 
+Use a JSONL workload with one prompt per nonblank line. Each line must contain `id` and `prompt`; each prompt defines one scenario and contributes to request-budget and prompt-size safety checks. When `--jsonl` is set, omit `--prompt-tokens` because the workload defines prompt sizes.
+
+```bash
+llmeter bench perf --models llama3.1 --profile smoke --jsonl ./workload.jsonl --output-tokens 128
+```
+
 Preview a performance matrix before sending requests:
 
 ```bash
@@ -146,4 +152,4 @@ Example:
   run: ./llmeter --provider ollama bench run --suite llm --models all --benchmarks all --export json --report md
 ```
 
-Last updated: 2026-09-10
+Last updated: 2026-09-24
