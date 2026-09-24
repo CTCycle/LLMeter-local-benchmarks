@@ -14,7 +14,7 @@ Last updated: 2026-09-24
 | Live provider | Ollama at `http://localhost:11434/v1`; fresh status and model listing passed and returned 8 models. |
 | Live models exercised | `qwen3.5:2b`, `nomic-embed-text:latest` |
 | Local quality gates | Formatting, locked all-target/all-feature check, warning-denied Clippy, serialized all-target/all-feature tests, warning-denied rustdoc, and `cargo build --locked --bin llmeter` passed. |
-| Hosted CI | Latest completed four-platform run remains [35907876780](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/35907876780) on an earlier source revision. CI for `c7438db` is pending push. |
+| Hosted CI | [Run 35968716973](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/35968716973) passed all four platform jobs on revision `28717289c2b0044ae337e5f10419aa62628fa492`, which contains the validated source revision `c7438db98812b70c20738ddcd4821d27dab837a3`: Ubuntu x86-64, Windows x86-64, macOS Intel x86-64, and macOS Apple silicon aarch64. |
 | Prior tier evidence | [Tier 0 ledger](../validation-2026-09-22/validation_ledger.md); [Tier 1 ledger](../validation-2026-09-23/validation_ledger.md). |
 
 ## Current campaign boundary

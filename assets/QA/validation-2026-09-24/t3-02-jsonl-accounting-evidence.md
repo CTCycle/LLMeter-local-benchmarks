@@ -46,7 +46,7 @@ RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps --all-features
 cargo build --locked --bin llmeter
 ```
 
-The focused `mock_provider_e2e` suite passed 16/16, including the new accounting regression and current Tier 2 mock cases. The all-target/all-feature suite also passed. Hosted CI for revision `c7438db` is pending the requested push; the latest completed four-platform run is recorded in the [validation ledger](validation_ledger.md).
+The focused `mock_provider_e2e` suite passed 16/16, including the new accounting regression and current Tier 2 mock cases. The all-target/all-feature suite also passed. Hosted [CI run 35968716973](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/35968716973) passed all four platform jobs on revision `28717289c2b0044ae337e5f10419aa62628fa492`, which contains the validated source revision `c7438db98812b70c20738ddcd4821d27dab837a3`; details are in the [validation ledger](validation_ledger.md).
 
 ## Status and remaining work
 
