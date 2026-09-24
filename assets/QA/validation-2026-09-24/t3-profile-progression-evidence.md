@@ -51,7 +51,7 @@ cargo test --locked --test performance_cli_tests performance_profiles_keep_disti
 cargo test --locked --test mock_provider_e2e performance_profiles_persist_bounded_scenarios_telemetry_and_capabilities -- --exact
 ```
 
-The complete local gate set also passed on this tree: formatting, locked all-target/all-feature check, warning-denied Clippy, serialized all-target/all-feature tests (146 passed), warning-denied rustdoc, and the locked `llmeter` binary build.
+The complete local gate set also passed on this tree: formatting, locked all-target/all-feature check, warning-denied Clippy, serialized all-target/all-feature tests (146 passed), warning-denied rustdoc, and the locked `llmeter` binary build. Hosted [CI run 35973295053](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/35973295053) passed all four platform jobs on commit `fb8b3e5039f13be10e01ac622c7c025cab508e38`, including these regression tests.
 
 ## Live-provider gate
 
