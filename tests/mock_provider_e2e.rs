@@ -1117,6 +1117,118 @@ fn performance_profiles_persist_bounded_scenarios_telemetry_and_capabilities() {
 }
 
 #[test]
+fn performance_profiles_execute_default_matrices_through_fixture() {
+    let provider = MockProvider::start();
+    let temp = TempDir::new().expect("tempdir");
+    let expected = [
+        ("smoke", &[128, 512][..], &[128][..], &[1][..], 1, 3, 2),
+        (
+            "latency",
+            &[128, 512, 2048][..],
+            &[128][..],
+            &[1][..],
+            1,
+            5,
+            3,
+        ),
+        (
+            "throughput",
+            &[512][..],
+            &[256][..],
+            &[1, 2, 4, 8][..],
+            1,
+            4,
+            4,
+        ),
+        (
+            "sweep",
+            &[128, 512, 2048][..],
+            &[64, 128, 256][..],
+            &[1, 2, 4][..],
+            1,
+            3,
+            27,
+        ),
+    ];
+
+    for (profile, prompt_tokens, output_tokens, concurrency, warmup, runs, scenario_count) in
+        expected
+    {
+        let output = temp.path().join(format!("results-default-{profile}"));
+        let run_output = llmeter_command(temp.path(), &output, &provider.base_url)
+            .args([
+                "bench",
+                "perf",
+                "--profile",
+                profile,
+                "--models",
+                "mock-model",
+                "--load-measurement",
+                "off",
+                "--telemetry",
+                "off",
+                "--export",
+                "json",
+                "--report",
+                "none",
+            ])
+            .output()
+            .expect("run default performance profile");
+        assert!(
+            run_output.status.success(),
+            "{profile} profile failed: {}",
+            String::from_utf8_lossy(&run_output.stderr)
+        );
+
+        let result_files = json_result_files(&output);
+        assert_eq!(result_files.len(), 1, "{profile} result file");
+        let run: Value =
+            serde_json::from_slice(&fs::read(&result_files[0]).expect("read default result"))
+                .expect("default performance result JSON");
+        assert_eq!(run["performance_plan"]["profile"], profile);
+        assert_eq!(
+            run["performance_plan"]["prompt_sizes"]["estimated_tokens"],
+            serde_json::json!(prompt_tokens)
+        );
+        assert_eq!(
+            run["performance_plan"]["output_sizes"]["estimated_tokens"],
+            serde_json::json!(output_tokens)
+        );
+        assert_eq!(
+            run["performance_plan"]["concurrency"]["levels"],
+            serde_json::json!(concurrency)
+        );
+        assert_eq!(run["performance_plan"]["warmup"]["requests"], warmup);
+        assert_eq!(run["performance_plan"]["runs"], runs);
+
+        let scenarios = run["results"].as_array().expect("default scenario records");
+        assert_eq!(scenarios.len(), scenario_count, "{profile} scenario count");
+        assert!(scenarios.iter().all(|scenario| {
+            scenario["metrics"]["request_count"] == runs
+                && scenario["metrics"]["success_count"] == runs
+                && scenario["metadata"]["request_traces"]
+                    .as_array()
+                    .is_some_and(|traces| traces.len() == runs as usize)
+                && scenario["metadata"]["request_traces"]
+                    .as_array()
+                    .is_some_and(|traces| {
+                        traces.iter().all(|trace| {
+                            trace["success"] == true
+                                && matches!(trace["http_status"].as_u64(), Some(200 | 201))
+                        })
+                    })
+        }));
+    }
+
+    let measured_and_warmup_chat_requests = provider
+        .requests()
+        .iter()
+        .filter(|request| request.method == "POST" && request.path == "/v1/chat/completions")
+        .count();
+    assert_eq!(measured_and_warmup_chat_requests, 154);
+}
+
+#[test]
 fn every_registered_preset_obeys_the_baseline_openai_contract_fixture() {
     let provider = MockProvider::start();
 
