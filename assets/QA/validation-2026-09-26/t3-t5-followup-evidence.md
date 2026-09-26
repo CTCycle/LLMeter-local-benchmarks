@@ -96,6 +96,12 @@ RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps --all-features
 cargo build --locked --bin llmeter
 ```
 
+Hosted CI run [`36261569590`](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36261569590)
+then passed all four platform jobs for the pushed commit `23fb76f`:
+Ubuntu x86-64, Windows x86-64, macOS Intel x86-64, and macOS Apple silicon
+aarch64. This confirms the repository's current cross-platform quality gate;
+it does not expand the provider or performance evidence boundary above.
+
 Tier 3 remains `PARTIAL` because the new live evidence uses a custom bounded
 matrix and one Ollama model. Tier 4 remains `PARTIAL` for best-effort
 providers and cross-provider capability variation. Owner-gated crates.io
