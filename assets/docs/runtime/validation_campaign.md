@@ -1,6 +1,6 @@
 # LLMeter validation campaign
 
-Last updated: 2026-09-24
+Last updated: 2026-09-26
 
 ## Purpose and authority
 
@@ -80,9 +80,9 @@ Current campaign state: `PASS` at the exercised Ollama boundary on revision `c74
 
 ### Tier 3 — performance subsystem
 
-Validate profile planning and safety guards before measured runs. The critical stop gate `T3-02` passes on revision `c7438db`: a three-prompt JSONL workload matched scenario count, request-budget validation, progress total, mock HTTP request count, and persisted records. The mismatched synthetic-count risk was fixed before the one-scenario live Ollama smoke. T3-03 passes its default-plan checks, bounded fixture runs, and bounded live `qwen3.5:2b` progression for all four profile names at concurrency 1 and 2. The live runs persisted successful request traces, telemetry, environment snapshots, inventory, and capability results. The first cold non-stream capability probe timed out and succeeded on a warmed repeat; Ollama returned HTTP 501 for embeddings on this generation model.
+Validate profile planning and safety guards before measured runs. The critical stop gate `T3-02` passes on revision `c7438db`: a three-prompt JSONL workload matched scenario count, request-budget validation, progress total, mock HTTP request count, and persisted records. The mismatched synthetic-count risk was fixed before the one-scenario live Ollama smoke. T3-03 now also executes every profile-owned default matrix through the real CLI fixture: 36 scenario records and 154 total fixture chat requests passed on revision `2af310a`. The bounded live `qwen3.5:2b` progression for all four profile names at concurrency 1 and 2 remains valid at its recorded 2026-09-24 boundary. The live runs persisted successful request traces, telemetry, environment snapshots, inventory, and capability results. The first cold non-stream capability probe timed out and succeeded on a warmed repeat; Ollama returned HTTP 501 for embeddings on this generation model.
 
-Current campaign state: `PARTIAL`; `T3-02`, deterministic T3-03, and bounded one-model live profile progression pass, as do the current local quality gates. The live runs used a single small prompt/output configuration and two measured requests at each concurrency level. Full default-size profile matrices, more statistically useful samples, provider/model/host variance, and production-sized interpretation remain open. See the [T3-02 evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md) and [T3-03 evidence](../../QA/validation-2026-09-24/t3-profile-progression-evidence.md).
+Current campaign state: `PARTIAL`; `T3-02`, deterministic T3-03 including default-matrix execution, bounded one-model live profile progression, and the current local quality gates pass. The live runs used a single small prompt/output configuration and two measured requests at each concurrency level. Full default-size live profile matrices, more statistically useful samples, provider/model/host variance, and production-sized interpretation remain open. The 2026-09-26 Ollama status recheck was unavailable, so the next live slice is blocked until a generation-capable provider/model is available. See the [T3-02 evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md), [prior T3-03 evidence](../../QA/validation-2026-09-24/t3-profile-progression-evidence.md), and [default-matrix evidence](../../QA/validation-2026-09-26/t3-default-matrix-evidence.md).
 
 ### Tier 4 — providers, quality planning, and distribution
 
