@@ -47,6 +47,8 @@ Last updated: 2026-09-26
 
 The complete Windows local gate set passed on source revision `e635459a402414ee880bde42be0efaff0a245acf`: formatting, locked all-target/all-feature check, warning-denied Clippy, serialized all-target/all-feature tests (146 passed), warning-denied rustdoc, and the locked `llmeter` binary build. Detailed T3-04/T5-01 evidence is in [t3-t5-followup-evidence.md](t3-t5-followup-evidence.md).
 
+Hosted CI run [`36261569590`](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36261569590) passed all four platform jobs for pushed commit `23fb76f`: Ubuntu x86-64, Windows x86-64, macOS Intel x86-64, and macOS Apple silicon aarch64.
+
 ## Detailed evidence
 
 - [T3-03 default performance matrix evidence](t3-default-matrix-evidence.md)
