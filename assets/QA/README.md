@@ -1,6 +1,6 @@
 # Curated QA evidence
 
-Last updated: 2026-09-26
+Last updated: 2026-09-28
 
 This directory contains sanitized validation evidence intended to remain reachable to future codebase analysis. Volatile build outputs, local caches, provider secrets, arbitrary prompts, and executable release payloads remain ignored.
 
@@ -21,6 +21,7 @@ Campaign entry points:
 - [2026-09-26 T3-03 default performance matrix evidence](validation-2026-09-26/t3-default-matrix-evidence.md)
 - [2026-09-26 T3-04 repeated live profiles and T5-01 resilience evidence](validation-2026-09-26/t3-t5-followup-evidence.md)
 - [2026-09-26 validation ledger](validation-2026-09-26/validation_ledger.md)
+- [2026-09-28 T3/T5 current-tree revalidation and live-provider availability](validation-2026-09-28/t3-t5-revalidation-evidence.md)
 - [Release 0.4.0 report](release-0.4.0/release-report.md)
 - [Ollama LLM report](runtime-ollama/benchmark_results/2026-09-10T173811.269676Z-p27232-qwen3.5-2b.report.md)
 
