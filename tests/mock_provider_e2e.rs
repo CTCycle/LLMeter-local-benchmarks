@@ -1326,11 +1326,11 @@ fn performance_profiles_handle_bounded_high_concurrency_matrix() {
             "--output-tokens",
             "1",
             "--concurrency",
-            "1,2,4,8",
+            "1,2,4,8,16",
             "--warmup",
             "1",
             "--runs",
-            "8",
+            "16",
             "--no-stream",
             "--load-measurement",
             "off",
@@ -1364,23 +1364,23 @@ fn performance_profiles_handle_bounded_high_concurrency_matrix() {
     );
     assert_eq!(
         run["performance_plan"]["concurrency"]["levels"],
-        serde_json::json!([1, 2, 4, 8])
+        serde_json::json!([1, 2, 4, 8, 16])
     );
     assert_eq!(run["performance_plan"]["warmup"]["requests"], 1);
-    assert_eq!(run["performance_plan"]["runs"], 8);
+    assert_eq!(run["performance_plan"]["runs"], 16);
 
     let scenarios = run["results"]
         .as_array()
         .expect("bounded scale scenario records");
-    assert_eq!(scenarios.len(), 8);
-    for (scenario, concurrency) in scenarios.iter().zip([1, 2, 4, 8, 1, 2, 4, 8]) {
+    assert_eq!(scenarios.len(), 10);
+    for (scenario, concurrency) in scenarios.iter().zip([1, 2, 4, 8, 16, 1, 2, 4, 8, 16]) {
         assert_eq!(scenario["metrics"]["concurrency"], concurrency);
-        assert_eq!(scenario["metrics"]["request_count"], 8);
-        assert_eq!(scenario["metrics"]["success_count"], 8);
+        assert_eq!(scenario["metrics"]["request_count"], 16);
+        assert_eq!(scenario["metrics"]["success_count"], 16);
         let traces = scenario["metadata"]["request_traces"]
             .as_array()
             .expect("bounded scale request traces");
-        assert_eq!(traces.len(), 8);
+        assert_eq!(traces.len(), 16);
         assert!(traces.iter().all(|trace| {
             trace["concurrency"] == concurrency
                 && trace["success"] == true
@@ -1393,7 +1393,7 @@ fn performance_profiles_handle_bounded_high_concurrency_matrix() {
         .iter()
         .filter(|request| request.method == "POST" && request.path == "/v1/chat/completions")
         .count();
-    assert_eq!(measured_and_warmup_chat_requests, 72);
+    assert_eq!(measured_and_warmup_chat_requests, 170);
 }
 
 #[test]
