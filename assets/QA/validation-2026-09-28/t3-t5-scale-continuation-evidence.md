@@ -60,6 +60,10 @@ significance, or host-variance coverage.
 No failure remained after the focused correction to accept both fixture
 success statuses already covered by the provider contract.
 
+## Hosted matrix
+
+Hosted CI run [`36440260622`](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36440260622) passed all four native jobs for pushed commit `cdc37b8`: Ubuntu x86-64, Windows x86-64, macOS Intel x86-64, and macOS Apple silicon aarch64. The run validates the source/test/docs commit that contains this bounded scale slice; it does not expand the live-provider, performance-statistics, or native non-Windows interactive evidence boundaries.
+
 ## Provider availability and blocked live continuation
 
 The live continuation was rechecked rather than inferred from the previous
