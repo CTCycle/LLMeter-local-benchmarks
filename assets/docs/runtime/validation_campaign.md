@@ -81,7 +81,7 @@ Current campaign state: `PASS` at the exercised Ollama boundary on revision `c74
 ### Tier 3 — performance subsystem
 
 The 2026-09-28 current-tree revalidation passed performance safety (7/7), all
-18 mock-provider E2E cases, and the deterministic default-matrix regression.
+19 mock-provider E2E cases, and the deterministic default-matrix regression.
 A fresh live continuation could not run because Ollama was not listening and
 no local model blobs were available in the inspected cache; no newer live
 claim was made. See the [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
@@ -105,16 +105,20 @@ Current campaign state: `PARTIAL`. Ollama status/discovery, all standard benchma
 ### Tier 5 — resilience and edge cases
 
 The 2026-09-28 current-tree revalidation reran the bounded provider/CLI
-failure boundary (18/18 mock-provider cases), atomic-write cleanup (2/2),
+failure boundary (19/19 mock-provider cases), atomic-write cleanup (2/2),
 performance safety ceilings (7/7), report reload at the T1-06 boundary (1/1),
-and the full Windows ConPTY suite (9/9). Report reload does not prove
-resumable in-progress state; mid-run interruption, restart/state restoration,
-broader scale ceilings, and native non-Windows terminal behavior remain open.
+and the full Windows ConPTY suite (10/10). A focused continuation also
+validated two completed invocations in fresh processes sharing one output
+directory and Ctrl+C during a delayed performance request with no partial
+artifact. Report reload and repeated completed runs do not prove resumable
+in-progress state; restart/state restoration, recovery after an interrupted
+run, broader scale ceilings, and native non-Windows terminal behavior remain
+open.
 See the [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
 
 Exercise transport/protocol failures, filesystem and atomic-write failures, repeated operations and restart/state restoration, long-running interruption, scale/safety ceilings, and native non-Windows terminal behavior. The expected result is bounded, readable failure with no corrupted or convincing partial artifact.
 
-Current campaign state: `PARTIAL` at the dedicated Tier 5 boundary. The selected T5-01 subset passed bounded provider/CLI failures, output-path failure handling, atomic-write cleanup, performance safety ceilings, and a Windows ConPTY confirmation interruption. Mid-run long-lived interruption, restart/state restoration, broader scale ceilings, and native non-Windows terminal behavior remain open. See the [T3-04/T5-01 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
+Current campaign state: `PARTIAL` at the dedicated Tier 5 boundary. The selected T5-01 subset and current-tree continuation pass bounded provider/CLI failures, output-path failure handling, atomic-write cleanup, performance safety ceilings, repeated completed operations, a delayed-request interruption with no partial artifact, and Windows ConPTY confirmation interruption. Resumable restart/state restoration, recovery after an interrupted run, broader scale ceilings, and native non-Windows terminal behavior remain open. See the [2026-09-28 current-tree evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md) and [T3-04/T5-01 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
 
 ## Regression map
 
