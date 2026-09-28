@@ -77,6 +77,14 @@ fresh-process recovery, and Windows ConPTY interruption all passed. The
 implementation persists a run only after completion, so this does not prove
 resumable in-progress state or restart/state restoration.
 
+## Hosted matrix
+
+Hosted CI run [36478241893](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36478241893)
+passed all four native jobs for pushed commit `c29fef4`: Ubuntu x86-64,
+Windows x86-64, macOS Intel x86-64, and macOS Apple silicon aarch64. The
+hosted result confirms the pushed source/test/docs state; it does not expand
+fixture evidence into live-provider, production-scale, or statistical claims.
+
 ## Live-provider availability recheck
 
 The next live profile slice was attempted as an availability check and could
