@@ -11,9 +11,11 @@ performance slice. It validates the current implementation rather than
 carrying forward only the 2026-09-26 ledger text.
 
 The tests ran on Windows x86-64 with Rust 1.98.0 and Cargo 1.98.0 on the
-`develop` working tree based on checkout revision `4f1d437`. The runtime
+`develop` working tree after base revision `3573a80`. The runtime
 implementation remained unchanged; the focused validation adds only the two
-regression scenarios recorded below.
+regression scenarios recorded below. The delayed-request interruption
+scenario also verifies recovery by starting a fresh process in the same output
+directory after the interrupted process exits.
 
 ## Current ledger audit
 
@@ -56,13 +58,14 @@ Two current-tree regressions extend the Tier 5 boundary:
 | Scenario | Result | Evidence boundary |
 |---|---|---|
 | Two completed `bench run` invocations in fresh processes reuse one output directory | `PASS` | `repeated_cli_runs_keep_distinct_results_and_reload_after_process_restart` produced two schema `3.0` JSON files with distinct run IDs; `report list` and `report show` reloaded both. |
-| Ctrl+C during a delayed performance request | `PASS` | `pty_interrupted_performance_run_leaves_no_partial_result` reached a loopback provider request, interrupted the ConPTY process while the request was delayed, and found no result artifacts in the isolated output directory. |
+| Ctrl+C during a delayed performance request, followed by a fresh-process recovery run | `PASS` | `pty_interrupted_performance_run_leaves_no_partial_result_and_allows_recovery` reached a loopback provider request, interrupted the ConPTY process while the request was delayed, found no result artifacts, then reused the same output directory from a fresh process and persisted one valid schema `3.0` performance result. |
 
-This validates repeated completed operations and the narrow mid-run
-interruption/no-partial-artifact contract. It does not imply resumable
-in-progress state: the runtime still builds a run in memory and persists it
-only after completion. Restart/state restoration for an interrupted run,
-broader scale ceilings, and native non-Windows terminal behavior remain open.
+This validates repeated completed operations, the narrow mid-run
+interruption/no-partial-artifact contract, and fresh-process recovery after an
+interrupted run. It does not imply resumable in-progress state: the runtime
+still builds a run in memory and persists it only after completion.
+Restart/state restoration for an interrupted run, broader scale ceilings, and
+native non-Windows terminal behavior remain open.
 
 No runtime defect was uncovered, so no source fix was required.
 
@@ -109,11 +112,11 @@ provider/host variance, and statistical interpretation remain open.
 - `benchmark.performance` remains `PARTIAL`: deterministic default matrices
   and the prior bounded live subset pass, but the live continuation is blocked
   until a generation-capable provider and model are available.
-- Tier 5 remains `PARTIAL`: repeated completed operations and the narrow
-  delayed-request interruption/no-partial-artifact boundary now pass, while
-  resumable restart/state restoration, recovery after an interrupted run,
-  broader scale ceilings, and native non-Windows terminal behavior remain
-  unvalidated.
+- Tier 5 remains `PARTIAL`: repeated completed operations, the narrow
+  delayed-request interruption/no-partial-artifact boundary, and
+  fresh-process recovery after interruption now pass, while resumable
+  restart/state restoration, broader scale ceilings, and native non-Windows
+  terminal behavior remain unvalidated.
 - `provider.best-effort.live` remains `UNVALIDATED`: no TGI,
   text-generation-webui, Jan, or MLX-LM service was available for live status,
   discovery, capability, and benchmark evidence.
