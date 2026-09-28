@@ -77,9 +77,11 @@ focused runs:
 - `cargo clippy --locked --all-targets --all-features -- -D warnings`
 - `$env:RUSTDOCFLAGS='-D warnings'; cargo doc --locked --no-deps --all-features`
 
-The previously recorded hosted four-platform CI result remains the latest
-hosted evidence; this local test/documentation revalidation does not create a
-new release or hosted-CI claim.
+Hosted CI run [36392887683](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36392887683)
+passed all four platform jobs for pushed commit `c966a49` (Ubuntu x86-64,
+Windows x86-64, macOS Intel x86-64, and macOS Apple silicon aarch64). This
+confirms the focused test additions and ledger update on the hosted matrix;
+it does not create a new release claim.
 
 ## Live performance continuation
 
