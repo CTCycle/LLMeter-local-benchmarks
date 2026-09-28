@@ -2,13 +2,18 @@
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::path::Path;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
-use std::{thread, time::Duration};
+use std::{
+    thread,
+    time::{Duration, Instant},
+};
 
 use expectrl::{spawn, ControlCode, Expect};
+use tempfile::TempDir;
 
 fn menu_command() -> String {
     format!("\"{}\" --timeout 0.1 menu", env!("CARGO_BIN_EXE_llmeter"))
@@ -25,11 +30,16 @@ struct MockProvider {
     base_url: String,
     address: String,
     stop: Arc<AtomicBool>,
+    chat_requests: Arc<AtomicBool>,
     handle: Option<thread::JoinHandle<()>>,
 }
 
 impl MockProvider {
     fn start() -> Self {
+        Self::start_with_chat_delay(Duration::ZERO)
+    }
+
+    fn start_with_chat_delay(chat_delay: Duration) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind PTY mock provider");
         let address = listener
             .local_addr()
@@ -37,11 +47,13 @@ impl MockProvider {
             .to_string();
         let base_url = format!("http://{address}/v1");
         let stop = Arc::new(AtomicBool::new(false));
+        let chat_requests = Arc::new(AtomicBool::new(false));
         let thread_stop = Arc::clone(&stop);
+        let thread_chat_requests = Arc::clone(&chat_requests);
         let handle = thread::spawn(move || {
             while !thread_stop.load(Ordering::SeqCst) {
                 if let Ok((mut stream, _)) = listener.accept() {
-                    handle_connection(&mut stream);
+                    handle_connection(&mut stream, chat_delay, &thread_chat_requests);
                 }
             }
         });
@@ -49,6 +61,7 @@ impl MockProvider {
             base_url,
             address,
             stop,
+            chat_requests,
             handle: Some(handle),
         }
     }
@@ -64,7 +77,7 @@ impl Drop for MockProvider {
     }
 }
 
-fn handle_connection(stream: &mut TcpStream) {
+fn handle_connection(stream: &mut TcpStream, chat_delay: Duration, chat_requests: &AtomicBool) {
     let mut buffer = [0_u8; 4096];
     let size = stream.read(&mut buffer).unwrap_or(0);
     let request = String::from_utf8_lossy(&buffer[..size]);
@@ -72,6 +85,13 @@ fn handle_connection(stream: &mut TcpStream) {
         (
             "200 OK",
             r#"{"object":"list","data":[{"id":"mock-model","object":"model"}]}"#,
+        )
+    } else if request.starts_with("POST /v1/chat/completions") {
+        chat_requests.store(true, Ordering::SeqCst);
+        thread::sleep(chat_delay);
+        (
+            "200 OK",
+            r#"{"choices":[{"message":{"content":"ok"}}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}"#,
         )
     } else {
         ("404 Not Found", r#"{"error":{"message":"not found"}}"#)
@@ -331,4 +351,58 @@ fn pty_performance_confirmation_interrupt_returns_130() {
         .wait(Some(5_000))
         .expect("menu process exits after confirmation interruption");
     assert_eq!(status, 130);
+}
+
+#[test]
+fn pty_interrupted_performance_run_leaves_no_partial_result() {
+    std::env::set_var("LLMETER_CONPTY", "1");
+    let provider = MockProvider::start_with_chat_delay(Duration::from_secs(3));
+    let output = TempDir::new_in(Path::new(env!("CARGO_MANIFEST_DIR")).join("target"))
+        .expect("create isolated interrupted-run output");
+    let relative_output = output
+        .path()
+        .strip_prefix(env!("CARGO_MANIFEST_DIR"))
+        .expect("output is under the package directory")
+        .display();
+    let command = format!(
+        "\"\"{}\" --provider openai-compatible --base-url {} --timeout 30 --output-dir {} bench perf --profile smoke --models mock-model --prompt-tokens 128 --output-tokens 1 --concurrency 1 --warmup 0 --runs 10 --no-stream --load-measurement off --telemetry off --export json --report none\"",
+        env!("CARGO_BIN_EXE_llmeter"),
+        provider.base_url,
+        relative_output
+    );
+    let mut session = spawn(command).expect("spawn long-running performance command");
+    let wait_started = Instant::now();
+    while !provider.chat_requests.load(Ordering::SeqCst)
+        && wait_started.elapsed() < Duration::from_secs(5)
+    {
+        thread::sleep(Duration::from_millis(20));
+    }
+    assert!(
+        provider.chat_requests.load(Ordering::SeqCst),
+        "the performance process must reach a delayed provider request before interruption"
+    );
+    session
+        .send(ControlCode::ETX)
+        .expect("interrupt performance run");
+
+    let status = session
+        .get_process_mut()
+        .wait(Some(5_000))
+        .expect("interrupted performance process exits");
+    assert_ne!(
+        status, 0,
+        "interrupted performance run must not report success"
+    );
+
+    if output.path().exists() {
+        let entries = std::fs::read_dir(output.path())
+            .expect("read interrupted-run output")
+            .collect::<Result<Vec<_>, _>>()
+            .expect("collect interrupted-run output entries");
+        assert!(
+            entries.is_empty(),
+            "interruption left result artifacts: {:?}",
+            entries.iter().map(|entry| entry.path()).collect::<Vec<_>>()
+        );
+    }
 }

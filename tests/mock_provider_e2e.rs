@@ -579,6 +579,86 @@ fn cli_bench_run_streams_and_generates_report_from_saved_json() {
 }
 
 #[test]
+fn repeated_cli_runs_keep_distinct_results_and_reload_after_process_restart() {
+    let provider = MockProvider::start();
+    let temp = TempDir::new().expect("tempdir");
+    let output = temp.path().join("results");
+    let args = [
+        "bench",
+        "run",
+        "--suite",
+        "llm",
+        "--models",
+        "mock-model",
+        "--benchmarks",
+        "chat-generation",
+        "--runs",
+        "1",
+        "--export",
+        "json",
+        "--report",
+        "none",
+    ];
+
+    for _ in 0..2 {
+        let run = llmeter_command(temp.path(), &output, &provider.base_url)
+            .args(args)
+            .output()
+            .expect("run llmeter benchmark in a fresh process");
+        assert!(
+            run.status.success(),
+            "{}",
+            String::from_utf8_lossy(&run.stderr)
+        );
+    }
+
+    let result_files = json_result_files(&output);
+    assert_eq!(result_files.len(), 2);
+    let run_ids = result_files
+        .iter()
+        .map(|path| {
+            let run: Value =
+                serde_json::from_slice(&fs::read(path).expect("read repeated run")).unwrap();
+            assert_eq!(run["schema_version"], "3.0");
+            run["run_id"].as_str().unwrap().to_string()
+        })
+        .collect::<std::collections::HashSet<_>>();
+    assert_eq!(
+        run_ids.len(),
+        2,
+        "repeated runs must not overwrite each other"
+    );
+
+    let listed = llmeter_command(temp.path(), &output, &provider.base_url)
+        .args(["report", "list"])
+        .output()
+        .expect("list repeated results");
+    assert!(
+        listed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&listed.stderr)
+    );
+    let listing = String::from_utf8_lossy(&listed.stdout);
+    for path in &result_files {
+        assert!(
+            listing.contains(path.file_name().unwrap().to_str().unwrap()),
+            "missing {} from report listing: {listing}",
+            path.display()
+        );
+        let shown = llmeter_command(temp.path(), &output, &provider.base_url)
+            .args(["report", "show"])
+            .arg(path)
+            .output()
+            .expect("reload repeated result");
+        assert!(
+            shown.status.success(),
+            "{}",
+            String::from_utf8_lossy(&shown.stderr)
+        );
+    }
+}
+
+#[test]
 fn unsupported_endpoint_benchmark_records_controlled_errors() {
     let provider = MockProvider::start();
     let temp = TempDir::new().expect("tempdir");
