@@ -63,7 +63,7 @@ concurrency 16 with 16 measured requests per scenario, producing 10 scenarios
 and 170 total chat requests; the full serialized all-target/all-feature suite
 remained green at 150/150. No live claim was added because the provider
 availability recheck still found no supported local listener. See the
-[scale-16 evidence](../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md).
+[scale-16 evidence](../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md). Hosted CI run [36478241893](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36478241893) passed all four native jobs for pushed commit `c29fef4`.
 
 ## Current snapshot
 
