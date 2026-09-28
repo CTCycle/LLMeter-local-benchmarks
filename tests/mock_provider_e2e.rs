@@ -1309,6 +1309,94 @@ fn performance_profiles_execute_default_matrices_through_fixture() {
 }
 
 #[test]
+fn performance_profiles_handle_bounded_high_concurrency_matrix() {
+    let provider = MockProvider::start();
+    let temp = TempDir::new().expect("tempdir");
+    let output = temp.path().join("results-scale");
+    let run_output = llmeter_command(temp.path(), &output, &provider.base_url)
+        .args([
+            "bench",
+            "perf",
+            "--profile",
+            "throughput",
+            "--models",
+            "mock-model",
+            "--prompt-tokens",
+            "1,2",
+            "--output-tokens",
+            "1",
+            "--concurrency",
+            "1,2,4,8",
+            "--warmup",
+            "1",
+            "--runs",
+            "8",
+            "--no-stream",
+            "--load-measurement",
+            "off",
+            "--telemetry",
+            "off",
+            "--export",
+            "json",
+            "--report",
+            "none",
+        ])
+        .output()
+        .expect("run bounded scale performance profile");
+    assert!(
+        run_output.status.success(),
+        "bounded scale profile failed: {}",
+        String::from_utf8_lossy(&run_output.stderr)
+    );
+
+    let result_files = json_result_files(&output);
+    assert_eq!(result_files.len(), 1, "bounded scale result file");
+    let run: Value =
+        serde_json::from_slice(&fs::read(&result_files[0]).expect("read bounded scale result"))
+            .expect("bounded scale result JSON");
+    assert_eq!(
+        run["performance_plan"]["prompt_sizes"]["estimated_tokens"],
+        serde_json::json!([1, 2])
+    );
+    assert_eq!(
+        run["performance_plan"]["output_sizes"]["estimated_tokens"],
+        serde_json::json!([1])
+    );
+    assert_eq!(
+        run["performance_plan"]["concurrency"]["levels"],
+        serde_json::json!([1, 2, 4, 8])
+    );
+    assert_eq!(run["performance_plan"]["warmup"]["requests"], 1);
+    assert_eq!(run["performance_plan"]["runs"], 8);
+
+    let scenarios = run["results"]
+        .as_array()
+        .expect("bounded scale scenario records");
+    assert_eq!(scenarios.len(), 8);
+    for (scenario, concurrency) in scenarios.iter().zip([1, 2, 4, 8, 1, 2, 4, 8]) {
+        assert_eq!(scenario["metrics"]["concurrency"], concurrency);
+        assert_eq!(scenario["metrics"]["request_count"], 8);
+        assert_eq!(scenario["metrics"]["success_count"], 8);
+        let traces = scenario["metadata"]["request_traces"]
+            .as_array()
+            .expect("bounded scale request traces");
+        assert_eq!(traces.len(), 8);
+        assert!(traces.iter().all(|trace| {
+            trace["concurrency"] == concurrency
+                && trace["success"] == true
+                && matches!(trace["http_status"].as_u64(), Some(200 | 201))
+        }));
+    }
+
+    let measured_and_warmup_chat_requests = provider
+        .requests()
+        .iter()
+        .filter(|request| request.method == "POST" && request.path == "/v1/chat/completions")
+        .count();
+    assert_eq!(measured_and_warmup_chat_requests, 72);
+}
+
+#[test]
 fn every_registered_preset_obeys_the_baseline_openai_contract_fixture() {
     let provider = MockProvider::start();
 
