@@ -10,8 +10,8 @@ and interruption boundaries, and an attempted continuation of the live
 performance slice. It validates the current implementation rather than
 carrying forward only the 2026-09-26 ledger text.
 
-The tests ran on Windows x86-64 with Rust 1.98.0 and Cargo 1.98.0 on the
-`develop` working tree after base revision `3573a80`. The runtime
+The tests ran on Windows x86-64 with Rust 1.98.0 and Cargo 1.98.0 on
+`develop` at source revision `b9b3772`. The runtime
 implementation remained unchanged; the focused validation adds only the two
 regression scenarios recorded below. The delayed-request interruption
 scenario also verifies recovery by starting a fresh process in the same output
@@ -80,11 +80,11 @@ focused runs:
 - `cargo clippy --locked --all-targets --all-features -- -D warnings`
 - `$env:RUSTDOCFLAGS='-D warnings'; cargo doc --locked --no-deps --all-features`
 
-Hosted CI run [36392887683](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36392887683)
-passed all four platform jobs for pushed commit `c966a49` (Ubuntu x86-64,
+Hosted CI run [36401602552](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36401602552)
+passed all four platform jobs for pushed commit `b9b3772` (Ubuntu x86-64,
 Windows x86-64, macOS Intel x86-64, and macOS Apple silicon aarch64). This
-confirms the focused test additions and ledger update on the hosted matrix;
-it does not create a new release claim.
+confirms the focused recovery test and ledger update on the hosted matrix; it
+does not create a new release claim.
 
 ## Live performance continuation
 
