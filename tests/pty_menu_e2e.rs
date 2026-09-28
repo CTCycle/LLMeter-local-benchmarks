@@ -354,7 +354,7 @@ fn pty_performance_confirmation_interrupt_returns_130() {
 }
 
 #[test]
-fn pty_interrupted_performance_run_leaves_no_partial_result() {
+fn pty_interrupted_performance_run_leaves_no_partial_result_and_allows_recovery() {
     std::env::set_var("LLMETER_CONPTY", "1");
     let provider = MockProvider::start_with_chat_delay(Duration::from_secs(3));
     let output = TempDir::new_in(Path::new(env!("CARGO_MANIFEST_DIR")).join("target"))
@@ -405,4 +405,61 @@ fn pty_interrupted_performance_run_leaves_no_partial_result() {
             entries.iter().map(|entry| entry.path()).collect::<Vec<_>>()
         );
     }
+
+    let recovery = std::process::Command::new(env!("CARGO_BIN_EXE_llmeter"))
+        .args([
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            provider.base_url.as_str(),
+            "--timeout",
+            "30",
+            "--output-dir",
+            output.path().to_str().expect("recovery output path"),
+            "bench",
+            "perf",
+            "--profile",
+            "smoke",
+            "--models",
+            "mock-model",
+            "--prompt-tokens",
+            "1",
+            "--output-tokens",
+            "1",
+            "--concurrency",
+            "1",
+            "--warmup",
+            "0",
+            "--runs",
+            "1",
+            "--no-stream",
+            "--load-measurement",
+            "off",
+            "--telemetry",
+            "off",
+            "--export",
+            "json",
+            "--report",
+            "none",
+        ])
+        .output()
+        .expect("rerun performance benchmark after interruption");
+    assert!(
+        recovery.status.success(),
+        "recovery run failed: {}",
+        String::from_utf8_lossy(&recovery.stderr)
+    );
+
+    let recovered_files = std::fs::read_dir(output.path())
+        .expect("read recovered output")
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().and_then(|extension| extension.to_str()) == Some("json"))
+        .collect::<Vec<_>>();
+    assert_eq!(recovered_files.len(), 1, "recovery must create one result");
+    let recovered: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&recovered_files[0]).expect("read recovered result"))
+            .expect("parse recovered result");
+    assert_eq!(recovered["schema_version"], "3.0");
+    assert_eq!(recovered["run_kind"], "performance");
 }

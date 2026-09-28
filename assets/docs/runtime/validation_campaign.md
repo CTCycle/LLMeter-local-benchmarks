@@ -109,16 +109,16 @@ failure boundary (19/19 mock-provider cases), atomic-write cleanup (2/2),
 performance safety ceilings (7/7), report reload at the T1-06 boundary (1/1),
 and the full Windows ConPTY suite (10/10). A focused continuation also
 validated two completed invocations in fresh processes sharing one output
-directory and Ctrl+C during a delayed performance request with no partial
-artifact. Report reload and repeated completed runs do not prove resumable
-in-progress state; restart/state restoration, recovery after an interrupted
-run, broader scale ceilings, and native non-Windows terminal behavior remain
-open.
+directory, Ctrl+C during a delayed performance request with no partial
+artifact, and a fresh-process recovery run in that same output directory.
+Report reload and repeated completed runs do not prove resumable in-progress
+state; restart/state restoration, broader scale ceilings, and native
+non-Windows terminal behavior remain open.
 See the [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
 
 Exercise transport/protocol failures, filesystem and atomic-write failures, repeated operations and restart/state restoration, long-running interruption, scale/safety ceilings, and native non-Windows terminal behavior. The expected result is bounded, readable failure with no corrupted or convincing partial artifact.
 
-Current campaign state: `PARTIAL` at the dedicated Tier 5 boundary. The selected T5-01 subset and current-tree continuation pass bounded provider/CLI failures, output-path failure handling, atomic-write cleanup, performance safety ceilings, repeated completed operations, a delayed-request interruption with no partial artifact, and Windows ConPTY confirmation interruption. Resumable restart/state restoration, recovery after an interrupted run, broader scale ceilings, and native non-Windows terminal behavior remain open. See the [2026-09-28 current-tree evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md) and [T3-04/T5-01 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
+Current campaign state: `PARTIAL` at the dedicated Tier 5 boundary. The selected T5-01 subset and current-tree continuation pass bounded provider/CLI failures, output-path failure handling, atomic-write cleanup, performance safety ceilings, repeated completed operations, a delayed-request interruption with no partial artifact, fresh-process recovery after interruption, and Windows ConPTY confirmation interruption. Resumable restart/state restoration, broader scale ceilings, and native non-Windows terminal behavior remain open. See the [2026-09-28 current-tree evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md) and [T3-04/T5-01 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
 
 ## Regression map
 
