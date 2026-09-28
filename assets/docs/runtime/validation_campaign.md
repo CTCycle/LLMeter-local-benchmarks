@@ -81,14 +81,20 @@ Current campaign state: `PASS` at the exercised Ollama boundary on revision `c74
 ### Tier 3 — performance subsystem
 
 The 2026-09-28 current-tree revalidation passed performance safety (7/7), all
-19 mock-provider E2E cases, and the deterministic default-matrix regression.
+20 mock-provider E2E cases, the deterministic default-matrix regression, and
+the bounded high-concurrency fixture matrix through concurrency 8.
 A fresh live continuation could not run because Ollama was not listening and
 no local model blobs were available in the inspected cache; no newer live
-claim was made. See the [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
+claim was made. See the [bounded scale continuation evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md) and [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
 
 Validate profile planning and safety guards before measured runs. The critical stop gate `T3-02` passes on revision `c7438db`: a three-prompt JSONL workload matched scenario count, request-budget validation, progress total, mock HTTP request count, and persisted records. The mismatched synthetic-count risk was fixed before the one-scenario live Ollama smoke. T3-03 now also executes every profile-owned default matrix through the real CLI fixture: 36 scenario records and 154 total fixture chat requests passed on revision `2af310a`. The bounded live `qwen3.5:2b` progression for all four profile names at concurrency 1 and 2 remains valid at its recorded 2026-09-24 boundary. The live runs persisted successful request traces, telemetry, environment snapshots, inventory, and capability results. The first cold non-stream capability probe timed out and succeeded on a warmed repeat; Ollama returned HTTP 501 for embeddings on this generation model.
 
-Current campaign state: `PARTIAL`; `T3-02`, deterministic T3-03 including default-matrix execution, bounded one-model live profile progression, the repeated live `latency`/`throughput` subset, and the current local quality gates pass. The new live runs used prompt sizes 32/64, output size 16, concurrency 1/2, one warmup, and three measured requests per scenario. Full default-size live profile matrices, higher concurrency, more statistically useful samples, provider/model/host variance, and production-sized interpretation remain open. Host swap-pressure warnings limit timing interpretation. See the [T3-02 evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md), [prior T3-03 evidence](../../QA/validation-2026-09-24/t3-profile-progression-evidence.md), [default-matrix evidence](../../QA/validation-2026-09-26/t3-default-matrix-evidence.md), and [T3-04 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
+The bounded fixture continuation on revision `7d83c22` adds two prompt sizes,
+one output size, concurrency 1/2/4/8, 8 measured requests per scenario, and
+72 total chat requests. It strengthens fixture-scale scheduling and
+accounting evidence without expanding the live-provider or statistical claim.
+
+Current campaign state: `PARTIAL`; `T3-02`, deterministic T3-03 including default-matrix execution, the bounded concurrency-8 fixture continuation, bounded one-model live profile progression, the repeated live `latency`/`throughput` subset, and the current local quality gates pass. The new live runs used prompt sizes 32/64, output size 16, concurrency 1/2, one warmup, and three measured requests per scenario. Full default-size live profile matrices, broader live concurrency, more statistically useful samples, provider/model/host variance, and production-sized interpretation remain open. Host swap-pressure warnings limit timing interpretation. See the [bounded scale evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), [T3-02 evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md), [prior T3-03 evidence](../../QA/validation-2026-09-24/t3-profile-progression-evidence.md), [default-matrix evidence](../../QA/validation-2026-09-26/t3-default-matrix-evidence.md), and [T3-04 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
 
 ### Tier 4 — providers, quality planning, and distribution
 
@@ -96,7 +102,7 @@ The 2026-09-28 host recheck found no Ollama listener, so the next live
 performance continuation remains externally blocked. The best-effort provider
 matrix, cross-provider optional capabilities, crates.io publication/install,
 and external quality execution remain incomplete or owner-gated. See the
-[current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
+[bounded scale continuation evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md) and [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
 
 Run one independent slice per available live provider/model. Preserve exact provider and model identity; mark unavailable targets `BLOCKED` rather than inheriting fixture evidence. Keep quality-framework integrations at their current dry-run planning boundary unless execution is explicitly approved. Verify tagged release archives, checksums, provenance, public downloads, and—if approved—clean `cargo install` from crates.io as separate gates.
 
@@ -105,20 +111,21 @@ Current campaign state: `PARTIAL`. Ollama status/discovery, all standard benchma
 ### Tier 5 — resilience and edge cases
 
 The 2026-09-28 current-tree revalidation reran the bounded provider/CLI
-failure boundary (19/19 mock-provider cases), atomic-write cleanup (2/2),
+failure boundary (20/20 mock-provider cases), atomic-write cleanup (2/2),
 performance safety ceilings (7/7), report reload at the T1-06 boundary (1/1),
-and the full Windows ConPTY suite (10/10). A focused continuation also
+the bounded fixture matrix through concurrency 8, and the full Windows
+ConPTY suite (10/10). A focused continuation also
 validated two completed invocations in fresh processes sharing one output
 directory, Ctrl+C during a delayed performance request with no partial
 artifact, and a fresh-process recovery run in that same output directory.
 Report reload and repeated completed runs do not prove resumable in-progress
-state; restart/state restoration, broader scale ceilings, and native
+state; restart/state restoration, production-scale ceilings, and native
 non-Windows terminal behavior remain open.
-See the [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
+See the [bounded scale continuation evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md) and [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
 
 Exercise transport/protocol failures, filesystem and atomic-write failures, repeated operations and restart/state restoration, long-running interruption, scale/safety ceilings, and native non-Windows terminal behavior. The expected result is bounded, readable failure with no corrupted or convincing partial artifact.
 
-Current campaign state: `PARTIAL` at the dedicated Tier 5 boundary. The selected T5-01 subset and current-tree continuation pass bounded provider/CLI failures, output-path failure handling, atomic-write cleanup, performance safety ceilings, repeated completed operations, a delayed-request interruption with no partial artifact, fresh-process recovery after interruption, and Windows ConPTY confirmation interruption. Resumable restart/state restoration, broader scale ceilings, and native non-Windows terminal behavior remain open. See the [2026-09-28 current-tree evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md) and [T3-04/T5-01 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
+Current campaign state: `PARTIAL` at the dedicated Tier 5 boundary. The selected T5-01 subset and current-tree continuation pass bounded provider/CLI failures, output-path failure handling, atomic-write cleanup, performance safety ceilings, the bounded fixture matrix through concurrency 8, repeated completed operations, a delayed-request interruption with no partial artifact, fresh-process recovery after interruption, and Windows ConPTY confirmation interruption. Resumable restart/state restoration, production-scale ceilings, and native non-Windows terminal behavior remain open. See the [2026-09-28 bounded scale evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), [2026-09-28 current-tree evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md), and [T3-04/T5-01 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
 
 ## Regression map
 
