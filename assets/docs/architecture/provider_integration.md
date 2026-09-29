@@ -44,7 +44,28 @@ Unsupported provider capabilities are recorded as benchmark error records instea
 
 ## Compatibility evidence
 
-The test suite runs the baseline `/v1/models` and streaming Chat Completions contract against every registered preset through deterministic fixtures. This proves LLMeter's request construction, SSE parsing, usage extraction, and diagnostics for all preset names without implying that every server version or model is live-verified. Responses and embeddings remain capability-probed because provider deployments vary.
+Tier 4 uses four separate evidence lanes:
+
+1. The deterministic preset contract matrix derives its provider list from
+   `ProviderKind::catalog()` and exercises every registered preset against an
+   ephemeral loopback fixture. It covers CLI selection, explicit base-URL
+   override, `/v1/models`, streaming and non-streaming Chat Completions,
+   request/response parsing, and controlled optional-endpoint failures.
+2. The representative live matrix records exact provider implementation,
+   version, model, host, base URL, and endpoint capabilities for only the real
+   providers that are available for a bounded run.
+3. Quality integrations stop at dry-run plan generation; plan evidence does
+   not mean that LightEval, Inspect AI, lm-eval-harness, or SWE-bench was
+   installed or executed.
+4. GitHub release and registry-install evidence are distribution gates,
+   independent of provider compatibility.
+
+The fixture matrix proves LLMeter's request construction, SSE parsing, usage
+extraction, and diagnostics for all preset names. It does not live-verify every
+server version, model, extension, or optional endpoint. The Tier 4 claim is
+therefore: LLMeter regression-tests all registered provider presets against its
+OpenAI-compatible contract, while live-provider validation is representative
+and does not imply universal provider certification.
 
 Performance capability probing checks `/v1/models`, chat completions, optional streaming chat completions, and optionally embeddings and responses. The probe emits per-endpoint progress updates through the shared terminal progress sink so interactive and scriptable runs show visible validation progress before timed scenarios start. Optional endpoint failures are captured in the capability report and do not fail the benchmark by themselves.
 
@@ -52,4 +73,4 @@ Performance capability probing checks `/v1/models`, chat completions, optional s
 
 LLMeter does not start or stop provider servers. Users start Ollama, LM Studio, llama.cpp, or custom local servers externally and pass provider/base URL settings to LLMeter.
 
-Last updated: 2026-08-02
+Last updated: 2026-09-29
