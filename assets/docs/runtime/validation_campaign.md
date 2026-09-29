@@ -1,6 +1,6 @@
 # LLMeter validation campaign
 
-Last updated: 2026-09-28
+Last updated: 2026-09-29
 
 ## Purpose and authority
 
@@ -101,17 +101,93 @@ expanding the live-provider or statistical claim.
 
 Current campaign state: `PARTIAL`; `T3-02`, deterministic T3-03 including default-matrix execution, the bounded fixture continuation through concurrency 16, bounded one-model live profile progression, the repeated live `latency`/`throughput` subset, and the current local quality gates pass. The new live runs used prompt sizes 32/64, output size 16, concurrency 1/2, one warmup, and three measured requests per scenario. Full default-size live profile matrices, broader live concurrency, more statistically useful samples, provider/model/host variance, and production-sized interpretation remain open. Host swap-pressure warnings limit timing interpretation. See the [scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md), [bounded scale evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), [T3-02 evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md), [prior T3-03 evidence](../../QA/validation-2026-09-24/t3-profile-progression-evidence.md), [default-matrix evidence](../../QA/validation-2026-09-26/t3-default-matrix-evidence.md), and [T3-04 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
 
-### Tier 4 — providers, quality planning, and distribution
+### Tier 4 — representative provider compatibility, quality planning, and distribution
 
-The 2026-09-28 host recheck found no Ollama listener, so the next live
-performance continuation remains externally blocked. The best-effort provider
-matrix, cross-provider optional capabilities, crates.io publication/install,
-and external quality execution remain incomplete or owner-gated. See the
-[bounded scale continuation evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md) and [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
+Tier 4 is evidence-based rather than installation-count-based. Provider
+servers and models remain external QA dependencies, and LLMeter does not add
+provider lifecycle management, model downloading, containers, or installation
+logic. The four evidence lanes are:
 
-Run one independent slice per available live provider/model. Preserve exact provider and model identity; mark unavailable targets `BLOCKED` rather than inheriting fixture evidence. Keep quality-framework integrations at their current dry-run planning boundary unless execution is explicitly approved. Verify tagged release archives, checksums, provenance, public downloads, and—if approved—clean `cargo install` from crates.io as separate gates.
+| Evidence lane | Purpose | Provider installation required |
+|---|---|---:|
+| Preset contract matrix | Exercise every registered preset against the deterministic OpenAI-compatible client contract. | No |
+| Representative live matrix | Demonstrate interoperability against selected architecturally distinct implementations with exact provider/version/model/host records. | Only temporary or already-available providers |
+| External quality planning | Validate dry-run plan generation for every supported external evaluator. | No |
+| Distribution | Validate the packaged LLMeter release, archive contents, checksums, provenance, and extracted-binary smoke behavior. | No |
 
-Current campaign state: `PARTIAL`. Ollama status/discovery, all standard benchmark families, and bounded performance profile probes passed for one generation model. That model's embeddings probe returned HTTP 501, while prior live evidence covers a separate Ollama embedding model. The best-effort provider matrix and cross-provider optional capabilities remain unvalidated; external quality execution and crates.io publication remain scope/owner gated.
+The Tier 4 claim at this boundary is:
+
+> LLMeter regression-tests all registered provider presets against its OpenAI-compatible contract. Live-provider validation is performed against a representative compatibility matrix and does not imply certification of every provider version, model, extension, or optional endpoint.
+
+#### T4-01 — provider preset contract matrix
+
+Scope every `ProviderKind` in `src/providers.rs`: catalog label, compatibility
+tier, default URL, CLI selection, explicit base-URL override, `/v1/models`,
+streaming and non-streaming `/v1/chat/completions`, request/response parsing,
+and controlled failures for unsupported optional `/v1/responses` and
+`/v1/embeddings`. The catalog-derived fixture must use an ephemeral loopback
+port and must not require a real provider default port.
+
+Acceptance requires every current preset to pass the deterministic fixture,
+future presets to require corresponding catalog-derived coverage, and no live
+claim to be inferred. The current focused boundary passes in
+`mock_provider_e2e.rs`; transport authorization and persisted-secret checks
+remain covered by the earlier T1-04 fixture evidence. See the [Tier 4 preset
+contract evidence](../../QA/validation-2026-09-29/tier4-provider-contract-evidence.md).
+
+#### T4-02 — representative live-provider interoperability
+
+Use a small, exact matrix rather than installing every preset:
+
+| Target | Required record | Current state |
+|---|---|---|
+| Ollama | Existing live evidence for `qwen3.5:2b` and `nomic-embed-text:latest`, plus current availability recheck. | Prior bounded live evidence retained; 2026-09-29 service recheck was unavailable on this host. |
+| llama.cpp | Temporary `llama-server`, one small GGUF model, core chat/streaming and bounded performance smoke. | `BLOCKED`: no `llama-server` or disposable GGUF runtime was available; no installation was added. |
+| One known OpenAI-compatible implementation | One frictionless temporary or already-available vLLM, SGLang, LocalAI, or LiteLLM instance. | `BLOCKED`: no eligible local runtime was available without introducing provider/model installation. |
+
+Record status, models, capability probes, one standard generation subset, and
+one smoke performance run only when the provider is available. Unsupported
+`responses` or `embeddings` behavior is a recorded capability result, not an
+application failure. TGI, text-generation-webui, Jan, and MLX-LM remain
+fixture-validated but not live-certified unless an already-available target can
+be exercised with negligible temporary setup. See the [Tier 4 live-provider
+evidence](../../QA/validation-2026-09-29/tier4-live-provider-evidence.md).
+
+Current state: `PARTIAL` at the representative boundary because only the
+existing Ollama implementation has retained real-provider evidence. The
+unavailable llama.cpp and known-compatible targets are explicit external
+blocks, not failures of the OpenAI-compatible client.
+
+#### T4-03 — external quality planning
+
+Validate LLMeter's planning surface for LightEval, Inspect AI, lm-eval-harness,
+and SWE-bench: CLI parsing, catalog/task mapping, model propagation, command
+preview, serialized plan shape, unknown framework handling, unknown-task
+planning, and dataset/external-tool/code-execution flags. Do not install or
+execute those frameworks, download datasets, or run SWE-bench.
+
+The current `quality_cli_tests.rs` boundary passes for all four adapters and
+the complete catalog. External evaluator execution is outside the currently
+validated LLMeter runtime contract. See the [Tier 4 quality and distribution
+evidence](../../QA/validation-2026-09-29/tier4-quality-distribution-evidence.md).
+
+#### T4-04 — distribution
+
+Keep distribution independent from provider compatibility. The existing
+`v0.4.0` release evidence verifies four native GitHub archives, expected
+contents, `SHA256SUMS`, checksum verification, hosted provenance, extracted
+`--version`/`--help` smoke tests, and packaged mock-provider E2E. crates.io
+publication and clean installation remain separate owner-gated evidence; do
+not publish or retag as part of this campaign.
+
+Current state: `PASS` at the GitHub release boundary and `UNVERIFIED` for
+crates.io. See the [release report](../QA/release-0.4.0/release-report.md) and
+the [Tier 4 quality and distribution evidence](../../QA/validation-2026-09-29/tier4-quality-distribution-evidence.md).
+
+Tier 4 is therefore `PARTIAL` at the representative compatibility boundary:
+T4-01 and T4-03 pass, T4-04 passes for GitHub distribution with crates.io
+separate, and T4-02 remains partial because the additional live implementations
+were unavailable. This is not a universal provider-certification claim.
 
 ### Tier 5 — resilience and edge cases
 
@@ -152,4 +228,4 @@ Run the full locked all-target/all-feature suite once at each tier boundary and 
 
 Do not call a revision comprehensively validated until Tier 0–3 are green except for intentional product limitations, the JSONL accounting risk is disproven or fixed/regression-tested, every standard benchmark has real-CLI evidence, at least one live provider/model path is retained, provider-specific availability is explicit, interruption/persistence are safe, Windows and current CI remain green, release documentation matches GitHub, stale QA references are repaired, and every `PARTIAL`, `BLOCKED`, `UNKNOWN`, or `UNRUN` entry has a named boundary.
 
-The current campaign does not make that comprehensive claim. Tiers 0–2 pass at their recorded boundaries; Tier 3 remains partial pending larger repeated workloads and broader provider/host evidence. Tiers 4–5 and the owner-gated release and external-quality items remain incomplete.
+The current campaign does not make that comprehensive claim. Tiers 0–2 pass at their recorded boundaries; Tier 3 remains partial pending larger repeated workloads and broader provider/host evidence. Tier 4 is partial at the representative compatibility boundary because additional live implementations are host-blocked, while its deterministic preset, quality-planning, and GitHub distribution sub-gates have named results. Tier 5 remains partial, and crates.io plus external evaluator execution remain separate owner/scope boundaries.

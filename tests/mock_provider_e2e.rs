@@ -288,6 +288,15 @@ fn write_sse_body(stream: &mut TcpStream, body: &str) {
 }
 
 fn llmeter_command(home: &Path, output: &Path, base_url: &str) -> Command {
+    llmeter_command_for_provider(home, output, ProviderKind::OpenaiCompatible, base_url)
+}
+
+fn llmeter_command_for_provider(
+    home: &Path,
+    output: &Path,
+    provider: ProviderKind,
+    base_url: &str,
+) -> Command {
     let executable =
         std::env::var_os("LLMETER_BIN").unwrap_or_else(|| env!("CARGO_BIN_EXE_llmeter").into());
     let mut command = Command::new(executable);
@@ -295,7 +304,7 @@ fn llmeter_command(home: &Path, output: &Path, base_url: &str) -> Command {
         .env("LLMETER_HOME", home)
         .env("LLMETER_OUTPUT_DIR", output)
         .arg("--provider")
-        .arg("openai-compatible")
+        .arg(provider.label())
         .arg("--base-url")
         .arg(base_url)
         .arg("--timeout")
@@ -1401,8 +1410,17 @@ fn every_registered_preset_obeys_the_baseline_openai_contract_fixture() {
     let provider = MockProvider::start();
 
     for entry in ProviderKind::catalog() {
+        assert_eq!(
+            entry.provider.label().parse::<ProviderKind>().unwrap(),
+            entry.provider
+        );
+        assert_eq!(entry.provider.compatibility_tier(), entry.tier);
+        assert_eq!(entry.provider.default_base_url(), entry.default_base_url);
+
         let client = ProviderClient::new(entry.provider, &provider.base_url, 2.0)
             .expect("build fixture client");
+        assert_eq!(client.provider(), entry.provider);
+        assert_eq!(client.base_url(), provider.base_url);
         let models = client
             .list_models_cached()
             .expect("fixture model discovery");
@@ -1442,6 +1460,98 @@ fn every_registered_preset_obeys_the_baseline_openai_contract_fixture() {
             )
             .expect("fixture non-streamed chat");
         assert_eq!(non_streaming.http_status, Some(201), "{}", entry.provider);
+
+        let responses_error = client
+            .responses("mock-model", serde_json::json!("fixture"), 8, 0.0, None)
+            .expect_err("unsupported responses endpoint must remain a controlled error")
+            .to_string();
+        assert!(responses_error.contains("HTTP 501"), "{responses_error}");
+
+        let embeddings_error = client
+            .embeddings("mock-model", serde_json::json!("fixture"))
+            .expect_err("unsupported embeddings endpoint must remain a controlled error")
+            .to_string();
+        assert!(embeddings_error.contains("HTTP 501"), "{embeddings_error}");
+    }
+
+    let requests = provider.requests();
+    let model_requests = requests
+        .iter()
+        .filter(|request| request.method == "GET" && request.path == "/v1/models")
+        .count();
+    assert_eq!(model_requests, ProviderKind::catalog().len());
+
+    let chat_requests = requests
+        .iter()
+        .filter(|request| request.method == "POST" && request.path == "/v1/chat/completions")
+        .collect::<Vec<_>>();
+    assert_eq!(chat_requests.len(), ProviderKind::catalog().len() * 2);
+    assert!(chat_requests.iter().any(|request| {
+        serde_json::from_str::<Value>(&request.body)
+            .map(|body| body["stream"] == true && body["stream_options"]["include_usage"] == true)
+            .unwrap_or(false)
+    }));
+    assert!(chat_requests.iter().any(|request| {
+        serde_json::from_str::<Value>(&request.body)
+            .map(|body| body["stream"] == false && body["stream_options"].is_null())
+            .unwrap_or(false)
+    }));
+
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|request| request.method == "POST" && request.path == "/v1/responses")
+            .count(),
+        ProviderKind::catalog().len()
+    );
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|request| request.method == "POST" && request.path == "/v1/embeddings")
+            .count(),
+        ProviderKind::catalog().len()
+    );
+}
+
+#[test]
+fn every_registered_preset_is_cli_selectable_with_an_explicit_base_url() {
+    let provider = MockProvider::start();
+    let synthetic_key = "tier4-contract-synthetic-key";
+
+    for entry in ProviderKind::catalog() {
+        let temp = TempDir::new().expect("create preset CLI fixture home");
+        let output = temp.path().join("results");
+        let status =
+            llmeter_command_for_provider(temp.path(), &output, entry.provider, &provider.base_url)
+                .env("LLMETER_API_KEY", synthetic_key)
+                .arg("status")
+                .output()
+                .expect("run preset status against fixture");
+
+        let stdout = String::from_utf8_lossy(&status.stdout);
+        let stderr = String::from_utf8_lossy(&status.stderr);
+        assert!(
+            status.status.success(),
+            "{}: {stdout}\n{stderr}",
+            entry.provider
+        );
+        assert!(stdout.contains(entry.provider.display_name()), "{stdout}");
+        assert!(stdout.contains(&provider.base_url), "{stdout}");
+        assert!(!stdout.contains(synthetic_key), "{stdout}");
+        assert!(!stderr.contains(synthetic_key), "{stderr}");
+
+        for root in [temp.path(), output.as_path()] {
+            if !root.exists() {
+                continue;
+            }
+            for file in fs::read_dir(root).expect("read fixture output root") {
+                let path = file.expect("read fixture output entry").path();
+                if path.is_file() {
+                    let contents = fs::read_to_string(&path).unwrap_or_default();
+                    assert!(!contents.contains(synthetic_key), "{}", path.display());
+                }
+            }
+        }
     }
 }
 
