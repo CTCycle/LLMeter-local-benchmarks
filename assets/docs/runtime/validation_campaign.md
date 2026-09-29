@@ -83,11 +83,15 @@ Current campaign state: `PASS` at the exercised Ollama boundary on revision `c74
 The 2026-09-28 current-tree revalidation passed performance safety (7/7), all
 20 mock-provider E2E cases, the deterministic default-matrix regression, and
 the bounded high-concurrency fixture matrix through concurrency 8. The
-follow-up scale-16 continuation now reaches concurrency 16 with 16 measured
-runs per scenario and 170 total fixture requests. See the [scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md).
-A fresh live continuation could not run because Ollama was not listening and
-no local model blobs were available in the inspected cache; no newer live
-claim was made. See the [bounded scale continuation evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md) and [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
+follow-up scale-16 continuation reached concurrency 16 with 16 measured runs
+per scenario and 170 total fixture requests. On 2026-09-29, after Ollama
+became available again, the current release binary also passed the full
+default `latency` profile (15/15 measured requests) and `throughput` profile
+(16/16 measured requests) for `qwen3.5:2b`, plus an explicit capability-probe
+smoke. See the [live default profile evidence](../../QA/validation-2026-09-29/t3-t4-live-default-profiles-evidence.md),
+[scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md),
+[bounded scale continuation evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), and
+[current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
 
 Validate profile planning and safety guards before measured runs. The critical stop gate `T3-02` passes on revision `c7438db`: a three-prompt JSONL workload matched scenario count, request-budget validation, progress total, mock HTTP request count, and persisted records. The mismatched synthetic-count risk was fixed before the one-scenario live Ollama smoke. T3-03 now also executes every profile-owned default matrix through the real CLI fixture: 36 scenario records and 154 total fixture chat requests passed on revision `2af310a`. The bounded live `qwen3.5:2b` progression for all four profile names at concurrency 1 and 2 remains valid at its recorded 2026-09-24 boundary. The live runs persisted successful request traces, telemetry, environment snapshots, inventory, and capability results. The first cold non-stream capability probe timed out and succeeded on a warmed repeat; Ollama returned HTTP 501 for embeddings on this generation model.
 
@@ -99,7 +103,7 @@ per scenario, and accounts for 10 scenarios and 170 total chat requests. It
 strengthens fixture-scale scheduling and accounting evidence without
 expanding the live-provider or statistical claim.
 
-Current campaign state: `PARTIAL`; `T3-02`, deterministic T3-03 including default-matrix execution, the bounded fixture continuation through concurrency 16, bounded one-model live profile progression, the repeated live `latency`/`throughput` subset, and the current local quality gates pass. The new live runs used prompt sizes 32/64, output size 16, concurrency 1/2, one warmup, and three measured requests per scenario. Full default-size live profile matrices, broader live concurrency, more statistically useful samples, provider/model/host variance, and production-sized interpretation remain open. Host swap-pressure warnings limit timing interpretation. See the [scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md), [bounded scale evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), [T3-02 evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md), [prior T3-03 evidence](../../QA/validation-2026-09-24/t3-profile-progression-evidence.md), [default-matrix evidence](../../QA/validation-2026-09-26/t3-default-matrix-evidence.md), and [T3-04 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
+Current campaign state: `PARTIAL`; `T3-02`, deterministic T3-03 including default-matrix execution, the bounded fixture continuation through concurrency 16, the full default live `latency`/`throughput` profiles for one Ollama model, the explicit live capability smoke, the prior bounded one-model live progression, and the current local quality gates pass. Full live `sweep`, broader live concurrency and provider/model/host variance, more statistically useful samples, and production-sized interpretation remain open. Host swap-pressure warnings limit timing interpretation. See the [live default profile evidence](../../QA/validation-2026-09-29/t3-t4-live-default-profiles-evidence.md), [scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md), [bounded scale evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), [T3-02 evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md), [prior T3-03 evidence](../../QA/validation-2026-09-24/t3-profile-progression-evidence.md), [default-matrix evidence](../../QA/validation-2026-09-26/t3-default-matrix-evidence.md), and [T3-04 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
 
 ### Tier 4 — representative provider compatibility, quality planning, and distribution
 
@@ -141,7 +145,7 @@ Use a small, exact matrix rather than installing every preset:
 
 | Target | Required record | Current state |
 |---|---|---|
-| Ollama | Existing live evidence for `qwen3.5:2b` and `nomic-embed-text:latest`, plus current availability recheck. | Prior bounded live evidence retained; 2026-09-29 service recheck was unavailable on this host. |
+| Ollama | Existing live evidence for `qwen3.5:2b` and `nomic-embed-text:latest`, plus current availability recheck. | `PASS` at the current Ollama boundary: version `0.34.0`, five exposed models, full default `latency`/`throughput` profiles for `qwen3.5:2b`, and capability-probe smoke. |
 | llama.cpp | Temporary `llama-server`, one small GGUF model, core chat/streaming and bounded performance smoke. | `BLOCKED`: no `llama-server` or disposable GGUF runtime was available; no installation was added. |
 | One known OpenAI-compatible implementation | One frictionless temporary or already-available vLLM, SGLang, LocalAI, or LiteLLM instance. | `BLOCKED`: no eligible local runtime was available without introducing provider/model installation. |
 
@@ -191,8 +195,8 @@ were unavailable. This is not a universal provider-certification claim.
 
 ### Tier 5 — resilience and edge cases
 
-The 2026-09-28 current-tree revalidation reran the bounded provider/CLI
-failure boundary (20/20 mock-provider cases), atomic-write cleanup (2/2),
+The 2026-09-28 current-tree revalidation and 2026-09-29 focused rerun covered
+the bounded provider/CLI failure boundary (21/21 mock-provider cases), atomic-write cleanup (2/2),
 performance safety ceilings (7/7), report reload at the T1-06 boundary (1/1),
 the bounded fixture matrix through concurrency 16, and the full Windows
 ConPTY suite (10/10). A focused continuation also
