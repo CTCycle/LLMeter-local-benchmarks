@@ -81,14 +81,16 @@ Current campaign state: `PASS` at the exercised Ollama boundary on revision `c74
 ### Tier 3 — performance subsystem
 
 The 2026-09-28 current-tree revalidation passed performance safety (7/7), all
-20 mock-provider E2E cases, the deterministic default-matrix regression, and
+21 mock-provider E2E cases, the deterministic default-matrix regression, and
 the bounded high-concurrency fixture matrix through concurrency 8. The
 follow-up scale-16 continuation reached concurrency 16 with 16 measured runs
 per scenario and 170 total fixture requests. On 2026-09-29, after Ollama
-became available again, the current release binary also passed the full
-default `latency` profile (15/15 measured requests) and `throughput` profile
-(16/16 measured requests) for `qwen3.5:2b`, plus an explicit capability-probe
-smoke. See the [live default profile evidence](../../QA/validation-2026-09-29/t3-t4-live-default-profiles-evidence.md),
+became available again, the current release binary passed the full default
+`latency` profile (15/15 measured requests), `throughput` profile (16/16
+measured requests), explicit capability-probe smoke, and full `sweep` profile
+(27 scenarios, 81 measured requests, zero errors) for `qwen3.5:2b`. See the
+[live full-sweep evidence](../../QA/validation-2026-09-29/t3-live-sweep-evidence.md),
+[live default profile evidence](../../QA/validation-2026-09-29/t3-t4-live-default-profiles-evidence.md),
 [scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md),
 [bounded scale continuation evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), and
 [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
@@ -103,7 +105,7 @@ per scenario, and accounts for 10 scenarios and 170 total chat requests. It
 strengthens fixture-scale scheduling and accounting evidence without
 expanding the live-provider or statistical claim.
 
-Current campaign state: `PARTIAL`; `T3-02`, deterministic T3-03 including default-matrix execution, the bounded fixture continuation through concurrency 16, the full default live `latency`/`throughput` profiles for one Ollama model, the explicit live capability smoke, the prior bounded one-model live progression, and the current local quality gates pass. Full live `sweep`, broader live concurrency and provider/model/host variance, more statistically useful samples, and production-sized interpretation remain open. Host swap-pressure warnings limit timing interpretation. See the [live default profile evidence](../../QA/validation-2026-09-29/t3-t4-live-default-profiles-evidence.md), [scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md), [bounded scale evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), [T3-02 evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md), [prior T3-03 evidence](../../QA/validation-2026-09-24/t3-profile-progression-evidence.md), [default-matrix evidence](../../QA/validation-2026-09-26/t3-default-matrix-evidence.md), and [T3-04 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
+Current campaign state: `PARTIAL`; `T3-02`, deterministic T3-03 including default-matrix execution, the bounded fixture continuation through concurrency 16, the full default live `latency`/`throughput` profiles for one Ollama model, the explicit live capability smoke, the full live `sweep` at the recorded Ollama/model boundary, the prior bounded one-model live progression, and the current local quality gates pass. Broader live concurrency and provider/model/host variance, more statistically useful samples, and production-sized interpretation remain open. Host swap-pressure warnings limit timing interpretation. See the [live full-sweep evidence](../../QA/validation-2026-09-29/t3-live-sweep-evidence.md), [live default profile evidence](../../QA/validation-2026-09-29/t3-t4-live-default-profiles-evidence.md), [scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md), [bounded scale evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), [T3-02 evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md), [prior T3-03 evidence](../../QA/validation-2026-09-24/t3-profile-progression-evidence.md), [default-matrix evidence](../../QA/validation-2026-09-26/t3-default-matrix-evidence.md), and [T3-04 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
 
 ### Tier 4 — representative provider compatibility, quality planning, and distribution
 
@@ -237,4 +239,4 @@ Run the full locked all-target/all-feature suite once at each tier boundary and 
 
 Do not call a revision comprehensively validated until Tier 0–3 are green except for intentional product limitations, the JSONL accounting risk is disproven or fixed/regression-tested, every standard benchmark has real-CLI evidence, at least one live provider/model path is retained, provider-specific availability is explicit, interruption/persistence are safe, Windows and current CI remain green, release documentation matches GitHub, stale QA references are repaired, and every `PARTIAL`, `BLOCKED`, `UNKNOWN`, or `UNRUN` entry has a named boundary.
 
-The current campaign does not make that comprehensive claim. Tiers 0–2 pass at their recorded boundaries; Tier 3 remains partial pending larger repeated workloads and broader provider/host evidence. Tier 4 is partial at the representative compatibility boundary because additional live implementations are host-blocked, while its deterministic preset, quality-planning, and GitHub distribution sub-gates have named results. Tier 5 remains partial, and crates.io plus external evaluator execution remain separate owner/scope boundaries.
+The current campaign does not make that comprehensive claim. Tiers 0–2 pass at their recorded boundaries; Tier 3 remains partial pending larger repeated workloads and broader provider/host evidence. Tier 4 is `PASS` at the explicitly recorded representative compatibility boundary; Tier 5 remains partial, and crates.io plus external evaluator execution remain separate owner/scope boundaries.
