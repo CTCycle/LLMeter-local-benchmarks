@@ -76,6 +76,10 @@ The saved result was reloadable through `report list` and `report show`, both wi
 
 No runtime defect or source-level fix was required.
 
+## Hosted CI
+
+Hosted [CI run `36594571542`](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36594571542) passed all four platform jobs for pushed commit `bf9029e`: Ubuntu x86-64, Windows x86-64, macOS Intel x86-64, and macOS Apple silicon aarch64. The matrix passed formatting, locked all-target checks, warning-denied Clippy, serialized tests, and documentation checks. Runner migration and capacity annotations were informational only.
+
 ## Final status boundary
 
 This closes the full live `sweep` at the exact Ollama `0.34.0` / `qwen3.5:2b` / Windows host boundary. `benchmark.performance` and Tier 3 remain `PARTIAL` because broader live provider/model/host variance, repeated statistical sampling, and production-sized interpretation remain unvalidated. Tier 5 remains `PARTIAL` because resumable in-progress state, production-scale ceilings, and native non-Windows terminal behavior remain open. Best-effort provider live certification, crates.io publication/install, and external evaluator execution remain separate owner or scope boundaries.
