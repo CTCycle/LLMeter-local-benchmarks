@@ -74,6 +74,15 @@ The current-tree focused checks passed:
 
 No runtime defect was uncovered, so no source fix was required.
 
+## Hosted CI
+
+Hosted [CI run `36568269687`](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36568269687)
+passed all four platform jobs for pushed evidence commit `579e621`
+(`579e621fbdf4b8c930cd503f2f42f56b70e587e4`): Ubuntu x86-64, Windows
+x86-64, macOS Intel x86-64, and macOS Apple silicon aarch64. The run covered
+the repository's format, locked all-target, warning-denied Clippy, serialized
+test, and documentation checks on each hosted target.
+
 ## Remaining limits
 
 This evidence keeps the following boundaries explicit:
