@@ -146,8 +146,8 @@ Use a small, exact matrix rather than installing every preset:
 | Target | Required record | Current state |
 |---|---|---|
 | Ollama | Existing live evidence for `qwen3.5:2b` and `nomic-embed-text:latest`, plus current availability recheck. | `PASS` at the current Ollama boundary: version `0.34.0`, five exposed models, full default `latency`/`throughput` profiles for `qwen3.5:2b`, and capability-probe smoke. |
-| llama.cpp | Temporary `llama-server`, one small GGUF model, core chat/streaming and bounded performance smoke. | `BLOCKED`: no `llama-server` or disposable GGUF runtime was available; no installation was added. |
-| One known OpenAI-compatible implementation | One frictionless temporary or already-available vLLM, SGLang, LocalAI, or LiteLLM instance. | `BLOCKED`: no eligible local runtime was available without introducing provider/model installation. |
+| llama.cpp | Official CPU `llama-server` image, one small GGUF model, status/fresh models, core non-streaming and streaming chat, capability probes, and bounded performance smoke. | `PASS` at the exact temporary boundary: `0.5.0-dev` build `11243`, image digest and `gemma-3-270m-it-Q8_0.gguf` hash recorded in the [live evidence](../../QA/validation-2026-09-29/tier4-live-provider-evidence.md). |
+| LiteLLM | Ephemeral OpenAI-compatible proxy over the existing Ollama `qwen3.5:2b` backend, with the same compact interoperability boundary. | `PASS` at the exact temporary boundary: package `1.103.0`, image digest, alias, backend route, and process-only proxy key boundary recorded in the [live evidence](../../QA/validation-2026-09-29/tier4-live-provider-evidence.md). |
 
 Record status, models, capability probes, one standard generation subset, and
 one smoke performance run only when the provider is available. Unsupported
@@ -157,10 +157,13 @@ fixture-validated but not live-certified unless an already-available target can
 be exercised with negligible temporary setup. See the [Tier 4 live-provider
 evidence](../../QA/validation-2026-09-29/tier4-live-provider-evidence.md).
 
-Current state: `PARTIAL` at the representative boundary because only the
-existing Ollama implementation has retained real-provider evidence. The
-unavailable llama.cpp and known-compatible targets are explicit external
-blocks, not failures of the OpenAI-compatible client.
+Current state: `PASS` at the explicitly recorded representative boundary:
+Ollama, llama.cpp, and LiteLLM-over-existing-Ollama. The two disposable Docker
+runtimes used the official images, exact resolved digests, a compact model or
+existing backend, and one-scenario performance smokes; task-owned runtime
+resources were removed after capture. This remains representative evidence,
+not universal provider certification, and all other presets remain
+fixture-validated only.
 
 #### T4-03 — external quality planning
 
@@ -188,10 +191,12 @@ Current state: `PASS` at the GitHub release boundary and `UNVERIFIED` for
 crates.io. See the [release report](../QA/release-0.4.0/release-report.md) and
 the [Tier 4 quality and distribution evidence](../../QA/validation-2026-09-29/tier4-quality-distribution-evidence.md).
 
-Tier 4 is therefore `PARTIAL` at the representative compatibility boundary:
-T4-01 and T4-03 pass, T4-04 passes for GitHub distribution with crates.io
-separate, and T4-02 remains partial because the additional live implementations
-were unavailable. This is not a universal provider-certification claim.
+Tier 4 is `PASS` at the representative compatibility boundary: T4-01, T4-02,
+and T4-03 pass; T4-04 passes for GitHub distribution with crates.io separate.
+The T4-02 result certifies only the recorded Ollama, llama.cpp, and LiteLLM
+implementations and is not a universal provider-certification claim. Tier 3,
+Tier 5, best-effort live-provider coverage, and crates.io remain separate open
+boundaries.
 
 ### Tier 5 — resilience and edge cases
 

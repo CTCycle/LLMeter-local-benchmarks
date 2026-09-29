@@ -1,0 +1,32 @@
+Performance plan estimate:
+  Models: qwen3.5:2b
+  Prompt tokens: 32
+  Output tokens: 16
+  Concurrency: 1
+  Scenarios: 1
+  Warmup requests: 0
+  Measured requests: 1
+  Total requests: 1
+  Max requests: 500
+
+Benchmark run
+  Run ID: 2026-09-29T134228.139869Z-p24544-qwen3.5-2b
+  Created: 2026-09-29T13:42:57
+  Models: qwen3.5:2b
+  Records: 1 total, 1 ok, 0 errors
+
+╭────────────┬──────────────────────┬────────────┬──────┬────────┬─────────────┬─────────────┬──────────────────────────────┬────────────╮
+│ Aggregated summary                                                                                                                     │
+├────────────┼──────────────────────┼────────────┼──────┼────────┼─────────────┼─────────────┼──────────────────────────────┼────────────┤
+│ Model      │ Benchmark            │ Prompt     │ Runs │ Errors │ Avg wall ms │ Avg TTFT ms │ Avg output tok/s per request │ Similarity │
+│ qwen3.5:2b │ performance-scenario │ 32p-16o-c1 │ 1    │ 0      │ 694.76      │             │                              │            │
+╰────────────┴──────────────────────┴────────────┴──────┴────────┴─────────────┴─────────────┴──────────────────────────────┴────────────╯
+╭──────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Saved files                                                                                                                                                                                         │
+├──────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Type │ Path                                                                                                                                                                                         │
+│ json │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\litellm\perf-smoke\2026-09-29T134228.139869Z-p24544-qwen3.5-2b.json        │
+│ csv  │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\litellm\perf-smoke\2026-09-29T134228.139869Z-p24544-qwen3.5-2b.csv         │
+│ md   │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\litellm\perf-smoke\2026-09-29T134228.139869Z-p24544-qwen3.5-2b.report.md   │
+│ html │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\litellm\perf-smoke\2026-09-29T134228.139869Z-p24544-qwen3.5-2b.report.html │
+╰──────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

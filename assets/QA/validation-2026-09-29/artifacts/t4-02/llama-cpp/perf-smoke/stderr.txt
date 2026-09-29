@@ -1,0 +1,12 @@
+[>                       ]   0% Planning | Prepared performance profile smoke across 1 model(s)
+[>                       ]   0% Validating | Checking model catalog | Benchmark 1/5: Models | Step 1/8
+[===>                    ]  13% Validating | Checking chat completions | Model 1/1: /models/gemma-3-270m-it-Q8_0.gguf | Benchmark 2/5: Chat completions | Step 2/8
+[======>                 ]  25% Validating | Checking streaming chat completions | Model 1/1: /models/gemma-3-270m-it-Q8_0.gguf | Benchmark 3/5: Chat completions streaming | Step 3/8
+[=========>              ]  38% Validating | Checking embeddings | Model 1/1: /models/gemma-3-270m-it-Q8_0.gguf | Benchmark 4/5: Embeddings | Step 4/8
+[============>           ]  50% Validating | Checking responses | Model 1/1: /models/gemma-3-270m-it-Q8_0.gguf | Benchmark 5/5: Responses | Step 5/8
+[===============>        ]  63% Running | Fetching model metadata | Model 1/1: /models/gemma-3-270m-it-Q8_0.gguf | Benchmark 1/1: Model inventory | Step 6/8
+[==================>     ]  75% Running | Running scenario 32p-16o-c1 | Model 1/1: /models/gemma-3-270m-it-Q8_0.gguf | Benchmark 1/1: Performance scenario | Step 7/8 | Prompt synthetic-32
+[=====================>  ]  88% Running | Capturing environment snapshot | Benchmark 1/1: Environment snapshot | Step 8/8
+[===================>    ]  80% Saving results | Saving raw result export setting: both
+[=====================>  ]  90% Generating reports | Generating formatted report setting: both
+[========================] 100% Completed | Benchmark run completed

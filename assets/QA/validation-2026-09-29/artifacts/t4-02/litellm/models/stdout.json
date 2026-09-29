@@ -1,0 +1,9 @@
+[
+  {
+    "created": 1677610602,
+    "id": "qwen3.5:2b",
+    "mode": "chat",
+    "object": "model",
+    "owned_by": "openai"
+  }
+]
