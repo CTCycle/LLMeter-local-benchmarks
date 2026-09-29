@@ -6,10 +6,10 @@ Last updated: 2026-09-29
 
 | Field | Value |
 |---|---|
-| LLMeter validation revision | `e65948cbc53d2acb9e507d24b3411193a74adcce` (runtime baseline unchanged; evidence-only validation follows) |
-| Operating system | Windows x86-64, PowerShell. |
-| Current host recheck | 2026-09-29: Ollama `0.34.0` was listening at `http://localhost:11434/v1`; LLMeter status returned API reachable `yes` and five exposed models after the live slice. `llama-server` was not installed. Docker was installed but its Linux engine was not running. |
-| Installation/cleanup boundary | No provider binary, model, container, virtual environment, PATH entry, or startup entry was added by this validation. |
+| LLMeter validation revision | `10d4238ed3053f26bdd358583b3c4cd83e86fd2e` on `develop` |
+| Operating system | Windows `10.0.26200.0` x86-64, PowerShell 7. |
+| Current host recheck | Ollama `0.34.0` was listening at `http://localhost:11434/v1`; Docker Desktop's Linux engine was available at client/server `29.8.0` (`linux/amd64`) for the disposable runtimes. |
+| Installation/cleanup boundary | No provider executable, host model installation, PATH entry, virtual environment, startup entry, or permanent provider configuration was added. Task-owned containers, images, temporary model/config files, and the Docker Desktop process were removed after capture. |
 
 ## Ollama record
 
@@ -42,36 +42,58 @@ Source evidence: [Tier 2 standard workflows](../validation-2026-09-24/t2-standar
 
 Provider: llama.cpp
 Compatibility class: first-class
-Provider version: not available
-Model: not run; no disposable GGUF model was available
-Model identifier returned by `/v1/models`: not run
+Provider version: `0.5.0-dev`, build `11243`, commit `fc07d781e61f0d23764394e902b88d26a974e202`
+Container image: `ghcr.io/ggml-org/llama.cpp:server@sha256:f9115c95639e60abc09d4ea83b26fd4d56c66aa1174594393335a514da00c283`
+Model: `ggml-org/gemma-3-270m-it-GGUF/gemma-3-270m-it-Q8_0.gguf`, SHA-256 `0EF57D2C838458A1952664260DCBA38E5BDDA37494F3AF732F06E4ADD24068E3`
+Model identifier returned by `/v1/models`: `/models/gemma-3-270m-it-Q8_0.gguf`
 Operating system: Windows x86-64
-Base URL: planned isolated temporary URL; no server was started
-LLMeter revision: `e65948cbc53d2acb9e507d24b3411193a74adcce`
+Base URL: `http://127.0.0.1:49977/v1` mapped to container port `8080`
+LLMeter revision: `10d4238ed3053f26bdd358583b3c4cd83e86fd2e`
 
 | Boundary | Result |
 |---|---|
-| `status` | `BLOCKED` before execution: `llama-server` was not installed. |
-| `models` | `BLOCKED`; no server/model was started or downloaded. |
-| Chat/streaming/responses/embeddings | Not run; no live claim. |
-| Performance smoke | Not run; no live claim. |
-| Expected limitations | Provider installation and model acquisition are external QA setup, not LLMeter runtime behavior. |
-| Unexpected failures | None in LLMeter; host lacked the disposable runtime. |
-| Evidence boundary | No llama.cpp certification. |
-| Cleanup performed | No temporary llama.cpp environment was created. |
+| `status` | `PASS`; API reachable and the temporary server reported healthy. |
+| Fresh `models --json` | `PASS`; one exact GGUF model was returned. |
+| Non-streaming generation | `PASS` through the one-measured-request performance smoke. |
+| Streaming `chat-generation` | `PASS`; one successful record with TTFT. |
+| Capability probes | Models, chat, streaming chat, and `/v1/responses` returned HTTP 200; `/v1/embeddings` returned controlled HTTP 501 and is recorded as unsupported. |
+| Performance smoke | `PASS`; one scenario, one warmup-free measured request, one success, zero errors; load measurement and telemetry were disabled. |
+| Expected limitations | This certifies the exact image, server build, GGUF, endpoint, and Windows/Docker host recorded here only. |
+| Unexpected failures | None in the executed boundary. |
+| Evidence boundary | Representative llama.cpp interoperability only; no claim for other llama.cpp versions, models, hosts, or provider presets. |
+| Cleanup performed | Task-owned container, image, model directory, and isolated LLMeter roots were removed after evidence capture. |
 
-## Known OpenAI-compatible implementation record
+Run artifacts: [run metadata](t4-02-run-metadata.md), [status](artifacts/t4-02/llama-cpp/status), [fresh models](artifacts/t4-02/llama-cpp/models), [streaming result](artifacts/t4-02/llama-cpp/stream), and [performance smoke](artifacts/t4-02/llama-cpp/perf-smoke).
 
-Selected class: one of vLLM, SGLang, LocalAI, or LiteLLM, chosen only if a
-frictionless temporary runtime was available.
-Provider/version/model/host: not applicable; no eligible runtime was available.
-LLMeter revision: `4fefea734cc62dac327308a518d5409b4f01a033`
+## LiteLLM record
 
-`status`, `models`, capability probing, standard generation, and performance
-smoke are **BLOCKED** by host availability. Docker's Linux engine was not
-running and no local provider installation was introduced. This is not a
-functional failure and does not generalize the Ollama result to the known
-OpenAI-compatible class.
+Selected class: known OpenAI-compatible gateway, LiteLLM.
+Provider version: package `1.103.0`, image revision `c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d`
+Container image: `docker.litellm.ai/berriai/litellm:latest@sha256:bd089afdcd35b894b14a93f9743cdc8b591f82da1a38dd43a010a7b0c9de5fd7`
+Model alias: `qwen3.5:2b`
+Backend: `ollama_chat/qwen3.5:2b` through `http://host.docker.internal:11434`; existing Ollama `0.34.0` was reused, not recertified as another implementation.
+Operating system: Windows x86-64 with Docker Desktop Linux engine
+Base URL: `http://127.0.0.1:64410/v1` mapped to proxy port `4000`
+LLMeter revision: `10d4238ed3053f26bdd358583b3c4cd83e86fd2e`
+
+| Boundary | Result |
+|---|---|
+| `status` | `PASS`; the temporary proxy reported healthy. |
+| Fresh `models --json` | `PASS`; the configured alias `qwen3.5:2b` was returned. |
+| Non-streaming generation | `PASS` through the one-measured-request performance smoke. |
+| Streaming `chat-generation` | `PASS`; one successful record with output timing. |
+| Capability probes | Models, chat, streaming chat, and `/v1/responses` returned HTTP 200; `/v1/embeddings` returned controlled HTTP 400 for the unmapped capability and is recorded as unsupported for this alias. |
+| Performance smoke | `PASS`; one scenario, one warmup-free measured request, one success, zero errors; load measurement and telemetry were disabled. |
+| Expected limitations | This certifies the exact LiteLLM image/package, alias, existing Ollama backend, endpoint, and Windows/Docker host recorded here only. |
+| Unexpected failures | None in the executed boundary. |
+| Evidence boundary | Representative LiteLLM gateway interoperability only; no claim for other gateways, routes, aliases, provider presets, or models. |
+| Cleanup performed | Task-owned container, image, proxy config, and isolated LLMeter roots were removed; the synthetic proxy key was process-only and was not retained. |
+
+Run artifacts: [run metadata](t4-02-run-metadata.md), [status](artifacts/t4-02/litellm/status), [fresh models](artifacts/t4-02/litellm/models), [streaming result](artifacts/t4-02/litellm/stream), and [performance smoke](artifacts/t4-02/litellm/perf-smoke).
+
+The LiteLLM result validates a distinct gateway implementation over the existing
+Ollama backend. It does not add a second Ollama certification and does not
+generalize to every OpenAI-compatible implementation.
 
 ## Best-effort presets
 

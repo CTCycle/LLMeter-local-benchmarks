@@ -1,0 +1,22 @@
+
+Benchmark run
+  Run ID: 2026-09-29T134326.966056Z-p22012-qwen3.5-2b
+  Created: 2026-09-29T13:43:26
+  Models: qwen3.5:2b
+  Records: 1 total, 1 ok, 0 errors
+
+╭────────────┬─────────────────┬────────┬──────┬────────┬─────────────┬─────────────┬──────────────────────────────┬────────────╮
+│ Aggregated summary                                                                                                            │
+├────────────┼─────────────────┼────────┼──────┼────────┼─────────────┼─────────────┼──────────────────────────────┼────────────┤
+│ Model      │ Benchmark       │ Prompt │ Runs │ Errors │ Avg wall ms │ Avg TTFT ms │ Avg output tok/s per request │ Similarity │
+│ qwen3.5:2b │ chat-generation │ short  │ 1    │ 0      │ 806.96      │             │ 19.83                        │            │
+╰────────────┴─────────────────┴────────┴──────┴────────┴─────────────┴─────────────┴──────────────────────────────┴────────────╯
+╭──────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Saved files                                                                                                                                                                                     │
+├──────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Type │ Path                                                                                                                                                                                     │
+│ json │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\litellm\stream\2026-09-29T134326.966056Z-p22012-qwen3.5-2b.json        │
+│ csv  │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\litellm\stream\2026-09-29T134326.966056Z-p22012-qwen3.5-2b.csv         │
+│ md   │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\litellm\stream\2026-09-29T134326.966056Z-p22012-qwen3.5-2b.report.md   │
+│ html │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\litellm\stream\2026-09-29T134326.966056Z-p22012-qwen3.5-2b.report.html │
+╰──────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

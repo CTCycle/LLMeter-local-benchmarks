@@ -1,0 +1,32 @@
+Performance plan estimate:
+  Models: /models/gemma-3-270m-it-Q8_0.gguf
+  Prompt tokens: 32
+  Output tokens: 16
+  Concurrency: 1
+  Scenarios: 1
+  Warmup requests: 0
+  Measured requests: 1
+  Total requests: 1
+  Max requests: 500
+
+Benchmark run
+  Run ID: 2026-09-29T133815.469646Z-p29392-models-gemma-3-270m-it-Q8_0.gguf
+  Created: 2026-09-29T13:38:18
+  Models: /models/gemma-3-270m-it-Q8_0.gguf
+  Records: 1 total, 1 ok, 0 errors
+
+╭───────────────────────────────────┬──────────────────────┬────────────┬──────┬────────┬─────────────┬─────────────┬──────────────────────────────┬────────────╮
+│ Aggregated summary                                                                                                                                            │
+├───────────────────────────────────┼──────────────────────┼────────────┼──────┼────────┼─────────────┼─────────────┼──────────────────────────────┼────────────┤
+│ Model                             │ Benchmark            │ Prompt     │ Runs │ Errors │ Avg wall ms │ Avg TTFT ms │ Avg output tok/s per request │ Similarity │
+│ /models/gemma-3-270m-it-Q8_0.gguf │ performance-scenario │ 32p-16o-c1 │ 1    │ 0      │ 328.83      │             │                              │            │
+╰───────────────────────────────────┴──────────────────────┴────────────┴──────┴────────┴─────────────┴─────────────┴──────────────────────────────┴────────────╯
+╭──────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Saved files                                                                                                                                                                                                                 │
+├──────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Type │ Path                                                                                                                                                                                                                 │
+│ json │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\llama-cpp\perf-smoke\2026-09-29T133815.469646Z-p29392-models-gemma-3-270m-it-Q8_0.gguf.json        │
+│ csv  │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\llama-cpp\perf-smoke\2026-09-29T133815.469646Z-p29392-models-gemma-3-270m-it-Q8_0.gguf.csv         │
+│ md   │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\llama-cpp\perf-smoke\2026-09-29T133815.469646Z-p29392-models-gemma-3-270m-it-Q8_0.gguf.report.md   │
+│ html │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\llama-cpp\perf-smoke\2026-09-29T133815.469646Z-p29392-models-gemma-3-270m-it-Q8_0.gguf.report.html │
+╰──────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

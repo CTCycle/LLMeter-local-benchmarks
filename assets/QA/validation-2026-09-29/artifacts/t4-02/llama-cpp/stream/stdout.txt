@@ -1,0 +1,22 @@
+
+Benchmark run
+  Run ID: 2026-09-29T133856.185143Z-p26996-models-gemma-3-270m-it-Q8_0.gguf
+  Created: 2026-09-29T13:38:56
+  Models: /models/gemma-3-270m-it-Q8_0.gguf
+  Records: 1 total, 1 ok, 0 errors
+
+╭───────────────────────────────────┬─────────────────┬────────┬──────┬────────┬─────────────┬─────────────┬──────────────────────────────┬────────────╮
+│ Aggregated summary                                                                                                                                   │
+├───────────────────────────────────┼─────────────────┼────────┼──────┼────────┼─────────────┼─────────────┼──────────────────────────────┼────────────┤
+│ Model                             │ Benchmark       │ Prompt │ Runs │ Errors │ Avg wall ms │ Avg TTFT ms │ Avg output tok/s per request │ Similarity │
+│ /models/gemma-3-270m-it-Q8_0.gguf │ chat-generation │ short  │ 1    │ 0      │ 401.88      │ 148.50      │ 39.81                        │            │
+╰───────────────────────────────────┴─────────────────┴────────┴──────┴────────┴─────────────┴─────────────┴──────────────────────────────┴────────────╯
+╭──────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Saved files                                                                                                                                                                                                             │
+├──────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Type │ Path                                                                                                                                                                                                             │
+│ json │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\llama-cpp\stream\2026-09-29T133856.185143Z-p26996-models-gemma-3-270m-it-Q8_0.gguf.json        │
+│ csv  │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\llama-cpp\stream\2026-09-29T133856.185143Z-p26996-models-gemma-3-270m-it-Q8_0.gguf.csv         │
+│ md   │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\llama-cpp\stream\2026-09-29T133856.185143Z-p26996-models-gemma-3-270m-it-Q8_0.gguf.report.md   │
+│ html │ G:\Projects\Repositories\Active projects\LLMeter local benchmarks\assets\QA\validation-2026-09-29\artifacts\t4-02\llama-cpp\stream\2026-09-29T133856.185143Z-p26996-models-gemma-3-270m-it-Q8_0.gguf.report.html │
+╰──────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

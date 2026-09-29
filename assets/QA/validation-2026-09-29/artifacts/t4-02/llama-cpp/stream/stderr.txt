@@ -1,0 +1,6 @@
+[========================] 100% Validating | Checking provider reachability and selected models
+[>                       ]   0% Planning | Prepared 1 model(s), 1 benchmark(s), 1 planned step(s)
+[>                       ]   0% Running | Issuing chat completion request | Model 1/1: /models/gemma-3-270m-it-Q8_0.gguf | Benchmark 1/1: Basic generation latency | Step 1/1 | Run 1 | Prompt short
+[=======>                ]  33% Saving results | Saving raw result export setting: both
+[================>       ]  67% Generating reports | Generating formatted report setting: both
+[========================] 100% Completed | Benchmark run completed
