@@ -1,0 +1,418 @@
+{
+  "run_id": "2026-09-29T121124.382656Z-p28956-qwen3.5-2b",
+  "created_at": "2026-09-29T12:11:27",
+  "models": [
+    "qwen3.5:2b"
+  ],
+  "benchmark_ids": [
+    "performance-scenario"
+  ],
+  "config": {
+    "stream": false,
+    "profile": "smoke",
+    "base_url": "http://localhost:11434/v1",
+    "response_previews_included": false,
+    "provider": "ollama",
+    "sensitive_values_redacted": true
+  },
+  "results": [
+    {
+      "benchmark_id": "performance-scenario",
+      "benchmark_name": "Performance scenario",
+      "model": "qwen3.5:2b",
+      "run_index": null,
+      "prompt_name": "32p-16o-c1",
+      "metrics": {
+        "output_tokens_per_second": 27.29927271325083,
+        "wall_time_ms_p90": 583.917,
+        "total_input_tokens": 48,
+        "requests_per_second": 1.7062045445781768,
+        "provider_error_count": 0,
+        "partial_failure": false,
+        "total_output_tokens": 16,
+        "estimated_prompt_tokens": 32,
+        "standard_deviation_kind": "population",
+        "requested_output_tokens": 16,
+        "empty_response_count": 0,
+        "http_error_count": 0,
+        "successful_latency_sample_count": 1,
+        "wall_time_ms_mean": 583.917,
+        "request_count": 1,
+        "input_tokens_per_second": 81.89781813975249,
+        "input_token_sample_count": 1,
+        "wall_time_ms_p50": 583.917,
+        "success_count": 1,
+        "successful_requests_per_second": 1.7062045445781768,
+        "concurrency": 1,
+        "wall_time_ms_max": 583.917,
+        "input_token_coverage": 1.0,
+        "wall_time_ms_stddev": 0.0,
+        "output_tokens_per_second_including_ttft": 27.40115461615264,
+        "output_token_coverage": 1.0,
+        "mean_input_tokens_per_request": 48.0,
+        "error_count": 0,
+        "percentile_estimator": "nearest-rank",
+        "error_rate": 0.0,
+        "mean_output_tokens_per_request": 16.0,
+        "output_token_sample_count": 1,
+        "timeout_count": 0,
+        "wall_time_ms_min": 583.917
+      },
+      "metadata": {
+        "request_traces": [
+          {
+            "chunk_timings": [],
+            "concurrency": 1,
+            "endpoint": "/v1/chat/completions",
+            "error": null,
+            "estimated_prompt_tokens": 32,
+            "http_status": 200,
+            "input_tokens": 48,
+            "model": "qwen3.5:2b",
+            "output_tokens": 16,
+            "prompt_id": "synthetic-32",
+            "provider": "ollama",
+            "request_id": "qwen3.5:2b-synthetic-32-c1-r1",
+            "requested_output_tokens": 16,
+            "run_index": 1,
+            "stream": false,
+            "success": true,
+            "timing": {
+              "generation_wall_ms": null,
+              "inter_chunk_latency_ms": null,
+              "itl_ms": null,
+              "output_tokens_per_second_excluding_ttft": null,
+              "output_tokens_per_second_including_ttft": 27.40115461615264,
+              "ttft_ms": null,
+              "ttlt_ms": null,
+              "wall_time_ms": 583.917
+            }
+          }
+        ],
+        "scenario": "32p-16o-c1",
+        "request_trace_count": 1,
+        "prompt_id": "synthetic-32",
+        "request_traces_truncated": false,
+        "request_traces_omitted": false
+      }
+    }
+  ],
+  "schema_version": "3.0",
+  "run_kind": "performance",
+  "environment": {
+    "os": "Windows",
+    "cpu_count": 12,
+    "total_memory": 33667739648,
+    "available_memory": 6708989952,
+    "used_memory": 26958749696,
+    "memory_used_ratio": 0.8007294216320061,
+    "total_swap": 20849397760,
+    "used_swap": 13284077568,
+    "swap_used_ratio": 0.6371444259884463,
+    "disk_count": 2,
+    "disk_available_bytes": 626898591744,
+    "process_memory_before": 28782592,
+    "process_memory_after": 30826496,
+    "provider_processes": [
+      {
+        "pid": 30280,
+        "name": "ollama app.exe",
+        "command": "C:\\Users\\Thomas V\\AppData\\Local\\Programs\\Ollama\\ollama app.exe --hide --fast-startup",
+        "memory_bytes": 118775808,
+        "virtual_memory_bytes": 61589778432,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 9840,
+        "name": "cmd.exe",
+        "command": "c:\\Windows\\system32\\cmd.exe /c C:\\Users\\Thomas V\\AppData\\Local\\Programs\\Ollama\\ollama app.exe --hide --fast-startup",
+        "memory_bytes": 221184,
+        "virtual_memory_bytes": 2203382009856,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 36044,
+        "name": "pwsh.exe",
+        "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe -Command try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}\n& 'target\\release\\llmeter.exe' --provider ollama --timeout 60 --output-dir 'assets\\QA\\validation-2026-09-29\\artifacts\\ollama-default-profiles\\capability-smoke' bench perf --profile smoke --models 'qwen3.5:2b' --prompt-tokens 32 --output-tokens 16 --concurrency 1 --warmup 0 --runs 1 --no-stream --max-requests 16 --load-measurement off --telemetry standard --sample-interval-ms 1000 --probe-capabilities --probe-all-endpoints --export both --report both --detail detailed",
+        "memory_bytes": 87932928,
+        "virtual_memory_bytes": 2271635144704,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 32612,
+        "name": "msedgewebview2.exe",
+        "command": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.37\\msedgewebview2.exe --type=utility --utility-sub-type=network.mojom.NetworkService --lang=it --service-sandbox-type=none --noerrdialogs --user-data-dir=C:\\Users\\Thomas V\\AppData\\Roaming\\ollama app.exe\\EBWebView --webview-exe-name=ollama app.exe --embedded-browser-webview=1 --embedded-browser-webview-dpi-awareness=2 --startup-read-main-dll --metrics-shmem-handle=2080,i,1958046316141136735,1113373989012535464,524288 --field-trial-handle=1936,i,4879966744566762753,1443157727225590070,262144 --variations-seed-version --pseudonymization-salt-handle=1940,i,17131298223458766249,12454242226232421307,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2172 /prefetch:11 /pfhostedapp:fb4c2ca108df39c14bfca4c147be8e906aff5529",
+        "memory_bytes": 50999296,
+        "virtual_memory_bytes": 2363115569152,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 7664,
+        "name": "llama-server.exe",
+        "command": "C:\\Users\\Thomas V\\AppData\\Local\\Programs\\Ollama\\lib\\ollama\\llama-server.exe --model G:\\Database\\LLM models\\blobs\\sha256-b709d81508a078a686961de6ca07a953b895d9b286c46e17f00fb267f4f2d297 --port 59480 --host 127.0.0.1 --no-webui --offline -c 131072 -np 1 --log-verbosity 4 --no-log-prefix --no-log-timestamps --no-jinja --chat-template chatml --mmproj G:\\Database\\LLM models\\blobs\\sha256-b709d81508a078a686961de6ca07a953b895d9b286c46e17f00fb267f4f2d297 --load-mode none --flash-attn auto -b 512 -ub 512 --context-shift --keep 4",
+        "memory_bytes": 1966219264,
+        "virtual_memory_bytes": 63168679936,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 18812,
+        "name": "msedgewebview2.exe",
+        "command": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.37\\msedgewebview2.exe --type=utility --utility-sub-type=storage.mojom.StorageService --lang=it --service-sandbox-type=service --noerrdialogs --user-data-dir=C:\\Users\\Thomas V\\AppData\\Roaming\\ollama app.exe\\EBWebView --webview-exe-name=ollama app.exe --embedded-browser-webview=1 --embedded-browser-webview-dpi-awareness=2 --startup-read-main-dll --metrics-shmem-handle=2532,i,11277461480066275543,16095656545454282828,524288 --field-trial-handle=1936,i,4879966744566762753,1443157727225590070,262144 --variations-seed-version --pseudonymization-salt-handle=1940,i,17131298223458766249,12454242226232421307,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2544 /prefetch:13 /pfhostedapp:fb4c2ca108df39c14bfca4c147be8e906aff5529",
+        "memory_bytes": 81899520,
+        "virtual_memory_bytes": 2362877788160,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 11064,
+        "name": "msedgewebview2.exe",
+        "command": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.37\\msedgewebview2.exe --type=renderer --noerrdialogs --user-data-dir=C:\\Users\\Thomas V\\AppData\\Roaming\\ollama app.exe\\EBWebView --webview-exe-name=ollama app.exe --embedded-browser-webview=1 --embedded-browser-webview-dpi-awareness=2 --video-capture-use-gpu-memory-buffer --lang=it --js-flags --device-scale-factor=1.1979166269302368 --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=5 --js-flags=--ms-user-locale=it_IT --ssd-no-pressure-read-main-dll --launch-time-ticks=598192038610 --metrics-shmem-handle=3828,i,2324992039831986404,5566898816094112494,1048576 --field-trial-handle=1936,i,4879966744566762753,1443157727225590070,262144 --variations-seed-version --pseudonymization-salt-handle=1940,i,17131298223458766249,12454242226232421307,4 --trace-process-track-uuid=3190708990997080739 --mojo-platform-channel-handle=3972 /pfhostedapp:fb4c2ca108df39c14bfca4c147be8e906aff5529 /prefetch:1",
+        "memory_bytes": 118452224,
+        "virtual_memory_bytes": 3878517809152,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 39000,
+        "name": "msedgewebview2.exe",
+        "command": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.37\\msedgewebview2.exe --type=gpu-process --gpu-recent-crash-count=0 --noerrdialogs --user-data-dir=C:\\Users\\Thomas V\\AppData\\Roaming\\ollama app.exe\\EBWebView --webview-exe-name=ollama app.exe --embedded-browser-webview=1 --embedded-browser-webview-dpi-awareness=2 --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=1776,i,4058476197680747752,17809077648734012170,262144 --field-trial-handle=1936,i,4879966744566762753,1443157727225590070,262144 --variations-seed-version --pseudonymization-salt-handle=1940,i,17131298223458766249,12454242226232421307,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=1932 /prefetch:2 /pfhostedapp:fb4c2ca108df39c14bfca4c147be8e906aff5529",
+        "memory_bytes": 176058368,
+        "virtual_memory_bytes": 2363564630016,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 28392,
+        "name": "ollama.exe",
+        "command": "C:\\Users\\Thomas V\\AppData\\Local\\Programs\\Ollama\\ollama.exe serve",
+        "memory_bytes": 37990400,
+        "virtual_memory_bytes": 7027924992,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 28956,
+        "name": "llmeter.exe",
+        "command": "G:\\Projects\\Repositories\\Active projects\\LLMeter local benchmarks\\target\\release\\llmeter.exe --provider ollama --timeout 60 --output-dir assets\\QA\\validation-2026-09-29\\artifacts\\ollama-default-profiles\\capability-smoke bench perf --profile smoke --models qwen3.5:2b --prompt-tokens 32 --output-tokens 16 --concurrency 1 --warmup 0 --runs 1 --no-stream --max-requests 16 --load-measurement off --telemetry standard --sample-interval-ms 1000 --probe-capabilities --probe-all-endpoints --export both --report both --detail detailed",
+        "memory_bytes": 36155392,
+        "virtual_memory_bytes": 4508553216,
+        "cpu_usage_percent": 356.75677
+      },
+      {
+        "pid": 36724,
+        "name": "msedgewebview2.exe",
+        "command": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.37\\msedgewebview2.exe --embedded-browser-webview=1 --webview-exe-name=ollama app.exe --user-data-dir=C:\\Users\\Thomas V\\AppData\\Roaming\\ollama app.exe\\EBWebView --noerrdialogs --embedded-browser-webview-dpi-awareness=2 --mojo-named-platform-channel-pipe=30280.37160.6431270760987269857 /pfhostedapp:fb4c2ca108df39c14bfca4c147be8e906aff5529",
+        "memory_bytes": 144211968,
+        "virtual_memory_bytes": 2415332667392,
+        "cpu_usage_percent": 0.0
+      },
+      {
+        "pid": 19656,
+        "name": "msedgewebview2.exe",
+        "command": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.37\\msedgewebview2.exe --type=crashpad-handler --user-data-dir=C:\\Users\\Thomas V\\AppData\\Roaming\\ollama app.exe\\EBWebView /prefetch:4 /pfhostedapp:fb4c2ca108df39c14bfca4c147be8e906aff5529 --monitor-self-annotation=ptype=crashpad-handler --database=C:\\Users\\Thomas V\\AppData\\Roaming\\ollama app.exe\\EBWebView\\Crashpad --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=154.0.8037.58 --annotation=exe=C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.37\\msedgewebview2.exe --annotation=plat=Win64 --annotation=prod=Edge WebView2 --annotation=ver=154.0.4258.37 --initial-client-data=0x180,0x184,0x188,0x15c,0x190,0x7ff9630f83e0,0x7ff9630f83f0,0x7ff9630f8400",
+        "memory_bytes": 13737984,
+        "virtual_memory_bytes": 2310958800896,
+        "cpu_usage_percent": 0.0
+      }
+    ],
+    "provider_base_url": "http://localhost:11434/v1",
+    "provider_kind": "ollama",
+    "llmeter_version": "0.4.0",
+    "gpu_probe_output": "NVIDIA GeForce RTX 3060 Laptop GPU, 6144, 4644, 4, 65.15",
+    "gpu_probe_error": null
+  },
+  "performance_plan": {
+    "provider": "ollama",
+    "models": [
+      "qwen3.5:2b"
+    ],
+    "profile": "smoke",
+    "prompt_sizes": {
+      "estimated_tokens": [
+        32
+      ]
+    },
+    "output_sizes": {
+      "estimated_tokens": [
+        16
+      ]
+    },
+    "concurrency": {
+      "levels": [
+        1
+      ]
+    },
+    "warmup": {
+      "requests": 0
+    },
+    "runs": 1,
+    "stream": false,
+    "workload_jsonl": null,
+    "extra_params": {},
+    "safety": {
+      "allow_large_prompt": false,
+      "allow_large_matrix": false
+    },
+    "load_measurement": "off",
+    "load_probe_runs": 2,
+    "telemetry": "standard",
+    "sample_interval_ms": 1000,
+    "provider_process": null,
+    "probe_capabilities": true,
+    "probe_all_endpoints": true,
+    "model_cache_dir": null,
+    "scan_model_cache": false,
+    "detail": "detailed"
+  },
+  "provider_capabilities": {
+    "provider": "ollama",
+    "base_url": "http://localhost:11434/v1",
+    "compatibility_tier": "first-class",
+    "checked_at": "2026-09-29T12:11:26",
+    "endpoints": [
+      {
+        "name": "Models",
+        "method": "GET",
+        "path": "/v1/models",
+        "supported": true,
+        "http_status": 200,
+        "latency_ms": 3.0339,
+        "error": null
+      },
+      {
+        "name": "Chat completions",
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "supported": true,
+        "http_status": 200,
+        "latency_ms": 478.4186,
+        "error": null
+      },
+      {
+        "name": "Chat completions streaming",
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "supported": true,
+        "http_status": 200,
+        "latency_ms": 102.66250000000001,
+        "error": null
+      },
+      {
+        "name": "Embeddings",
+        "method": "POST",
+        "path": "/v1/embeddings",
+        "supported": false,
+        "http_status": null,
+        "latency_ms": 416.1262,
+        "error": "HTTP 501: {\"error\":{\"message\":\"This server does not support embeddings. Start it with `--embeddings`\",\"type\":\"api_error\",\"param\":null,\"code\":null}}\n"
+      },
+      {
+        "name": "Responses",
+        "method": "POST",
+        "path": "/v1/responses",
+        "supported": true,
+        "http_status": 200,
+        "latency_ms": 245.1801,
+        "error": null
+      }
+    ],
+    "models": [
+      {
+        "id": "huihui_ai/Qwen3.8-abliterated:27b",
+        "owned_by": "huihui_ai",
+        "context_length": null,
+        "max_output_tokens": null,
+        "architecture": null,
+        "quantization": null,
+        "raw": {
+          "created": 1790545286,
+          "id": "huihui_ai/Qwen3.8-abliterated:27b",
+          "object": "model",
+          "owned_by": "huihui_ai"
+        }
+      },
+      {
+        "id": "qwen3.8:27b",
+        "owned_by": "library",
+        "context_length": null,
+        "max_output_tokens": null,
+        "architecture": null,
+        "quantization": null,
+        "raw": {
+          "created": 1790542979,
+          "id": "qwen3.8:27b",
+          "object": "model",
+          "owned_by": "library"
+        }
+      },
+      {
+        "id": "qwen3.5:9b",
+        "owned_by": "library",
+        "context_length": null,
+        "max_output_tokens": null,
+        "architecture": null,
+        "quantization": null,
+        "raw": {
+          "created": 1779793500,
+          "id": "qwen3.5:9b",
+          "object": "model",
+          "owned_by": "library"
+        }
+      },
+      {
+        "id": "qwen3.5:2b",
+        "owned_by": "library",
+        "context_length": null,
+        "max_output_tokens": null,
+        "architecture": null,
+        "quantization": null,
+        "raw": {
+          "created": 1779792693,
+          "id": "qwen3.5:2b",
+          "object": "model",
+          "owned_by": "library"
+        }
+      },
+      {
+        "id": "nomic-embed-text:latest",
+        "owned_by": "library",
+        "context_length": null,
+        "max_output_tokens": null,
+        "architecture": null,
+        "quantization": null,
+        "raw": {
+          "created": 1779789277,
+          "id": "nomic-embed-text:latest",
+          "object": "model",
+          "owned_by": "library"
+        }
+      }
+    ],
+    "warnings": [
+      "Streaming is disabled; TTFT will be unavailable unless a provider reports native timing."
+    ]
+  },
+  "model_load_measurements": null,
+  "model_inventory_measurements": [
+    {
+      "model": "qwen3.5:2b",
+      "provider": "ollama",
+      "metadata_latency_ms": 0.0435,
+      "metadata_payload_bytes": 78,
+      "cache_dir": null,
+      "cache_bytes": null,
+      "cache_scope": null,
+      "notes": [
+        "Skipped — enter a model cache directory path to measure disk usage"
+      ]
+    }
+  ],
+  "telemetry_summary": {
+    "sample_count": 1,
+    "max_memory_used_ratio": 0.798164961264227,
+    "max_swap_used_ratio": 0.6327072591664153,
+    "max_process_memory_bytes": 24043520,
+    "max_cpu_usage_percent": 100.0,
+    "disk_count": 2,
+    "disk_available_bytes": 626898591744,
+    "warnings": [
+      "Swap used ratio exceeded 0.20 during telemetry sampling."
+    ]
+  }
+}

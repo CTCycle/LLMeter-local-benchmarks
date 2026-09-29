@@ -6,16 +6,16 @@ Last updated: 2026-09-29
 
 | Field | Value |
 |---|---|
-| LLMeter validation revision | `4fefea734cc62dac327308a518d5409b4f01a033` |
+| LLMeter validation revision | `e65948cbc53d2acb9e507d24b3411193a74adcce` (runtime baseline unchanged; evidence-only validation follows) |
 | Operating system | Windows x86-64, PowerShell. |
-| Current host recheck | 2026-09-29: no supported provider listener was available. `ollama.exe` was present, but `ollama list` timed out waiting for its service and reported access denied while opening/rotating host log files. `llama-server` was not installed. Docker was installed but its Linux engine was not running. |
+| Current host recheck | 2026-09-29: Ollama `0.34.0` was listening at `http://localhost:11434/v1`; LLMeter status returned API reachable `yes` and five exposed models after the live slice. `llama-server` was not installed. Docker was installed but its Linux engine was not running. |
 | Installation/cleanup boundary | No provider binary, model, container, virtual environment, PATH entry, or startup entry was added by this validation. |
 
 ## Ollama record
 
 Provider: Ollama
 Compatibility class: first-class
-Provider version: not obtained during the unavailable 2026-09-29 recheck
+Provider version: `0.34.0`
 Model: `qwen3.5:2b` for generation; `nomic-embed-text:latest` for embeddings
 Model identifier returned by `/v1/models`: exact IDs above in the prior live catalog
 Operating system: Windows x86-64
@@ -24,16 +24,16 @@ LLMeter revision: `c7438db98812b70c20738ddcd4821d27dab837a3` for the standard su
 
 | Boundary | Result |
 |---|---|
-| `status` | Prior live status passed with API reachable and 8 exposed models; current 2026-09-29 recheck was unavailable. |
-| `models` | Prior live `models --json` passed and returned 8 models; current listener unavailable. |
+| `status` | Current recheck passed with API reachable and five exposed models. |
+| `models` | Current `models --json` passed and returned five models, including `qwen3.5:2b` and `nomic-embed-text:latest`. |
 | Chat Completions | Prior standard suite passed all six LLM benchmark paths with 8/8 records on `qwen3.5:2b`; repeated profile traces returned 24/24 HTTP 200. |
 | Streaming | Passed in the standard chat-generation and performance paths. |
 | `/v1/responses` | Passed for the selected generation model in the 2026-09-24 standard suite. |
 | `/v1/embeddings` | Passed 1/1 for `nomic-embed-text:latest`; the `qwen3.5:2b` capability probe returned HTTP 501, recorded as unsupported. |
-| Performance smoke | Prior release/Tier 3 evidence passed a bounded smoke and repeated `latency`/`throughput` subsets; those samples use one model and custom small matrices. |
+| Performance smoke | The current default `latency` and `throughput` profiles passed with 15/15 and 16/16 successful measured traces; the capability-probe smoke also passed its one measured request. See [T3/T4 live default profile evidence](t3-t4-live-default-profiles-evidence.md). |
 | Expected limitations | Model-specific unsupported embeddings and provider/model capability variation. |
-| Unexpected failures | One cold non-stream probe timed out before a warmed HTTP 200 repeat; host swap-pressure warnings limit timing interpretation. |
-| Evidence boundary | Exact Ollama/model evidence only; no claim for other presets, models, versions, or hosts. |
+| Unexpected failures | No request or persistence failure in the current slice. Host swap-pressure warnings limit timing interpretation; the earlier cold non-stream timeout remains historical evidence. |
+| Evidence boundary | Exact Ollama/model evidence only; no claim for other presets, models, versions, or hosts. Full sweep, statistical interpretation, and broader live variance remain open. |
 | Cleanup performed | No Ollama service was started by this validation; no files or installations were added. |
 
 Source evidence: [Tier 2 standard workflows](../validation-2026-09-24/t2-standard-workflows-evidence.md), [repeated live profiles](../validation-2026-09-26/t3-t5-followup-evidence.md), and [release validation](../release-0.4.0/release-report.md).
@@ -47,7 +47,7 @@ Model: not run; no disposable GGUF model was available
 Model identifier returned by `/v1/models`: not run
 Operating system: Windows x86-64
 Base URL: planned isolated temporary URL; no server was started
-LLMeter revision: `4fefea734cc62dac327308a518d5409b4f01a033`
+LLMeter revision: `e65948cbc53d2acb9e507d24b3411193a74adcce`
 
 | Boundary | Result |
 |---|---|
