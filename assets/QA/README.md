@@ -26,6 +26,7 @@ Campaign entry points:
 - [2026-09-28 T3/T5 bounded scale-16 continuation](validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md)
 - [2026-09-29 T3/T4 live default profiles and capability evidence](validation-2026-09-29/t3-t4-live-default-profiles-evidence.md)
 - [2026-09-29 T3 live full-sweep evidence](validation-2026-09-29/t3-live-sweep-evidence.md)
+- [2026-09-29 T3 repeated live model evidence](validation-2026-09-29/t3-repeated-model-evidence.md)
 - [Release 0.4.0 report](release-0.4.0/release-report.md)
 - [Ollama LLM report](runtime-ollama/benchmark_results/2026-09-10T173811.269676Z-p27232-qwen3.5-2b.report.md)
 
