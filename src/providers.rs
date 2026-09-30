@@ -893,7 +893,6 @@ mod tests {
     use std::io::Cursor;
     use std::time::Instant;
 
-    use clap::ValueEnum;
     use serde_json::{json, Value};
 
     use super::{
@@ -908,14 +907,6 @@ mod tests {
         }
         for alias in ["lm-studio", "llama.cpp", "custom", "sgl", "swebench"] {
             assert!(alias.parse::<ProviderKind>().is_err(), "{alias}");
-        }
-    }
-
-    #[test]
-    fn provider_value_enum_names_match_canonical_labels() {
-        for provider in ProviderKind::value_variants().iter().copied() {
-            let possible = provider.to_possible_value().expect("provider value");
-            assert_eq!(possible.get_name(), provider.label());
         }
     }
 

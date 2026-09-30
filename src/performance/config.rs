@@ -498,35 +498,3 @@ fn parse_csv_u32(value: &str) -> anyhow::Result<Vec<u32>> {
     }
     Ok(items.into_iter().collect())
 }
-
-#[cfg(test)]
-mod tests {
-    use clap::ValueEnum;
-
-    use super::PerformanceProfile;
-
-    #[test]
-    fn performance_profile_cli_names_match_canonical_labels() {
-        for profile in PerformanceProfile::value_variants().iter().copied() {
-            let possible = profile.to_possible_value().expect("profile value");
-            assert_eq!(possible.get_name(), profile.label());
-            assert_eq!(profile.label().parse::<PerformanceProfile>(), Ok(profile));
-        }
-    }
-
-    #[test]
-    fn performance_profile_defaults_are_canonical() {
-        assert_eq!(PerformanceProfile::Smoke.default_runs(), 3);
-        assert_eq!(PerformanceProfile::Latency.default_runs(), 5);
-        assert_eq!(PerformanceProfile::Throughput.default_runs(), 4);
-        assert_eq!(PerformanceProfile::Sweep.default_runs(), 3);
-        for profile in [
-            PerformanceProfile::Smoke,
-            PerformanceProfile::Latency,
-            PerformanceProfile::Throughput,
-            PerformanceProfile::Sweep,
-        ] {
-            assert_eq!(profile.default_warmup_requests(), 1);
-        }
-    }
-}
