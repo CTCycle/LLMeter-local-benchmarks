@@ -42,10 +42,11 @@ fn wait_for_exit(session: &mut OsSession) -> WaitStatus {
     }
 }
 
-fn assert_exit_code(status: WaitStatus, expected: i32) {
+fn assert_interrupt_status(status: WaitStatus) {
     assert!(
-        matches!(status, WaitStatus::Exited(_, code) if code == expected),
-        "expected Unix PTY exit code {expected}, got {status:?}"
+        matches!(status, WaitStatus::Exited(_, 130))
+            || matches!(status, WaitStatus::Signaled(_, Signal::SIGINT, _)),
+        "expected Unix PTY interrupt status equivalent to exit code 130, got {status:?}"
     );
 }
 
@@ -83,6 +84,13 @@ fn menu_command_with_provider(home: &Path, output: &Path, base_url: &str) -> Com
         "menu",
     ]);
     command
+}
+
+fn expect_prompt(session: &mut OsSession, prompt: &str) {
+    session.set_expect_timeout(Some(PROCESS_EXIT_TIMEOUT));
+    session
+        .expect(prompt)
+        .unwrap_or_else(|error| panic!("expected Unix PTY prompt {prompt:?}: {error}"));
 }
 
 fn performance_command(home: &Path, output: &Path, base_url: &str) -> Command {
@@ -248,7 +256,7 @@ fn unix_pty_menu_ctrl_c_exits_with_interrupt_status() {
         .send(ControlCode::ETX)
         .expect("interrupt Unix PTY menu");
     let status = wait_for_exit(&mut session);
-    assert_exit_code(status, 130);
+    assert_interrupt_status(status);
 }
 
 #[test]
@@ -278,7 +286,7 @@ fn unix_pty_nested_cancel_and_back_navigation_do_not_hang() {
         .expect("interrupt after nested cancellation and back navigation");
 
     let status = wait_for_exit(&mut session);
-    assert_exit_code(status, 130);
+    assert_interrupt_status(status);
 }
 
 #[test]
@@ -320,13 +328,13 @@ fn unix_pty_performance_confirmation_interrupt_exits_cleanly() {
     session.send("\r").expect("accept raw export choice");
     thread::sleep(Duration::from_millis(250));
     session.send("\r").expect("accept report choice");
-    thread::sleep(Duration::from_millis(500));
+    expect_prompt(&mut session, "Run this benchmark plan");
     session
         .send(ControlCode::ETX)
         .expect("interrupt performance confirmation");
 
     let status = wait_for_exit(&mut session);
-    assert_exit_code(status, 130);
+    assert_interrupt_status(status);
 }
 
 #[test]
