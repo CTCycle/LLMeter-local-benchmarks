@@ -9,11 +9,52 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
-use std::{thread, time::Duration};
+use std::{
+    thread,
+    time::{Duration, Instant},
+};
 
-use expectrl::{spawn, ControlCode, Expect};
+use expectrl::{
+    process::unix::{Signal, WaitStatus},
+    session::OsSession,
+    spawn, ControlCode, Expect,
+};
 use serde_json::Value;
 use tempfile::TempDir;
+
+const PROCESS_EXIT_TIMEOUT: Duration = Duration::from_secs(5);
+
+fn wait_for_exit(session: &mut OsSession) -> WaitStatus {
+    let deadline = Instant::now() + PROCESS_EXIT_TIMEOUT;
+    loop {
+        let status = session
+            .get_process_mut()
+            .status()
+            .expect("read Unix PTY process status");
+        if !matches!(status, WaitStatus::StillAlive) {
+            return status;
+        }
+        if Instant::now() >= deadline {
+            let _ = session.get_process_mut().kill(Signal::SIGKILL);
+            panic!("Unix PTY process did not exit within {PROCESS_EXIT_TIMEOUT:?}");
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
+}
+
+fn assert_exit_code(status: WaitStatus, expected: i32) {
+    assert!(
+        matches!(status, WaitStatus::Exited(_, code) if code == expected),
+        "expected Unix PTY exit code {expected}, got {status:?}"
+    );
+}
+
+fn assert_nonzero_exit(status: WaitStatus) {
+    assert!(
+        !matches!(status, WaitStatus::Exited(_, 0)),
+        "expected Unix PTY process to exit unsuccessfully, got {status:?}"
+    );
+}
 
 fn shell_quote(path: &Path) -> String {
     format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
@@ -174,11 +215,8 @@ fn unix_pty_menu_ctrl_c_exits_with_interrupt_status() {
     session
         .send(ControlCode::ETX)
         .expect("interrupt Unix PTY menu");
-    let status = session
-        .get_process_mut()
-        .wait(Some(5_000))
-        .expect("Unix PTY menu exits");
-    assert_eq!(status, 130);
+    let status = wait_for_exit(&mut session);
+    assert_exit_code(status, 130);
 }
 
 #[test]
@@ -207,11 +245,8 @@ fn unix_pty_nested_cancel_and_back_navigation_do_not_hang() {
         .send(ControlCode::ETX)
         .expect("interrupt after nested cancellation and back navigation");
 
-    let status = session
-        .get_process_mut()
-        .wait(Some(5_000))
-        .expect("Unix PTY menu exits after navigation");
-    assert_eq!(status, 130);
+    let status = wait_for_exit(&mut session);
+    assert_exit_code(status, 130);
 }
 
 #[test]
@@ -258,11 +293,8 @@ fn unix_pty_performance_confirmation_interrupt_exits_cleanly() {
         .send(ControlCode::ETX)
         .expect("interrupt performance confirmation");
 
-    let status = session
-        .get_process_mut()
-        .wait(Some(5_000))
-        .expect("Unix PTY process exits after confirmation interruption");
-    assert_eq!(status, 130);
+    let status = wait_for_exit(&mut session);
+    assert_exit_code(status, 130);
 }
 
 #[test]
@@ -284,11 +316,8 @@ fn unix_pty_interrupted_performance_run_leaves_no_partial_result_and_recovers() 
     session
         .send(ControlCode::ETX)
         .expect("interrupt delayed Unix PTY performance run");
-    let status = session
-        .get_process_mut()
-        .wait(Some(5_000))
-        .expect("interrupted Unix PTY performance process exits");
-    assert_ne!(status, 0);
+    let status = wait_for_exit(&mut session);
+    assert_nonzero_exit(status);
 
     assert!(
         json_result_files(&output).is_empty(),

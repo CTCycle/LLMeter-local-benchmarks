@@ -5,12 +5,27 @@ Last updated: 2026-09-30
 ## Revision and environment
 
 - Repository: `CTCycle/LLMeter-local-benchmarks`
-- Base checkout revision: `922da56ebf96834d905d918400f2dee0ea3c3491`
-- Candidate revision: not assigned; this evidence was collected from the uncommitted working tree based on that revision.
+- Starting revision: `e0a4723d76c0836eff83b6190ebb575fc5562c2d` on `develop`
+- Candidate revision: to be assigned after the scoped changes are committed.
 - Package: `llmeter 0.4.0`
-- Host: Windows, Rust `1.98.0`, Cargo `1.98.0`
+- Host: Windows 11 Pro `10.0.26200`, x86-64; Rust `1.98.0`, Cargo `1.98.0`
 - Provider fixture: ephemeral loopback OpenAI-compatible mock provider in `tests/mock_provider_e2e.rs`
-- Live provider prerequisite: official launcher status/models checks could not reach `http://localhost:11434/v1`; no live model or provider-path claim is added here.
+- Installed Ollama client: `0.34.0`; endpoint `http://localhost:11434/v1`
+
+The task-owned source changes are a bounded Unix PTY API correction and a
+performance trace-identity correction. `tests/pty_menu_unix_e2e.rs` now uses
+the locked `expectrl 0.9.0` / `ptyprocess 0.5.0` status API with bounded
+polling and typed `WaitStatus` exit assertions. `src/performance/runner.rs`
+now includes output-token size in each request ID. The former sweep IDs
+collided across the three output sizes even though all 81 requests executed;
+the default-matrix fixture now asserts 81 unique sweep IDs.
+
+All authoritative current live runs used isolated `LLMETER_HOME`,
+`LLMETER_CONFIG_DIR`, and output roots; `--timeout 120`,
+`--load-measurement off`, standard telemetry, a 1000 ms sample interval,
+`--max-requests 500`, JSON and CSV exports, Markdown and HTML reports, full
+request traces, and no response previews. The disposable roots were removed
+after the artifact audit.
 
 ## Deterministic release ceiling
 
@@ -32,54 +47,115 @@ Result: PASS.
 - Default privacy flags and absent response previews: PASS.
 - Atomic-write temporary-file cleanup: PASS.
 
-Adjacent refusal command used the same matrix with 20 measured runs (525
-total requests), without `--allow-large-matrix`.
+The adjacent refusal command used the same matrix with 20 measured runs,
+which would require 525 requests, without `--allow-large-matrix`.
 
 Result: PASS. The command failed before any performance chat request, reported
 `requests 525 exceed --max-requests 500`, and wrote no result artifact.
 
-The complete focused mock-provider file then passed 23/23, including the
-existing JSONL/accounting, default-matrix, bounded-concurrency, provider
-contract, launcher, and the two release-ceiling cases.
+The complete focused mock-provider file passed 23/23, including JSONL
+accounting, all default matrices, bounded concurrency, provider contracts,
+launcher behavior, and both release-ceiling cases. The sweep assertion
+confirmed 81 unique request IDs after the output-size identity fix.
+
+## CI-failure remediation
+
+The starting hosted run [`36698403795`](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36698403795)
+failed to compile `tests/pty_menu_unix_e2e.rs` on Ubuntu and both macOS
+architectures because `ptyprocess 0.5.0` exposes `wait()` without a timeout
+and returns `WaitStatus`, not an integer. Windows passed the run. The scoped
+fix keeps the five-second bound by polling the non-blocking `status()` API,
+force-killing only after the bound, and retaining explicit exit-code matching.
+Native Unix compilation and execution remain hosted-CI requirements on this
+Windows checkout.
 
 ## Local quality evidence
 
-The following passed on the working tree:
+The following passed after the scoped source changes:
 
 - `cargo fmt --all -- --check`
 - `cargo check --locked --all-targets --all-features`
 - `cargo clippy --locked --all-targets --all-features -- -D warnings`
-- `cargo test --locked --all-targets --all-features -- --test-threads=1`
-- warning-denied `cargo doc --locked --no-deps --all-features`
+- `RUSTDOCFLAGS=-D warnings cargo doc --locked --no-deps --all-features`
 - `cargo build --locked --release --all-features`
-- `cargo audit` after updating transitive `rustls` from `0.23.44` to patched `0.23.45`
-- `cargo tree --duplicates`
+- isolated `cargo audit` using the current advisory database
+- `cargo tree --locked --duplicates` inspection
+- `cargo test --locked --all-targets --all-features -- --test-threads=1`
 
-## Live and hosted boundary
+The full serialized test command passed 156 tests with zero failures. The
+Windows `pty_menu_unix_e2e` target ran zero tests by its Unix cfg; hosted CI is
+required for the native Unix cases. The warning-denied rustdoc check and
+release binary `--version` / `--help` smoke also passed.
 
-The required checks:
+## Current live Ollama profiles
 
-```text
-.\run_llmeter.ps1 --provider ollama status
-.\run_llmeter.ps1 --provider ollama models --json
-```
+The official launcher checks passed with Ollama `0.34.0`; the model inventory
+contained `qwen3.5:2b` and `qwen3.5:9b` (five models total). The fixed current
+profiles were:
 
-now pass with Ollama `0.34.0` and five exposed models. The full default
-`latency`, `throughput`, and `sweep` profiles for `qwen3.5:2b` pass, and the
-matched non-streaming `qwen3.5:2b`/`qwen3.5:9b` matrix passes with 20 measured
-samples per scenario. See the [live Ollama revalidation evidence](t3-live-ollama-revalidation-evidence.md)
-for run IDs, accounting, report reload, and privacy checks.
+| Profile / model | Run ID | Scenarios | Warmup | Measured | Total | Errors | Result |
+|---|---|---:|---:|---:|---:|---:|---|
+| `latency` / `qwen3.5:2b` | `2026-09-30T123739.621475Z-p9424-qwen3.5-2b` | 3 | 3 | 15 | 18 | 0 | PASS |
+| `throughput` / `qwen3.5:2b` | `2026-09-30T123850.947857Z-p31096-qwen3.5-2b` | 4 | 4 | 16 | 20 | 0 | PASS |
+| `sweep` / `qwen3.5:2b` | `2026-09-30T124048.622209Z-p10960-qwen3.5-2b` | 27 | 27 | 81 | 108 | 0 | PASS |
 
-The optional LiteLLM-over-Ollama path remains unavailable at
-`http://localhost:4000/v1`, and the high swap pressure observed during
-telemetry disqualifies comparative timing interpretation. Current
-four-platform CI for this uncommitted candidate was also not run.
+The fixed sweep retained 81 successful measured traces and 81 unique request
+IDs. Each run saved a schema `3.0`, `performance` result with the expected
+scenario and measured-trace counts. Fresh release-binary `report list` and
+`report show` processes returned exit code `0` for every run.
+
+## Matched two-model functional matrix
+
+Run ID: `2026-09-30T124647.076747Z-p17212-qwen3.5-2b-qwen3.5-9b`.
+
+The same non-streaming matrix ran for `qwen3.5:2b` and `qwen3.5:9b`: prompt
+tokens `32`, output tokens `16`, concurrency `1,2`, one warmup and 20 measured
+requests per scenario, standard telemetry, load measurement off, and the
+500-request cap. The plan contained 4 scenarios, 4 warmups, 80 measured
+requests, and 84 total requests. All 4 records and all 80 measured traces
+succeeded; every scenario has enough samples for P95 representation, and the
+80 request IDs were unique.
+
+The saved result reported these host observations:
+
+| Model | Concurrency | Average wall time |
+|---|---:|---:|
+| `qwen3.5:2b` | 1 | 319.02 ms |
+| `qwen3.5:2b` | 2 | 718.78 ms |
+| `qwen3.5:9b` | 1 | 3254.10 ms |
+| `qwen3.5:9b` | 2 | 7626.93 ms |
+
+Functional completion and persistence pass. The run reached approximately
+0.95 maximum swap-used ratio and approximately 0.81 maximum memory ratio, so
+comparative timing interpretation is not validated and no model ranking is
+claimed.
+
+## Persistence and privacy
+
+Fresh release-binary processes ran `report list` and `report show` for each of
+the four current saved run directories. The audit found:
+
+- schema `3.0`, run kind `performance`, and zero result errors;
+- expected scenario and measured-trace counts, with successful HTTP 200 traces;
+- unique request IDs and complete, non-truncated request traces;
+- JSON, CSV, Markdown, and HTML output for each run;
+- `response_previews_included: false` and zero non-null response previews;
+- no credential-shaped values in retained formats;
+- zero `.tmp` or `.partial` artifacts after completion.
+
+## Optional second-provider boundary
+
+LiteLLM at `http://localhost:4000/v1` was unavailable. Docker was installed
+but its Linux engine was not reachable, so no temporary proxy was started and
+no provider, model, container, PATH, or permanent configuration was changed.
+The previous Tier 4 LiteLLM-over-Ollama evidence remains historical
+representative coverage and is not promoted to this current smoke.
 
 ## Disposition
 
-`T3-05: PARTIAL`. The configured fixture ceiling, above-limit refusal,
-accounting, current Ollama profiles, matched live functional matrix,
-persistence, reload, and privacy boundaries pass locally. The optional
-LiteLLM path, timing interpretation under swap pressure, and exact-candidate
-hosted CI remain open. No universal performance or cross-host numeric claim is
-made.
+`T3-05: PARTIAL`. The 500-request ceiling, above-limit refusal, deterministic
+regressions, full current Ollama profiles, matched two-model functional matrix,
+persistence, reload, trace identity, reporting, and privacy boundaries pass.
+Comparative timing remains unvalidated under swap pressure, LiteLLM is
+unavailable, and exact-candidate four-platform CI is pending. No universal or
+cross-host numeric performance claim is made.

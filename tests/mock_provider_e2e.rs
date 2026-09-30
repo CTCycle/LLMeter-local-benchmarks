@@ -1260,6 +1260,7 @@ fn performance_profiles_execute_default_matrices_through_fixture() {
             27,
         ),
     ];
+    let mut sweep_request_ids = HashSet::new();
 
     for (profile, prompt_tokens, output_tokens, concurrency, warmup, runs, scenario_count) in
         expected
@@ -1328,6 +1329,26 @@ fn performance_profiles_execute_default_matrices_through_fixture() {
                         })
                     })
         }));
+        if profile == "sweep" {
+            for scenario in scenarios {
+                for trace in scenario["metadata"]["request_traces"]
+                    .as_array()
+                    .expect("sweep request traces")
+                {
+                    assert!(
+                        sweep_request_ids.insert(
+                            trace["request_id"]
+                                .as_str()
+                                .expect("sweep request trace id")
+                                .to_string()
+                        ),
+                        "duplicate sweep request ID: {}",
+                        trace["request_id"]
+                    );
+                }
+            }
+            assert_eq!(sweep_request_ids.len(), 81, "unique sweep request IDs");
+        }
     }
 
     let measured_and_warmup_chat_requests = provider
