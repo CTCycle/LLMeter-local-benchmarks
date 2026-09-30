@@ -355,10 +355,7 @@ struct WindowsAppHarness {
 #[cfg(windows)]
 impl WindowsAppHarness {
     fn new() -> Self {
-        let qa_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("assets")
-            .join("QA");
-        let root = TempDir::new_in(qa_dir).expect("create isolated app harness");
+        let root = TempDir::new().expect("create isolated app harness");
         let script = root.path().join("run_llmeter.ps1");
         fs::copy(
             Path::new(env!("CARGO_MANIFEST_DIR")).join("run_llmeter.ps1"),
