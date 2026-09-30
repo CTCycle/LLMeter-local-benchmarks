@@ -5,7 +5,7 @@ Last updated: 2026-09-30
 ## Boundary
 
 - Starting source revision: `e0a4723d76c0836eff83b6190ebb575fc5562c2d` on `develop`.
-- Candidate revision: `ac17e4d24d22d2b36761b969dad7d53e70a8f465`.
+- Candidate revision: `c5864bf4e303646fca74ea98707ca4081172c0b9`.
 - Package / binary: `llmeter 0.4.0`, rebuilt `target/release/llmeter.exe`.
 - Host: Windows 11 Pro `10.0.26200`, x86-64, Rust `1.98.0`, Cargo `1.98.0`.
 - Ollama client: `0.34.0`; endpoint `http://localhost:11434/v1`.

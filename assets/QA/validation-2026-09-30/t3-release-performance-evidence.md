@@ -6,7 +6,7 @@ Last updated: 2026-09-30
 
 - Repository: `CTCycle/LLMeter-local-benchmarks`
 - Starting revision: `e0a4723d76c0836eff83b6190ebb575fc5562c2d` on `develop`
-- Candidate revision: `ac17e4d24d22d2b36761b969dad7d53e70a8f465`.
+- Candidate revision: `c5864bf4e303646fca74ea98707ca4081172c0b9`.
 - Package: `llmeter 0.4.0`
 - Host: Windows 11 Pro `10.0.26200`, x86-64; Rust `1.98.0`, Cargo `1.98.0`
 - Provider fixture: ephemeral loopback OpenAI-compatible mock provider in `tests/mock_provider_e2e.rs`
@@ -66,8 +66,19 @@ architectures because `ptyprocess 0.5.0` exposes `wait()` without a timeout
 and returns `WaitStatus`, not an integer. Windows passed the run. The scoped
 fix keeps the five-second bound by polling the non-blocking `status()` API,
 force-killing only after the bound, and retaining explicit exit-code matching.
-Native Unix compilation and execution remain hosted-CI requirements on this
-Windows checkout.
+The follow-up hosted failure showed that `expectrl::spawn` does not interpret
+shell quoting or `env` assignments; the tests now use
+`expectrl::Session::spawn(std::process::Command)` with explicit arguments and
+environment variables. Native Unix compilation and execution remain hosted-CI
+requirements on this Windows checkout.
+
+Hosted run [`36719598621`](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36719598621)
+qualified the prior documentation follow-up revision
+`548431bd28ff51d7adfe5d0a36e9ba4f5668c90e` as Windows PASS, but Ubuntu,
+macOS Intel, and macOS Apple silicon failed the Unix PTY test step. The
+failures were exit status `127` and a delayed-request setup timeout because
+the quoted command was passed literally; the direct-command correction is the
+new source candidate `c5864bf4e303646fca74ea98707ca4081172c0b9`.
 
 ## Local quality evidence
 
