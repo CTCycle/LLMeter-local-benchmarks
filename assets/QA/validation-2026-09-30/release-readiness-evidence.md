@@ -5,7 +5,7 @@ Last updated: 2026-09-30
 ## Candidate identity
 
 - Starting checkout SHA: `e0a4723d76c0836eff83b6190ebb575fc5562c2d` on `develop`
-- Candidate SHA: `ac17e4d24d22d2b36761b969dad7d53e70a8f465`.
+- Candidate SHA: `c5864bf4e303646fca74ea98707ca4081172c0b9`.
 - Package version: `0.4.0`
 - Release binary `--version`: PASS (`llmeter 0.4.0`)
 - Release binary `--help`: PASS
