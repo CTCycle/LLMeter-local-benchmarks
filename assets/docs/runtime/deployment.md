@@ -110,7 +110,7 @@ Authorized `v*` tags publish validated Windows x86-64, GNU/Linux x86-64, macOS I
 
 Verify checksums from the asset directory with `sha256sum --check SHA256SUMS` (or `Get-FileHash` on Windows), then verify an archive with `gh attestation verify <archive> --repo CTCycle/LLMeter-local-benchmarks`. The Linux GNU archive requires a compatible glibc runtime and is not fully static.
 
-The current source state is package version `0.4.0`. The previous public `v0.3.0` archives remain available from the [GitHub Releases page](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.3.0); the `v0.4.0` archives are produced by the authorized tag workflow. The first crates.io publication remains a manual follow-up, so use a verified archive or source checkout until `llmeter` is available from the registry. Treat any replacement executable as untrusted until independently verified before using `llmeter update --source`.
+The current source state is package version `0.4.0`. The previous public `v0.3.0` archives remain available from the [GitHub Releases page](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.3.0), and the public `v0.4.0` archives were produced by the authorized tag workflow. The first crates.io publication remains a manual follow-up, so use a verified archive or source checkout until `llmeter` is available from the registry. Treat any replacement executable as untrusted until independently verified before using `llmeter update --source`.
 
 ## Dependencies
 
@@ -130,4 +130,4 @@ Windows x86-64 is Tier 1. Ubuntu GNU/Linux x86-64 and macOS Intel/Apple silicon 
 
 The binary uses `rustls`, so it does not require an OpenSSL runtime dependency. A musl-targeted Linux build is the portable Linux option; the released GNU/Linux artifact still has a glibc compatibility boundary.
 
-Last updated: 2026-09-10
+Last updated: 2026-09-30

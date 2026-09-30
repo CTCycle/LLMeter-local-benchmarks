@@ -4,6 +4,8 @@ LLMeter benchmarks local OpenAI-compatible LLM providers through `/v1` APIs. It 
 
 LLMeter does not start or stop provider servers. Start your provider externally, then use LLMeter to check status, list models, run benchmarks, and generate reports.
 
+The current package version is `0.4.0`. The public GitHub release is verified; the first crates.io publication remains owner-gated.
+
 Windows x86-64 is the primary supported platform. GNU/Linux requires a compatible glibc runtime. Tagged releases also publish macOS Intel and Apple silicon archives; see `SUPPORTED_PLATFORMS.md` for the maintained support tiers.
 
 ## Installation
@@ -306,4 +308,4 @@ Not every provider/model supports every OpenAI-compatible capability. `responses
 
 Confirm that the selected JSON file uses the current schema `3.0` and contains mandatory `schema_version` and `run_kind` fields. Historical result schemas are not upgraded implicitly at runtime.
 
-Last updated: 2026-09-10
+Last updated: 2026-09-30
