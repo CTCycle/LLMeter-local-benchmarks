@@ -374,7 +374,10 @@ fn execute_request(
     run_index: u32,
     plan: &PerformancePlan,
 ) -> anyhow::Result<RequestTrace> {
-    let request_id = format!("{model}-{}-c{concurrency}-r{run_index}", prompt.id);
+    let request_id = format!(
+        "{model}-{}-o{output_tokens}-c{concurrency}-r{run_index}",
+        prompt.id
+    );
     let extra = if plan.extra_params.is_empty() {
         None
     } else {
