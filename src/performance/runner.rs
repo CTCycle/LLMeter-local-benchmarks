@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use crate::benchmarks::base::BenchmarkResultRecord;
 use crate::config::AppConfig;
 use crate::errors::LLMeterError;
+use crate::interrupt;
 use crate::performance::config::{PerformancePlan, ReportDetailLevel, TelemetryLevel};
 use crate::performance::load::{measure_model_load_with_progress, planned_load_steps};
 use crate::performance::metrics::{
@@ -159,6 +160,9 @@ pub fn run_performance_plan(
                     });
 
                     run_warmup_requests(client, model, prompt, output_tokens, &plan)?;
+                    if interrupt::take_interrupt_requested() {
+                        return Err(LLMeterError::Interrupted.into());
+                    }
                     let sampler = match plan.telemetry {
                         TelemetryLevel::Off => None,
                         TelemetryLevel::Standard | TelemetryLevel::Detailed => {
@@ -175,6 +179,9 @@ pub fn run_performance_plan(
                         concurrency,
                         &plan,
                     )?;
+                    if interrupt::take_interrupt_requested() {
+                        return Err(LLMeterError::Interrupted.into());
+                    }
                     let scenario_wall_time_ms = scenario_started.elapsed().as_secs_f64() * 1000.0;
                     if let Some(sampler) = sampler {
                         telemetry_samples.extend(sampler.stop());
@@ -297,6 +304,9 @@ fn run_warmup_requests(
 ) -> anyhow::Result<()> {
     for _ in 0..plan.warmup.requests {
         let _ = execute_request(client, model, prompt, output_tokens, 1, 0, plan)?;
+        if interrupt::take_interrupt_requested() {
+            return Err(LLMeterError::Interrupted.into());
+        }
     }
     Ok(())
 }
@@ -340,6 +350,9 @@ fn run_measured_requests(
         let mut traces = Vec::new();
         while let Some(result) = futures.next().await {
             traces.push(result.map_err(|error| anyhow::anyhow!(error_chain(&error)))??);
+            if interrupt::take_interrupt_requested() {
+                return Err(LLMeterError::Interrupted.into());
+            }
             if next_run_index < plan.runs {
                 let client = client.clone();
                 let prompt = prompt.clone();

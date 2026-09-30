@@ -12,6 +12,12 @@ This document is the durable, compact version of the comprehensive validation ro
 
 The campaign is for the local, single-user Rust CLI. Provider servers and models are external dependencies; fixture, live, hosted-CI, and public-release evidence are separate gates.
 
+The 2026-09-30 current-tree recheck repaired and locally revalidated the
+Windows ConPTY delayed-performance interruption path. The working tree passes
+the full local gates and Windows PTY suite, but hosted CI has not rerun for the
+fix because the Git index is read-only in the current environment. See the
+[current-tree validation recheck](../../QA/validation-2026-09-30/current-tree-validation-recheck.md).
+
 ## Status and evidence rules
 
 Use the ledger taxonomy for current components. Within a campaign slice, use these operational labels:
@@ -106,10 +112,18 @@ Current campaign state: `PARTIAL`; T3-02, deterministic T3-03 including
 default-matrix execution, the bounded fixture ceiling, the full current Ollama
 profiles, the matched two-model functional matrix, persistence/reporting/
 privacy, local quality gates, and exact-candidate four-platform CI pass at
-their stated boundaries. The optional LiteLLM path is blocked because its
+their stated boundaries. The current working tree also passes the local
+serialized suite and Windows ConPTY interruption boundary, pending hosted
+revalidation of that source change. The optional LiteLLM path is blocked because its
 endpoint and Docker engine are unavailable, and swap pressure disqualifies
 comparative timing interpretation. Broader provider/model/host variance and
 universal numeric performance remain validation debt.
+
+Release impact is separate from campaign completeness: this `PARTIAL` is a
+non-blocking host/provider evidence limitation for the scoped release boundary
+when the functional, safety, quality, and exact-candidate hosted-CI gates pass.
+It blocks only the comprehensive-validation and numeric comparative-performance
+claims.
 
 #### T3-05 — matched live variance and release-scale qualification
 
@@ -130,11 +144,18 @@ Acceptance requires all of the following:
 Current T3-05 disposition: `PARTIAL`. The deterministic ceiling and above-limit
 fixture regressions, current Ollama default profiles, matched two-model
 functional matrix, persistence/reload, privacy checks, and exact-candidate
-hosted CI pass. The optional LiteLLM path is unavailable and swap pressure
-disqualifies comparative timing interpretation. Broader cross-host numeric
-performance remains validation debt. See the [current live Ollama
+hosted CI pass. The current working tree also passes local quality and Windows
+PTY interruption checks, but the optional LiteLLM path is unavailable and swap
+pressure disqualifies comparative timing interpretation. Broader cross-host
+numeric performance and hosted revalidation of the current interrupt fix remain
+validation debt. See the [current live Ollama
 evidence](../../QA/validation-2026-09-30/t3-live-ollama-revalidation-evidence.md)
-and [T3 release-performance evidence](../../QA/validation-2026-09-30/t3-release-performance-evidence.md).
+and [T3 release-performance evidence](../../QA/validation-2026-09-30/t3-release-performance-evidence.md),
+plus the [current-tree validation recheck](../../QA/validation-2026-09-30/current-tree-validation-recheck.md).
+
+This `PARTIAL` is non-blocking for a scoped release; it keeps the
+comprehensive-validation and numeric-ranking claims closed until a suitable
+host and optional provider route are available.
 
 The final scoped candidate is `1fb3dbd1f3211e25280481f5bbdab439a850a2f9` on
 `develop`; hosted run
@@ -288,6 +309,10 @@ native Unix PTY boundaries pass at the finite contract. Hosted CI run
 passed 4/4 Unix PTY cases on Ubuntu, macOS Intel, and macOS Apple silicon and
 10/10 Windows ConPTY cases on the exact final revision.
 
+The current working tree additionally passes the repaired delayed-request
+Windows ConPTY interruption test locally; hosted CI remains pending for that
+uncommitted source change.
+
 ## Regression map
 
 | Changed area | Minimum adjacent regression |
@@ -308,4 +333,4 @@ Run the full locked all-target/all-feature suite once at each tier boundary and 
 
 Do not call a revision comprehensively validated until Tier 0–3 are green except for intentional product limitations, the JSONL accounting risk is disproven or fixed/regression-tested, every standard benchmark has real-CLI evidence, at least one live provider/model path is retained, provider-specific availability is explicit, interruption/persistence are safe, Windows and current CI remain green, release documentation matches GitHub, stale QA references are repaired, and every `PARTIAL`, `BLOCKED`, `UNKNOWN`, or `UNRUN` entry has a named boundary.
 
-The current campaign does not make that comprehensive claim. Tiers 0–2 pass at their recorded boundaries; Tier 3 remains partial because comparative timing is invalid under swap pressure and the optional current LiteLLM smoke is unavailable. Tier 4 is `PASS` at the explicitly recorded representative compatibility boundary; Tier 5 is `PASS` at the finite T5-02 release boundary, and crates.io plus external evaluator execution remain separate owner/scope boundaries.
+The current campaign does not make that comprehensive claim. Tiers 0–2 pass at their recorded boundaries; Tier 3 remains partial because comparative timing is invalid under swap pressure and the optional current LiteLLM smoke is unavailable. The current working tree is locally green but awaits hosted revalidation of its ConPTY interruption fix. Tier 4 is `PASS` at the explicitly recorded representative compatibility boundary; Tier 5 is `PASS` at the finite T5-02 release boundary, and crates.io plus external evaluator execution remain separate owner/scope boundaries.

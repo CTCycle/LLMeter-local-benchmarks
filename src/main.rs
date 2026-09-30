@@ -13,6 +13,11 @@ use llmeter::providers::ProviderClient;
 
 fn main() {
     let cli = Cli::parse();
+    let _conpty_interrupt_monitor = if matches!(&cli.command, None | Some(cli::Commands::Menu)) {
+        None
+    } else {
+        llmeter::interrupt::start_conpty_monitor()
+    };
     let result = run(cli);
 
     match result {
