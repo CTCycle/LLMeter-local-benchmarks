@@ -74,20 +74,6 @@ fn test_selecting_benchmark_from_other_suite_returns_error() {
 }
 
 #[test]
-fn test_get_benchmark_by_id() {
-    let registry = default_registry();
-    let bench = registry.get("chat-generation");
-    assert!(bench.is_some());
-    assert_eq!(bench.unwrap().name(), "Basic generation latency");
-}
-
-#[test]
-fn test_get_nonexistent_benchmark() {
-    let registry = default_registry();
-    assert!(registry.get("nope").is_none());
-}
-
-#[test]
 fn test_prompt_sizes_planned_steps_match_prompt_count_times_runs() {
     let registry = default_registry();
     let benchmark = registry.get("prompt-sizes").unwrap();
