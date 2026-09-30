@@ -136,6 +136,9 @@ interpretation, and exact-candidate hosted CI remains open. Broader cross-host
 numeric performance remains validation debt. See the [current live Ollama
 evidence](../../QA/validation-2026-09-30/t3-live-ollama-revalidation-evidence.md).
 
+The current scoped candidate is `ac17e4d24d22d2b36761b969dad7d53e70a8f465` on
+`develop`; exact hosted qualification remains pending for this revision.
+
 ### Tier 4 — representative provider compatibility, quality planning, and distribution
 
 Tier 4 is evidence-based rather than installation-count-based. Provider

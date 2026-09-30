@@ -6,7 +6,7 @@ Last updated: 2026-09-30
 
 - Repository: `CTCycle/LLMeter-local-benchmarks`
 - Starting revision: `e0a4723d76c0836eff83b6190ebb575fc5562c2d` on `develop`
-- Candidate revision: to be assigned after the scoped changes are committed.
+- Candidate revision: `ac17e4d24d22d2b36761b969dad7d53e70a8f465`.
 - Package: `llmeter 0.4.0`
 - Host: Windows 11 Pro `10.0.26200`, x86-64; Rust `1.98.0`, Cargo `1.98.0`
 - Provider fixture: ephemeral loopback OpenAI-compatible mock provider in `tests/mock_provider_e2e.rs`
