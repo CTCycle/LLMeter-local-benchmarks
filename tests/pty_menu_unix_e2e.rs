@@ -93,6 +93,25 @@ fn expect_prompt(session: &mut OsSession, prompt: &str) {
         .unwrap_or_else(|error| panic!("expected Unix PTY prompt {prompt:?}: {error}"));
 }
 
+fn interrupt_performance_confirmation(session: &mut OsSession) {
+    #[cfg(target_os = "macos")]
+    {
+        // macOS does not consistently surface an injected ETX byte to the
+        // inquire/crossterm confirmation reader; SIGINT is the equivalent
+        // native terminal interrupt and keeps this path bounded.
+        session
+            .get_process_mut()
+            .kill(Signal::SIGINT)
+            .expect("interrupt performance confirmation with SIGINT");
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        session
+            .send(ControlCode::ETX)
+            .expect("interrupt performance confirmation");
+    }
+}
+
 fn performance_command(home: &Path, output: &Path, base_url: &str) -> Command {
     let mut command = configured_command(home, output);
     command.args([
@@ -329,9 +348,7 @@ fn unix_pty_performance_confirmation_interrupt_exits_cleanly() {
     thread::sleep(Duration::from_millis(250));
     session.send("\r").expect("accept report choice");
     expect_prompt(&mut session, "Run this benchmark plan");
-    session
-        .send(ControlCode::ETX)
-        .expect("interrupt performance confirmation");
+    interrupt_performance_confirmation(&mut session);
 
     let status = wait_for_exit(&mut session);
     assert_interrupt_status(status);
