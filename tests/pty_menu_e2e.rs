@@ -1,8 +1,10 @@
 #![cfg(windows)]
 
+use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -13,6 +15,7 @@ use std::{
 };
 
 use expectrl::{spawn, ControlCode, Expect};
+use serde_json::Value;
 use tempfile::TempDir;
 
 fn menu_command() -> String {
@@ -101,6 +104,34 @@ fn handle_connection(stream: &mut TcpStream, chat_delay: Duration, chat_requests
         body.len()
     );
     let _ = stream.write_all(response.as_bytes());
+}
+
+fn json_result_files(output_dir: &Path) -> Vec<PathBuf> {
+    let mut files = fs::read_dir(output_dir)
+        .expect("read PTY output directory")
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().and_then(|value| value.to_str()) == Some("json"))
+        .collect::<Vec<_>>();
+    files.sort();
+    files
+}
+
+fn assert_no_temporary_files(output_dir: &Path) {
+    let temporary = fs::read_dir(output_dir)
+        .expect("read PTY output directory")
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.contains(".tmp-"))
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        temporary.is_empty(),
+        "PTY left temporary result files: {temporary:?}"
+    );
 }
 
 #[test]
@@ -356,9 +387,64 @@ fn pty_performance_confirmation_interrupt_returns_130() {
 #[test]
 fn pty_interrupted_performance_run_leaves_no_partial_result_and_allows_recovery() {
     std::env::set_var("LLMETER_CONPTY", "1");
-    let provider = MockProvider::start_with_chat_delay(Duration::from_secs(3));
     let output = TempDir::new_in(Path::new(env!("CARGO_MANIFEST_DIR")).join("target"))
         .expect("create isolated interrupted-run output");
+    let home = output.path().join("home");
+    fs::create_dir_all(&home).expect("create isolated PTY home");
+
+    let initial_provider = MockProvider::start();
+    let initial = Command::new(env!("CARGO_BIN_EXE_llmeter"))
+        .args([
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            initial_provider.base_url.as_str(),
+            "--timeout",
+            "30",
+            "--output-dir",
+            output.path().to_str().expect("initial output path"),
+            "bench",
+            "perf",
+            "--profile",
+            "smoke",
+            "--models",
+            "mock-model",
+            "--prompt-tokens",
+            "1",
+            "--output-tokens",
+            "1",
+            "--concurrency",
+            "1",
+            "--warmup",
+            "0",
+            "--runs",
+            "1",
+            "--no-stream",
+            "--load-measurement",
+            "off",
+            "--telemetry",
+            "off",
+            "--export",
+            "json",
+            "--report",
+            "none",
+        ])
+        .env("LLMETER_HOME", &home)
+        .env("LLMETER_OUTPUT_DIR", output.path())
+        .output()
+        .expect("create completed result before interruption");
+    assert!(
+        initial.status.success(),
+        "initial PTY result failed: {}",
+        String::from_utf8_lossy(&initial.stderr)
+    );
+    let initial_files = json_result_files(output.path());
+    assert_eq!(initial_files.len(), 1, "initial PTY result count");
+    let initial_path = initial_files[0].clone();
+    let initial_bytes = fs::read(&initial_path).expect("read initial PTY result");
+    drop(initial_provider);
+
+    let provider = MockProvider::start_with_chat_delay(Duration::from_secs(3));
     let relative_output = output
         .path()
         .strip_prefix(env!("CARGO_MANIFEST_DIR"))
@@ -394,19 +480,76 @@ fn pty_interrupted_performance_run_leaves_no_partial_result_and_allows_recovery(
         "interrupted performance run must not report success"
     );
 
-    if output.path().exists() {
-        let entries = std::fs::read_dir(output.path())
-            .expect("read interrupted-run output")
-            .collect::<Result<Vec<_>, _>>()
-            .expect("collect interrupted-run output entries");
-        assert!(
-            entries.is_empty(),
-            "interruption left result artifacts: {:?}",
-            entries.iter().map(|entry| entry.path()).collect::<Vec<_>>()
-        );
-    }
+    assert_eq!(
+        json_result_files(output.path()),
+        vec![initial_path.clone()],
+        "interruption created a second canonical result"
+    );
+    assert_eq!(
+        fs::read(&initial_path).expect("re-read completed PTY result"),
+        initial_bytes,
+        "interruption changed the completed result"
+    );
+    assert_no_temporary_files(output.path());
 
-    let recovery = std::process::Command::new(env!("CARGO_BIN_EXE_llmeter"))
+    let listed = Command::new(env!("CARGO_BIN_EXE_llmeter"))
+        .args([
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            provider.base_url.as_str(),
+            "--timeout",
+            "30",
+            "--output-dir",
+            output.path().to_str().expect("report output path"),
+            "report",
+            "list",
+        ])
+        .env("LLMETER_HOME", &home)
+        .env("LLMETER_OUTPUT_DIR", output.path())
+        .output()
+        .expect("list PTY result after interruption");
+    assert!(
+        listed.status.success(),
+        "report list failed after PTY interruption: {}",
+        String::from_utf8_lossy(&listed.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&listed.stdout).contains(
+            initial_path
+                .file_name()
+                .expect("initial PTY result file name")
+                .to_string_lossy()
+                .as_ref()
+        ),
+        "report list omitted the completed PTY result"
+    );
+
+    let shown = Command::new(env!("CARGO_BIN_EXE_llmeter"))
+        .args([
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            provider.base_url.as_str(),
+            "--timeout",
+            "30",
+            "--output-dir",
+            output.path().to_str().expect("show output path"),
+            "report",
+            "show",
+        ])
+        .arg(&initial_path)
+        .env("LLMETER_HOME", &home)
+        .env("LLMETER_OUTPUT_DIR", output.path())
+        .output()
+        .expect("show PTY result after interruption");
+    assert!(
+        shown.status.success(),
+        "report show failed after PTY interruption: {}",
+        String::from_utf8_lossy(&shown.stderr)
+    );
+
+    let recovery = Command::new(env!("CARGO_BIN_EXE_llmeter"))
         .args([
             "--provider",
             "openai-compatible",
@@ -442,6 +585,8 @@ fn pty_interrupted_performance_run_leaves_no_partial_result_and_allows_recovery(
             "--report",
             "none",
         ])
+        .env("LLMETER_HOME", &home)
+        .env("LLMETER_OUTPUT_DIR", output.path())
         .output()
         .expect("rerun performance benchmark after interruption");
     assert!(
@@ -450,16 +595,35 @@ fn pty_interrupted_performance_run_leaves_no_partial_result_and_allows_recovery(
         String::from_utf8_lossy(&recovery.stderr)
     );
 
-    let recovered_files = std::fs::read_dir(output.path())
-        .expect("read recovered output")
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path.extension().and_then(|extension| extension.to_str()) == Some("json"))
-        .collect::<Vec<_>>();
-    assert_eq!(recovered_files.len(), 1, "recovery must create one result");
-    let recovered: serde_json::Value =
-        serde_json::from_slice(&std::fs::read(&recovered_files[0]).expect("read recovered result"))
-            .expect("parse recovered result");
-    assert_eq!(recovered["schema_version"], "3.0");
-    assert_eq!(recovered["run_kind"], "performance");
+    let recovered_files = json_result_files(output.path());
+    assert_eq!(recovered_files.len(), 2, "recovery must retain two results");
+    let initial_id = serde_json::from_slice::<Value>(&initial_bytes).expect("parse initial result")
+        ["run_id"]
+        .as_str()
+        .expect("initial run id")
+        .to_string();
+    let mut run_ids = Vec::new();
+    for path in &recovered_files {
+        let recovered: Value =
+            serde_json::from_slice(&fs::read(path).expect("read recovered result"))
+                .expect("parse recovered result");
+        assert_eq!(recovered["schema_version"], "3.0");
+        assert_eq!(recovered["run_kind"], "performance");
+        run_ids.push(
+            recovered["run_id"]
+                .as_str()
+                .expect("recovered run id")
+                .to_string(),
+        );
+    }
+    run_ids.sort();
+    run_ids.dedup();
+    assert_eq!(run_ids.len(), 2, "recovery runs must have distinct IDs");
+    assert!(run_ids.contains(&initial_id));
+    assert_eq!(
+        json_result_files(output.path()).len(),
+        2,
+        "recovery must retain both completed results"
+    );
+    assert_no_temporary_files(output.path());
 }
