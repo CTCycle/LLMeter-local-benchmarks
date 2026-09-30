@@ -22,4 +22,4 @@ LLMeter does not manage provider processes or model installation. The user must 
 
 ## Distribution status
 
-The release workflow is tag-gated and publishes the four archives above plus `SHA256SUMS` and GitHub artifact provenance attestations. The public `v0.4.0` release passed the hosted four-target workflow. The first crates.io publication remains owner-gated; source builds and `cargo install --path . --locked` remain supported.
+The release workflow is tag-gated and publishes the four archives above plus `SHA256SUMS` and GitHub artifact provenance attestations. The public `v0.4.0` release passed the hosted four-target workflow; `v0.5.0` is currently a release candidate on `develop` and is not yet public. The first crates.io publication remains owner-gated; source builds and `cargo install --path . --locked` remain supported.

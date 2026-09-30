@@ -61,6 +61,6 @@ src/
   ui.rs                Interactive menus and terminal output.
 ```
 
-The current package version is `0.4.0` on `develop`; the public GitHub release has verified Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The first crates.io publication remains manual.
+The current package version is `0.5.0` release candidate on `develop`; the public `v0.4.0` GitHub release has verified Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The `v0.5.0` public release remains pending its tag workflow, and the first crates.io publication remains manual.
 
 Last updated: 2026-09-30

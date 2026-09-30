@@ -18,9 +18,9 @@ The roadmap prioritizes:
 
 ## Current baseline
 
-- Package version is 0.4.0 on develop. The current checkout is 6ef50aa with an uncommitted Windows ConPTY interrupt monitor and performance-run cancellation checks.
-- The current tree passes local formatting, locked checks, Clippy, rustdoc, release build, audit/tree inspection, 156 serialized tests, Windows ConPTY 10/10, and a one-request Ollama smoke.
-- Hosted CI run 36722865383 certifies the earlier exact candidate 1fb3dbd1f3211e25280481f5bbdab439a850a2f9 across Ubuntu x86-64, Windows x86-64, macOS Intel, and macOS Apple silicon. It must be rerun for the current source repair before shipping it.
+- Package version is 0.5.0 release candidate on develop. The Windows ConPTY interruption repair and integration-fixture cleanup are committed; the full release gate and exact hosted candidate remain pending.
+- The focused report, PowerShell launcher, lifecycle, and mock-provider regressions pass against the committed develop line. The complete local release gate and representative live smoke remain required before shipping.
+- Hosted CI must certify the exact release-preparation commit across Ubuntu x86-64, Windows x86-64, macOS Intel, and macOS Apple silicon before main is synchronized.
 - The public v0.4.0 GitHub release is verified by release run 34574075684. The first crates.io publication and clean registry installation remain owner-gated.
 - Current validation is summarized in the [project status ledger](../project_status_ledger.md) and ordered in the [validation campaign](validation_campaign.md).
 

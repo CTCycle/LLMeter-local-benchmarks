@@ -6,7 +6,7 @@ Last updated: 2026-09-30
 
 LLMeter is a single-binary Rust CLI for measuring local OpenAI-compatible LLM providers. It offers a guided terminal workflow, scriptable benchmark commands, native performance scenarios, and Markdown/HTML reports.
 
-The current package version is `0.4.0`. The public [GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.4.0) is verified; the first crates.io publication remains owner-gated.
+The current package version is `0.5.0` release candidate on `develop`. The public [GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.4.0) remains the verified public release until the `v0.5.0` tag workflow succeeds; the first crates.io publication remains owner-gated.
 
 LLMeter does not start provider servers, install models, or manage provider processes. Start a provider externally, expose at least one model, and give LLMeter its OpenAI-compatible `/v1` base URL.
 
