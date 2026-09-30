@@ -19,12 +19,9 @@ struct LifecycleHarness {
 
 impl LifecycleHarness {
     fn new() -> Self {
-        let qa = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("assets")
-            .join("QA");
         let root = tempfile::Builder::new()
             .prefix("t1-07-lifecycle-cli-")
-            .tempdir_in(qa)
+            .tempdir()
             .expect("create isolated lifecycle fixture");
         let home = root.path().join("home");
         let temp = root.path().join("temp");

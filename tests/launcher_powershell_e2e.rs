@@ -58,10 +58,7 @@ struct LauncherFixture {
 
 impl LauncherFixture {
     fn new() -> Self {
-        let fixture_parent = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("assets")
-            .join("QA");
-        let root = TempDir::new_in(fixture_parent).expect("create isolated launcher fixture");
+        let root = TempDir::new().expect("create isolated launcher fixture");
         let script = root.path().join("run_llmeter.ps1");
         let source_script = Path::new(env!("CARGO_MANIFEST_DIR")).join("run_llmeter.ps1");
         fs::copy(source_script, &script).expect("copy launcher into fixture");

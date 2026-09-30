@@ -25,12 +25,9 @@ struct ReportHarness {
 
 impl ReportHarness {
     fn new() -> Self {
-        let qa = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("assets")
-            .join("QA");
         let root = tempfile::Builder::new()
             .prefix("t1-06-report-cli-")
-            .tempdir_in(qa)
+            .tempdir()
             .expect("create isolated report fixture");
         let home = root.path().join("home");
         let output = root.path().join("results");
