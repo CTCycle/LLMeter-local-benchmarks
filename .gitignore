@@ -3,14 +3,10 @@ target/
 target-*/
 *.rs.bk
 
-# Local benchmark outputs and QA artifacts
+# Local benchmark outputs and transient QA artifacts
 benchmark_results/
 .ollama-bench/
-assets/QA/*
-!assets/QA/
-!assets/QA/README.md
-!assets/QA/validation-*/
-!assets/QA/validation-*/*.md
+assets/QA/
 
 # Local environments and runtime files
 .venv/

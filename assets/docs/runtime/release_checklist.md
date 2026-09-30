@@ -1,52 +1,39 @@
 # Release checklist
 
-## Release-candidate validation condition
+Last updated: 2026-09-30
+
+## Release-candidate condition
 
 Before tagging a release candidate, confirm that:
 
-- the canonical ledger is reviewed and Tier 0 through Tier 5 release boundaries are satisfied at their documented scopes;
-- no unresolved release-blocking application-validation entry remains; a `PARTIAL` or `BLOCKED` entry is acceptable only when the release evidence explicitly classifies it as a non-blocking environment, optional-provider, or out-of-scope limitation and states the claims it prevents;
-- the exact candidate commit has green four-platform hosted CI for Ubuntu x86-64, Windows x86-64, macOS Intel x86-64, and macOS Apple silicon;
-- current live-provider evidence, the configured 500-request ceiling, resilience/restart evidence, native PTY evidence, privacy scan, and QA references are retained;
-- the working tree is clean and the candidate SHA is recorded in the release evidence.
+- the [project status ledger](../project_status_ledger.md) has been reviewed and the Tier 0 through Tier 5 boundaries are satisfied at their documented scopes;
+- no unresolved release-blocking application-validation entry remains;
+- the exact candidate commit has green hosted CI for Ubuntu x86-64, Windows x86-64, macOS Intel, and macOS Apple silicon;
+- the current live-provider boundary, configured 500-request ceiling, interruption/restart evidence, native PTY evidence, privacy checks, and release artifact checks are complete;
+- the working tree is clean and the candidate SHA is recorded in the release notes and ledger;
+- any PARTIAL or BLOCKED result is explicitly classified as a non-blocking environment, optional-provider, or out-of-scope limitation, with the claims it prevents.
 
-Crates.io publication and clean registry installation remain a separate
-owner-gated publication step. Do not mark `release.public-distribution`
-validated from a package dry-run or a GitHub release alone.
+Do not use a package dry-run or a GitHub release alone to mark crates.io distribution validated. Publication and clean registry installation are separate owner-gated steps.
 
-## Non-blocking evidence limitations
+## Current v0.4.0 boundary
 
-A host or provider limitation does not block a scoped release when the
-functional, safety, quality, and exact-candidate hosted-CI gates pass; the
-limitation is not a known product defect; and the release evidence records the
-claims that remain out of scope. Swap pressure during comparative performance
-measurement is one such limitation: it invalidates numeric timing/ranking
-claims and the comprehensive-validation claim, but it does not invalidate the
-functional benchmark, persistence, reporting, or safety evidence and is not a
-release blocker unless comparative performance is an explicit release
-requirement. Optional provider routes, such as a disposable LiteLLM proxy,
-follow the same boundary.
+The public [v0.4.0 GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.4.0) passed the four-target release workflow, packaged mock-provider checks, checksums, provenance, and publication in [run 34574075684](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/34574075684). It is the verified archive distribution path.
+
+The current checkout contains an uncommitted ConPTY interruption repair. Local gates and Windows PTY coverage pass, but hosted [CI run 36722865383](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36722865383) certifies the earlier exact candidate rather than this working-tree change. Commit the repair and rerun the exact hosted matrix before shipping it.
 
 ## Non-blocking evidence limitations
 
-A host or provider limitation does not block a scoped release when the
-functional, safety, quality, and exact-candidate hosted-CI gates pass; the
-limitation is not a known product defect; and the release evidence records the
-claims that remain out of scope. Swap pressure during comparative performance
-measurement is one such limitation: it invalidates numeric timing/ranking
-claims and the comprehensive-validation claim, but it does not invalidate the
-functional benchmark, persistence, reporting, or safety evidence and is not a
-release blocker unless comparative performance is an explicit release
-requirement. Optional provider routes, such as a disposable LiteLLM proxy,
-follow the same boundary.
+A host or provider limitation does not block a scoped release when the functional, safety, quality, and exact-candidate hosted gates pass, the limitation is not a known product defect, and the release record states the claims that remain out of scope.
+
+Swap pressure invalidates numeric comparative timing and model-ranking claims, and therefore keeps the comprehensive-validation claim open. It does not invalidate functional benchmark execution, persistence, reporting, privacy, or safety evidence. An unavailable optional provider route, such as a disposable LiteLLM proxy, follows the same boundary.
 
 ## Before tagging
 
-1. Confirm `Cargo.toml` version.
-2. Update `CHANGELOG.md`.
+1. Confirm the version in Cargo.toml.
+2. Update CHANGELOG.md.
 3. Run:
 
-```bash
+```
 cargo fmt --all -- --check
 cargo check --locked --all-targets --all-features
 cargo clippy --locked --all-targets --all-features -- -D warnings
@@ -54,35 +41,30 @@ cargo test --locked --all-targets --all-features -- --test-threads=1
 RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps --all-features
 cargo build --locked --release --all-features
 cargo audit
-cargo tree --duplicates
+cargo tree --locked --duplicates
 cargo publish --locked --dry-run
 ```
 
-On Windows, if the workspace `target/` tree is locked, rerun build-oriented commands with a temporary target directory:
+On Windows, use an isolated target directory if the shared target/ tree is locked:
 
-```powershell
-cargo build --release --target-dir "$env:TEMP\\llmeter-release-target"
+```
+cargo build --locked --release --all-features --target-dir "$env:TEMP\llmeter-release-target"
 ```
 
-## Release artifacts
+## Release artifacts and trust
 
-The release workflow runs only from an authorized `v*` tag. It gates publication on the Cargo version, changelog heading, locked all-target/all-feature quality suite, dependency audit, package dry-run, native Windows/Linux/macOS all-feature builds, packaged mock-provider tests, archive extraction/content checks, and `--version`/`--help` smoke checks against the extracted binaries. It publishes four archives with filename-only `SHA256SUMS` entries and GitHub artifact provenance attestations for every archive and the checksum file.
+The authorized v* release workflow gates publication on the Cargo version, changelog heading, locked all-target/all-feature quality suite, dependency audit, package dry-run, native platform builds, packaged mock-provider tests, archive extraction/content checks, and extracted-binary --version/--help smoke checks. It publishes four archives, filename-only SHA256SUMS, and GitHub artifact provenance attestations.
 
-The local release-readiness validation for `0.4.0` covers the locked checks, package dry-run, release build, extracted-binary smoke, and provider-backed smoke gates. Hosted release run `34574075684` subsequently passed the four-target build, packaged mock-provider, checksum, provenance, and publication gates. Verify the resulting [public release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.4.0) independently before running downloaded binaries; crates.io publication remains a separate manual gate.
-
-## Trust model
-
-Local builds inherit the trust of the checked-out source and Rust dependency resolution. Public archives are accompanied by checksums and GitHub artifact provenance attestations; users should verify both before running a downloaded binary.
+Users should verify checksums and provenance before running a downloaded binary. The GNU/Linux archive requires a compatible glibc runtime and is not fully static.
 
 ## Publishing procedure
 
-1. Review and commit the prepared changes, push `develop`, and require green four-platform CI.
-2. Merge or fast-forward the verified commit to `main` and require CI there.
-3. Confirm `Cargo.toml` and `CHANGELOG.md` identify `<version>`, the worktree is clean, and no matching `<tag>` or release exists.
-4. Create and push an annotated `<tag>` from that `main` commit.
+1. Review and commit the prepared changes, push develop, and require green four-platform CI.
+2. Merge or fast-forward the verified commit to main and require CI there.
+3. Confirm Cargo.toml and CHANGELOG.md identify the version, the worktree is clean, and no matching tag or release exists.
+4. Create and push an annotated tag from that main commit.
 5. Verify all four archives, archive contents, checksums, extracted-binary smoke tests, and provenance attestations.
-6. Independently download and verify the public assets, then manually run `cargo publish --locked` from the exact tagged source.
-7. Verify `cargo install llmeter --version <version> --locked --root <clean-temp-root>` and the installed binary.
-8. Configure crates.io trusted publishing for later releases. Stop publication if any hosted or registry verification fails.
-
-Last updated: 2026-09-30
+6. Independently download and verify the public assets.
+7. If approved, run cargo publish --locked from the exact tagged source.
+8. Verify cargo install llmeter --version <version> --locked --root <clean-temp-root> and the installed binary.
+9. Stop publication if any hosted or registry verification fails.
