@@ -25,8 +25,8 @@ The ledger describes current truth. Fixed findings must leave the active issue c
 
 The starting `develop` checkout was `e0a4723d76c0836eff83b6190ebb575fc5562c2d`.
 The scoped candidate adds the Unix PTY API correction, the performance trace
-identity correction, and this evidence update; the final candidate SHA is
-recorded below after commit. The following addendum
+identity correction, and this evidence update. Candidate SHA:
+`ac17e4d24d22d2b36761b969dad7d53e70a8f465`. The following addendum
 supersedes older numerical counts in historical evidence paragraphs while
 preserving their original revision boundaries:
 
@@ -108,7 +108,7 @@ availability recheck still found no supported local listener. See the
 
 | Area | Current truth |
 |---|---|
-| Source state | Package `0.4.0` on `develop`; the current candidate is the scoped Unix PTY API correction, performance request-identity correction, and dated evidence updates, with its exact committed SHA recorded in the release evidence. The current live runs were executed after the performance correction. The runtime implementation baseline and earlier slices retain their recorded revisions. Remote annotated tag `v0.4.0` resolves to release commit `5d5e41c`. |
+| Source state | Package `0.4.0` on `develop`; candidate `ac17e4d24d22d2b36761b969dad7d53e70a8f465` contains the scoped Unix PTY API correction, performance request-identity correction, and dated evidence updates. The current live runs were executed after the performance correction. The runtime implementation baseline and earlier slices retain their recorded revisions. Remote annotated tag `v0.4.0` resolves to release commit `5d5e41c`. |
 | Campaign state | Tier 0, Tier 1, and Tier 2 are PASS at their recorded boundaries. Tier 3 is PARTIAL: T3-02, deterministic T3-03 including full default-matrix fixture execution, the bounded fixture matrix through concurrency 16, current full Ollama profiles, the matched functional matrix, persistence/reporting/privacy, and the 500-request ceiling pass; comparative timing interpretation is invalid under swap pressure, LiteLLM is unavailable, and exact-candidate hosted qualification remains open. Tier 4 is PASS at the explicitly recorded representative compatibility boundary: T4-01 preset contracts, T4-02 Ollama/llama.cpp/LiteLLM live evidence, and T4-03 quality planning pass; T4-04 passes for the GitHub release while crates.io remains unverified. Tier 5 is PARTIAL after bounded failure/atomic-output/safety coverage, bounded scale through concurrency 16, repeated completed operations, a delayed-request interruption/no-partial-artifact check, the interrupted streamed-9b no-partial-artifact observation, and fresh-process recovery after interruption; resumable restart/state restoration, broader scale, and native non-Windows terminal validation remain open. The comprehensive campaign is not complete. |
 | Local operational baseline | The Windows CLI, interactive ConPTY paths, scriptable contracts, mock-provider workflows, persistence/reporting, and managed lifecycle E2E are passing at the stated scopes. |
 | Provider boundary | Current Ollama `0.34.0` at `http://localhost:11434/v1` exposed five models including `qwen3.5:2b` and `qwen3.5:9b`; the current default profiles and matched matrix passed functional validation with swap pressure limiting timing interpretation. The earlier Tier 4 llama.cpp and LiteLLM disposable routes remain representative historical evidence at their recorded boundaries; LiteLLM was not available for this current smoke. See the [current live Ollama evidence](../QA/validation-2026-09-30/t3-live-ollama-revalidation-evidence.md), [Tier 4 live-provider evidence](../QA/validation-2026-09-29/tier4-live-provider-evidence.md), and [T4-02 run metadata](../QA/validation-2026-09-29/t4-02-run-metadata.md). |
