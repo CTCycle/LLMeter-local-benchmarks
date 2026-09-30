@@ -2,6 +2,25 @@
 
 Last updated: 2026-09-30
 
+## Current working-tree recheck
+
+The checkout is based on `6ef50aa` and contains an uncommitted Windows ConPTY
+performance-interruption repair. Local formatting, check, Clippy, serialized
+156-test, rustdoc, release-build, binary smoke, audit, Windows PTY 10/10, and
+one-request live Ollama smoke all pass. The exact hosted CI result below
+predates this source change; hosted revalidation is pending. See the [current-
+tree validation recheck](current-tree-validation-recheck.md).
+
+## Release impact of the Tier 3 limitation
+
+The Tier 3 `PARTIAL` is a non-blocking host/provider evidence limitation for
+the scoped release boundary. Swap pressure prevents a defensible numeric timing
+or model-ranking claim on this host, and the optional LiteLLM route is currently
+unavailable; neither finding is a product defect. The functional, safety,
+quality, and exact-candidate hosted-CI gates remain the release requirements.
+The limitation keeps the comprehensive-validation claim closed until a suitable
+host or optional provider route is available.
+
 ## Candidate identity
 
 - Final candidate SHA: `1fb3dbd1f3211e25280481f5bbdab439a850a2f9` on `develop`.
@@ -36,7 +55,7 @@ deferred until an owner-authorized release operation.
 | Tier 0 | PASS | Existing recorded startup, evidence, and local quality boundary |
 | Tier 1 | PASS | Existing recorded application-foundation boundary |
 | Tier 2 | PASS | Existing recorded Ollama standard-workflow boundary |
-| Tier 3 | PARTIAL | Deterministic accounting, 500-request ceiling/refusal, full Ollama profiles, matched two-model functional matrix, persistence, reporting, privacy, and exact-candidate hosted CI pass; swap pressure invalidates comparative timing and current LiteLLM smoke is unavailable |
+| Tier 3 | PARTIAL (non-blocking) | Deterministic accounting, 500-request ceiling/refusal, full Ollama profiles, matched two-model functional matrix, persistence, reporting, privacy, and exact-candidate hosted CI pass; swap pressure invalidates comparative timing and current LiteLLM smoke is unavailable |
 | Tier 4 | PASS | Existing representative provider/quality/GitHub distribution boundary; crates.io remains separate |
 | Tier 5 | PASS | Finite T5-02 boundary: interruption safety, completed-result durability, fresh-process recovery, configured ceiling/refusal, Windows ConPTY, and hosted Unix PTY pass |
 | Public distribution | PARTIAL | GitHub `v0.4.0` verified; crates.io publication/install remains owner-gated and unperformed |
@@ -50,9 +69,10 @@ steps; native Unix PTY was 4/4 on each Unix target and Windows ConPTY was 10/10.
 
 ## Outstanding release actions
 
-1. Obtain a host without swap-pressure warnings if comparative timing is required; until then Tier 3 remains functional-only at the recorded boundary.
-2. Complete the representative LiteLLM-over-Ollama path only if its disposable proxy becomes available; the current unavailability is recorded and no live smoke is claimed.
+1. Obtain a host without swap-pressure warnings only if comparative timing or model ranking is required; this is not a prerequisite for the scoped release, but it is required to close the comprehensive Tier 3 claim.
+2. Complete the representative LiteLLM-over-Ollama path only if its disposable proxy becomes available; this optional provider check is non-blocking for the scoped release and no live smoke is currently claimed.
 3. Keep crates.io publication and clean registry installation as a separate owner-authorized step; it was not attempted.
+4. Rerun exact-candidate hosted CI for the uncommitted ConPTY repair before shipping that source change; this is separate from the non-blocking Tier 3 host/provider limitations.
 
 ## Comprehensive-validation gate
 

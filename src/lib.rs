@@ -2,6 +2,7 @@ pub mod benchmarks;
 pub mod cli;
 pub mod config;
 pub mod errors;
+pub mod interrupt;
 pub mod lifecycle;
 pub mod performance;
 pub mod progress;

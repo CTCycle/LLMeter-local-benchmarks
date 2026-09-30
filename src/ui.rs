@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::Result;
 use clap::ValueEnum;
@@ -25,10 +24,8 @@ use crate::performance::provider_probe::{
     planned_probe_steps, probe_provider_capabilities_with_progress,
 };
 
-static INTERRUPT_REQUESTED: AtomicBool = AtomicBool::new(false);
-
 pub fn take_interrupt_requested() -> bool {
-    INTERRUPT_REQUESTED.swap(false, Ordering::SeqCst)
+    crate::interrupt::take_interrupt_requested()
 }
 use crate::progress::{
     ProgressEventKind, ProgressPhase, ProgressSink, ProgressUpdate, TerminalProgressRenderer,
@@ -283,7 +280,7 @@ pub fn prompt_outcome<T>(result: std::result::Result<T, InquireError>) -> Result
         Ok(value) => Ok(PromptOutcome::Value(value)),
         Err(inquire::InquireError::OperationCanceled) => Ok(PromptOutcome::Back),
         Err(inquire::InquireError::OperationInterrupted) => {
-            INTERRUPT_REQUESTED.store(true, Ordering::SeqCst);
+            crate::interrupt::request_interrupt();
             Ok(PromptOutcome::Interrupted)
         }
         Err(error) => Err(anyhow::anyhow!(error)),
@@ -424,7 +421,7 @@ pub fn menu(prompt: &str, choices: &[&str]) -> Result<MenuAction> {
                 Some(MenuAction::Select(_)) => break MenuAction::Select(selected),
                 Some(MenuAction::Back) => break MenuAction::Back,
                 Some(MenuAction::Exit) => {
-                    INTERRUPT_REQUESTED.store(true, Ordering::SeqCst);
+                    crate::interrupt::request_interrupt();
                     break MenuAction::Exit;
                 }
                 None => {}

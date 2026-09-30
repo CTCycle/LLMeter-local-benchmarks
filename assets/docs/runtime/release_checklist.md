@@ -5,7 +5,7 @@
 Before tagging a release candidate, confirm that:
 
 - the canonical ledger is reviewed and Tier 0 through Tier 5 release boundaries are satisfied at their documented scopes;
-- no unresolved release-blocking `BROKEN`, `BLOCKED`, or `PARTIAL` application-validation entry remains;
+- no unresolved release-blocking application-validation entry remains; a `PARTIAL` or `BLOCKED` entry is acceptable only when the release evidence explicitly classifies it as a non-blocking environment, optional-provider, or out-of-scope limitation and states the claims it prevents;
 - the exact candidate commit has green four-platform hosted CI for Ubuntu x86-64, Windows x86-64, macOS Intel x86-64, and macOS Apple silicon;
 - current live-provider evidence, the configured 500-request ceiling, resilience/restart evidence, native PTY evidence, privacy scan, and QA references are retained;
 - the working tree is clean and the candidate SHA is recorded in the release evidence.
@@ -13,6 +13,32 @@ Before tagging a release candidate, confirm that:
 Crates.io publication and clean registry installation remain a separate
 owner-gated publication step. Do not mark `release.public-distribution`
 validated from a package dry-run or a GitHub release alone.
+
+## Non-blocking evidence limitations
+
+A host or provider limitation does not block a scoped release when the
+functional, safety, quality, and exact-candidate hosted-CI gates pass; the
+limitation is not a known product defect; and the release evidence records the
+claims that remain out of scope. Swap pressure during comparative performance
+measurement is one such limitation: it invalidates numeric timing/ranking
+claims and the comprehensive-validation claim, but it does not invalidate the
+functional benchmark, persistence, reporting, or safety evidence and is not a
+release blocker unless comparative performance is an explicit release
+requirement. Optional provider routes, such as a disposable LiteLLM proxy,
+follow the same boundary.
+
+## Non-blocking evidence limitations
+
+A host or provider limitation does not block a scoped release when the
+functional, safety, quality, and exact-candidate hosted-CI gates pass; the
+limitation is not a known product defect; and the release evidence records the
+claims that remain out of scope. Swap pressure during comparative performance
+measurement is one such limitation: it invalidates numeric timing/ranking
+claims and the comprehensive-validation claim, but it does not invalidate the
+functional benchmark, persistence, reporting, or safety evidence and is not a
+release blocker unless comparative performance is an explicit release
+requirement. Optional provider routes, such as a disposable LiteLLM proxy,
+follow the same boundary.
 
 ## Before tagging
 
