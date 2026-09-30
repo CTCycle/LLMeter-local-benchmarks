@@ -10,6 +10,7 @@ All notable changes are documented here.
 - Expand performance validation for request accounting, the 500-request ceiling, bounded concurrency through 16, JSONL accounting, and complete default profile matrices.
 - Expand provider transport and preset fixture coverage, report and lifecycle CLI coverage, privacy checks, and scriptable E2E checks.
 - Consolidate validation and release-status documentation and remove transient QA directories from the maintained repository tree.
+- Publish the `v0.5.0` GitHub release with four native archives, checksums, and provenance attestations.
 
 ## 0.4.0 - 2026-09-10
 
@@ -39,4 +40,4 @@ All notable changes are documented here.
 - Make provider status return exit code `1` when unreachable, make performance telemetry opt-in, and harden managed install purge and replacement behavior.
 - Refresh compatible dependencies, remove the unmaintained fuzzy-matcher chain, and use release-oriented optimization.
 
-Last updated: 2026-09-10
+Last updated: 2026-09-30

@@ -15,11 +15,11 @@ Before tagging a release candidate, confirm that:
 
 Do not use a package dry-run or a GitHub release alone to mark crates.io distribution validated. Publication and clean registry installation are separate owner-gated steps.
 
-## Current v0.5.0 release-candidate boundary
+## Current v0.5.0 release boundary
 
-The public [v0.4.0 GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.4.0) passed the four-target release workflow, packaged mock-provider checks, checksums, provenance, and publication in [run 34574075684](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/34574075684). It is the verified archive distribution path.
+The public [v0.5.0 GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.0) passed the four-target release workflow, packaged mock-provider checks, extracted-binary smoke checks, checksums, provenance, and publication in [run 36778522733](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36778522733). The tag points to exact commit `93fcb4145d8c3b588fd02c1a8af86661e6b178be`.
 
-The develop line contains the committed ConPTY interruption repair and integration-fixture cleanup. The focused regressions pass, but the exact `v0.5.0` candidate must still pass the complete local release gate and four-platform hosted CI before main is synchronized or a tag is created.
+The release candidate passed the complete local release gate, representative live smoke, develop CI [36777294635](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36777294635), and main CI [36777821559](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36777821559) before the tag was created. Independent downloads match the GitHub asset digests and `SHA256SUMS`, all four `gh attestation verify` checks pass, and the Windows archive reports `llmeter 0.5.0` for `--version` and exits successfully for `--help`.
 
 ## Non-blocking evidence limitations
 
