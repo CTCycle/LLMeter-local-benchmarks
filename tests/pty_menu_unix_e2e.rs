@@ -17,7 +17,7 @@ use std::{
 use expectrl::{
     process::unix::{Signal, WaitStatus},
     session::OsSession,
-    spawn, ControlCode, Expect,
+    ControlCode, Expect, Session,
 };
 use serde_json::Value;
 use tempfile::TempDir;
@@ -56,41 +56,73 @@ fn assert_nonzero_exit(status: WaitStatus) {
     );
 }
 
-fn shell_quote(path: &Path) -> String {
-    format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
+fn configured_command(home: &Path, output: &Path) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_llmeter"));
+    command
+        .env("LLMETER_HOME", home)
+        .env("LLMETER_OUTPUT_DIR", output)
+        .env("LLMETER_CONFIG_DIR", output.join("config"));
+    command
 }
 
-fn menu_command(home: &Path, output: &Path) -> String {
-    format!(
-        "env LLMETER_HOME={} LLMETER_OUTPUT_DIR={} LLMETER_CONFIG_DIR={} {} --timeout 0.1 menu",
-        shell_quote(home),
-        shell_quote(output),
-        shell_quote(&output.join("config")),
-        shell_quote(Path::new(env!("CARGO_BIN_EXE_llmeter")))
-    )
+fn menu_command(home: &Path, output: &Path) -> Command {
+    let mut command = configured_command(home, output);
+    command.args(["--timeout", "0.1", "menu"]);
+    command
 }
 
-fn menu_command_with_provider(home: &Path, output: &Path, base_url: &str) -> String {
-    format!(
-        "env LLMETER_HOME={} LLMETER_OUTPUT_DIR={} LLMETER_CONFIG_DIR={} {} --provider openai-compatible --base-url {} --timeout 3 menu",
-        shell_quote(home),
-        shell_quote(output),
-        shell_quote(&output.join("config")),
-        shell_quote(Path::new(env!("CARGO_BIN_EXE_llmeter"))),
-        shell_quote(Path::new(base_url))
-    )
+fn menu_command_with_provider(home: &Path, output: &Path, base_url: &str) -> Command {
+    let mut command = configured_command(home, output);
+    command.args([
+        "--provider",
+        "openai-compatible",
+        "--base-url",
+        base_url,
+        "--timeout",
+        "3",
+        "menu",
+    ]);
+    command
 }
 
-fn performance_command(home: &Path, output: &Path, base_url: &str) -> String {
-    format!(
-        "env LLMETER_HOME={} LLMETER_OUTPUT_DIR={} LLMETER_CONFIG_DIR={} {} --provider openai-compatible --base-url {} --timeout 30 --output-dir {} bench perf --profile smoke --models mock-model --prompt-tokens 128 --output-tokens 1 --concurrency 1 --warmup 0 --runs 10 --no-stream --load-measurement off --telemetry off --export json --report none",
-        shell_quote(home),
-        shell_quote(output),
-        shell_quote(&output.join("config")),
-        shell_quote(Path::new(env!("CARGO_BIN_EXE_llmeter"))),
-        shell_quote(Path::new(base_url)),
-        shell_quote(output)
-    )
+fn performance_command(home: &Path, output: &Path, base_url: &str) -> Command {
+    let mut command = configured_command(home, output);
+    command.args([
+        "--provider",
+        "openai-compatible",
+        "--base-url",
+        base_url,
+        "--timeout",
+        "30",
+        "--output-dir",
+        output.to_str().expect("performance output path"),
+        "bench",
+        "perf",
+        "--profile",
+        "smoke",
+        "--models",
+        "mock-model",
+        "--prompt-tokens",
+        "128",
+        "--output-tokens",
+        "1",
+        "--concurrency",
+        "1",
+        "--warmup",
+        "0",
+        "--runs",
+        "10",
+        "--no-stream",
+        "--load-measurement",
+        "off",
+        "--telemetry",
+        "off",
+        "--export",
+        "json",
+        "--report",
+        "none",
+    ]);
+    command
 }
 
 struct MockProvider {
@@ -210,7 +242,7 @@ fn unix_pty_menu_ctrl_c_exits_with_interrupt_status() {
     let temp = TempDir::new().expect("tempdir");
     let home = temp.path().join("home");
     let output = temp.path().join("results");
-    let mut session = spawn(menu_command(&home, &output)).expect("spawn Unix PTY menu");
+    let mut session = Session::spawn(menu_command(&home, &output)).expect("spawn Unix PTY menu");
     thread::sleep(Duration::from_millis(500));
     session
         .send(ControlCode::ETX)
@@ -224,7 +256,7 @@ fn unix_pty_nested_cancel_and_back_navigation_do_not_hang() {
     let temp = TempDir::new().expect("tempdir");
     let home = temp.path().join("home");
     let output = temp.path().join("results");
-    let mut session = spawn(menu_command(&home, &output)).expect("spawn Unix PTY menu");
+    let mut session = Session::spawn(menu_command(&home, &output)).expect("spawn Unix PTY menu");
     thread::sleep(Duration::from_millis(500));
 
     session.send("\r").expect("open provider setup");
@@ -255,7 +287,7 @@ fn unix_pty_performance_confirmation_interrupt_exits_cleanly() {
     let home = temp.path().join("home");
     let output = temp.path().join("results");
     let provider = MockProvider::start();
-    let mut session = spawn(menu_command_with_provider(
+    let mut session = Session::spawn(menu_command_with_provider(
         &home,
         &output,
         &provider.base_url,
@@ -303,7 +335,7 @@ fn unix_pty_interrupted_performance_run_leaves_no_partial_result_and_recovers() 
     let home = temp.path().join("home");
     let output = temp.path().join("results");
     let provider = MockProvider::start_with_chat_delay(Duration::from_secs(2));
-    let mut session = spawn(performance_command(&home, &output, &provider.base_url))
+    let mut session = Session::spawn(performance_command(&home, &output, &provider.base_url))
         .expect("spawn delayed Unix PTY performance run");
     let deadline = std::time::Instant::now() + Duration::from_secs(5);
     while !provider.chat_requests.load(Ordering::SeqCst) && std::time::Instant::now() < deadline {
