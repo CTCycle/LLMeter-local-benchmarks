@@ -4,84 +4,87 @@ Last updated: 2026-09-30
 
 ## Boundary
 
-- Starting source revision: `e0a4723d76c0836eff83b6190ebb575fc5562c2d` on `develop`.
-- Candidate revision: `c5864bf4e303646fca74ea98707ca4081172c0b9`.
+- Final source revision: `1fb3dbd1f3211e25280481f5bbdab439a850a2f9` on `develop`.
 - Package / binary: `llmeter 0.4.0`, rebuilt `target/release/llmeter.exe`.
-- Host: Windows 11 Pro `10.0.26200`, x86-64, Rust `1.98.0`, Cargo `1.98.0`.
-- Ollama client: `0.34.0`; endpoint `http://localhost:11434/v1`.
-- Current model inventory: five models, including `qwen3.5:2b` and `qwen3.5:9b`.
+- Host: Windows 11 Pro `10.0.26200`, x86-64; Nitro AN517-41; AMD Ryzen 5 5600H, 12 logical CPUs; 31.36 GB RAM; NVIDIA GeForce RTX 3060 Laptop GPU.
+- Provider: Ollama `0.34.0`; endpoint `http://localhost:11434/v1`; five exposed models.
+- Models: `qwen3.5:2b` (`324d162be6ca`, 2.7 GB) and `qwen3.5:9b` (`6488c96fa5fa`, 6.6 GB).
+- Starting free physical memory was approximately 11.57 GB. No deliberate competing workload was introduced; ambient desktop processes remained.
 - No provider, model, container, PATH, startup, or permanent configuration was added by this validation.
 
-The current runs were executed after the scoped performance trace-identity
-fix. Every run used isolated `LLMETER_HOME`, `LLMETER_CONFIG_DIR`, and output
-roots, `--timeout 120`, load measurement off, standard telemetry at a 1000 ms
-sample interval, `--max-requests 500`, both raw exports, both formatted
-reports, full request traces, and response previews disabled. The disposable
-roots were removed after the artifact audit.
+Every run used isolated `LLMETER_HOME`, `LLMETER_CONFIG_DIR`, and output roots,
+`--timeout 120`, load measurement off, standard telemetry at a 1000 ms sample
+interval, `--max-requests 500`, both raw exports, both formatted reports, full
+request traces, and response previews disabled. The raw JSON traces were
+audited in the isolated root before that root was removed.
 
 ## Full default profiles
 
 | Profile | Run ID | Scenarios | Warmup | Measured | Total | Successful | Errors | Result |
 |---|---|---:|---:|---:|---:|---:|---:|---|
-| `latency` / `qwen3.5:2b` | `2026-09-30T123739.621475Z-p9424-qwen3.5-2b` | 3 | 3 | 15 | 18 | 15 | 0 | PASS |
-| `throughput` / `qwen3.5:2b` | `2026-09-30T123850.947857Z-p31096-qwen3.5-2b` | 4 | 4 | 16 | 20 | 16 | 0 | PASS |
-| `sweep` / `qwen3.5:2b` | `2026-09-30T124048.622209Z-p10960-qwen3.5-2b` | 27 | 27 | 81 | 108 | 81 | 0 | PASS |
+| `latency` / `qwen3.5:2b` | `2026-09-30T144728.525184Z-p25032-qwen3.5-2b` | 3 | 3 | 15 | 18 | 15 | 0 | PASS |
+| `throughput` / `qwen3.5:2b` | `2026-09-30T144905.995869Z-p16524-qwen3.5-2b` | 4 | 4 | 16 | 20 | 16 | 0 | PASS |
+| `sweep` / `qwen3.5:2b` | `2026-09-30T145111.909196Z-p32580-qwen3.5-2b` | 27 | 27 | 81 | 108 | 81 | 0 | PASS |
 
-Warmups were one request per scenario. The sweep covered prompt sizes
-`128,512,2048`, output sizes `64,128,256`, and concurrency `1,2,4`.
-
-The fixed sweep retained 81 successful measured traces and 81 unique request
-IDs. This matters because the pre-fix request ID omitted output size and
-collided across the three output-size branches. The current request ID includes
-model, prompt, output size, concurrency, and run index; the deterministic
-default-matrix test asserts the 81-ID boundary as well.
+The sweep covered prompt sizes `128,512,2048`, output sizes `64,128,256`,
+and concurrency `1,2,4`. It retained 81 successful measured traces and 81
+unique request IDs. All profile outputs were schema `3.0` performance results.
 
 ## Matched two-model matrix
 
-Run ID: `2026-09-30T124647.076747Z-p17212-qwen3.5-2b-qwen3.5-9b`.
+Run ID: `2026-09-30T145749.738916Z-p5564-qwen3.5-2b-qwen3.5-9b`.
 
-The exact same non-streaming matrix ran for both models: prompt tokens `32`,
-output tokens `16`, concurrency `1,2`, one warmup and 20 measured requests per
+The same non-streaming matrix ran for both models: prompt tokens `32`, output
+tokens `16`, concurrency `1,2`, one warmup and 20 measured requests per
 scenario, standard telemetry, load measurement off, and the 500-request cap.
 The plan contained 4 scenarios, 4 warmups, 80 measured requests, and 84 total
-requests. All 4 records and all 80 measured traces succeeded, with 80 unique
-request IDs and at least 20 observations per scenario for P95 representation.
+requests. All 4 records and all 80 measured traces succeeded; all 80 request
+IDs were unique and every scenario had enough samples for P95 representation.
 
 | Model | Concurrency | Average wall time |
 |---|---:|---:|
-| `qwen3.5:2b` | 1 | 319.02 ms |
-| `qwen3.5:2b` | 2 | 718.78 ms |
-| `qwen3.5:9b` | 1 | 3254.10 ms |
-| `qwen3.5:9b` | 2 | 7626.93 ms |
+| `qwen3.5:2b` | 1 | 409.88 ms |
+| `qwen3.5:2b` | 2 | 985.77 ms |
+| `qwen3.5:9b` | 1 | 3200.84 ms |
+| `qwen3.5:9b` | 2 | 6505.08 ms |
 
-The matched run reached approximately 0.95 maximum swap-used ratio and
-approximately 0.81 maximum memory ratio. Functional completion and
-persistence pass, but comparative timing interpretation is unvalidated and no
-model ranking is claimed.
+Telemetry reported swap warnings for every live run. Maximum swap-used ratios
+were 0.624 for latency, 0.941 for throughput, 0.738 for sweep, and 0.958 for
+the matched matrix; the matched run also reached a maximum memory-used ratio of
+0.845. The functional results and persistence pass, but comparative timing is
+not validated on this host and no model ranking is claimed.
 
 ## Persistence and privacy
 
 Fresh release-binary `report list` and `report show` processes returned exit
-code `0` for all four current run directories. Each run produced exactly one
-JSON, CSV, Markdown, and HTML artifact. The audit found schema `3.0`, run kind
-`performance`, zero result errors, successful HTTP 200 traces, complete
-non-truncated traces, no response previews, no credential-shaped values, and
-no `.tmp` or `.partial` files. The disposable output roots were removed after
-the checks, so they are not retained as repository evidence.
+code `0` for all four run directories. The audit found schema `3.0`, run kind
+`performance`, 192 successful measured traces, 192 unique request IDs, no
+errors, complete non-truncated traces, JSON/CSV/Markdown/HTML outputs, zero
+non-null response previews, zero credential-shaped values, and no `.tmp` or
+`.partial` files.
 
 ## Second-provider boundary
 
-LiteLLM at `http://localhost:4000/v1` was unavailable. Docker was installed,
-but its Linux engine was not reachable, so no temporary proxy was started and
-no new LiteLLM smoke was claimed. The earlier Tier 4 LiteLLM-over-Ollama
-record remains representative historical coverage at its own revision and
-does not replace this current-provider check.
+LiteLLM at `http://localhost:4000/v1` was unavailable. Docker `29.8.0` was
+installed, but its Linux engine was not reachable at
+`npipe:////./pipe/dockerDesktopLinuxEngine`, so no temporary proxy was started
+and no provider, model, container, PATH, or permanent configuration was
+changed. The earlier Tier 4 LiteLLM-over-Ollama record remains representative
+historical coverage and does not replace this current smoke.
+
+## Final-revision hosted boundary
+
+Hosted [CI run `36722865383`](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36722865383)
+passed all four jobs for this exact revision. The native Unix PTY suite passed
+4/4 on Ubuntu x86-64, macOS Apple silicon, and macOS Intel; Windows ConPTY
+passed 10/10 in the same all-target test workflow.
 
 ## Disposition
 
-`T3-04: PASS` for the recorded repeated live Ollama execution boundary, with
-functional current profile and matched-matrix evidence. `T3-05: PARTIAL`:
-full current profiles, the matched two-model functional matrix,
-persistence/reload, trace identity, and privacy checks pass; comparative timing
-is disqualified by swap pressure, LiteLLM is unavailable, and exact-candidate
-four-platform hosted CI remains open.
+`T3-04: PASS` for the recorded live Ollama functional boundary.
+`T3-05: PARTIAL`: deterministic accounting, the 500-request ceiling and
+refusal, full default profiles, the matched functional matrix, persistence,
+reload, trace identity, reporting, privacy, and exact-candidate hosted CI
+pass. Comparative timing remains unvalidated under swap pressure, and the
+optional LiteLLM smoke was unavailable. No universal or cross-host numeric
+performance claim is made.

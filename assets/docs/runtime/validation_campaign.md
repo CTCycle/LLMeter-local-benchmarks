@@ -105,12 +105,11 @@ expanding the live-provider or statistical claim.
 Current campaign state: `PARTIAL`; T3-02, deterministic T3-03 including
 default-matrix execution, the bounded fixture ceiling, the full current Ollama
 profiles, the matched two-model functional matrix, persistence/reporting/
-privacy, and local quality gates pass at their stated boundaries. The optional
-LiteLLM path is blocked because its endpoint and Docker engine are unavailable;
-swap pressure disqualifies comparative timing interpretation, native Unix PTY
-execution remains hosted-CI scoped, and exact-candidate four-platform CI is
-open. Broader provider/model/host variance and universal numeric performance
-remain validation debt.
+privacy, local quality gates, and exact-candidate four-platform CI pass at
+their stated boundaries. The optional LiteLLM path is blocked because its
+endpoint and Docker engine are unavailable, and swap pressure disqualifies
+comparative timing interpretation. Broader provider/model/host variance and
+universal numeric performance remain validation debt.
 
 #### T3-05 — matched live variance and release-scale qualification
 
@@ -130,14 +129,17 @@ Acceptance requires all of the following:
 
 Current T3-05 disposition: `PARTIAL`. The deterministic ceiling and above-limit
 fixture regressions, current Ollama default profiles, matched two-model
-functional matrix, persistence/reload, and privacy checks pass. The optional
-LiteLLM path is unavailable, swap pressure disqualifies comparative timing
-interpretation, and exact-candidate hosted CI remains open. Broader cross-host
-numeric performance remains validation debt. See the [current live Ollama
-evidence](../../QA/validation-2026-09-30/t3-live-ollama-revalidation-evidence.md).
+functional matrix, persistence/reload, privacy checks, and exact-candidate
+hosted CI pass. The optional LiteLLM path is unavailable and swap pressure
+disqualifies comparative timing interpretation. Broader cross-host numeric
+performance remains validation debt. See the [current live Ollama
+evidence](../../QA/validation-2026-09-30/t3-live-ollama-revalidation-evidence.md)
+and [T3 release-performance evidence](../../QA/validation-2026-09-30/t3-release-performance-evidence.md).
 
-The current scoped candidate is `c5864bf4e303646fca74ea98707ca4081172c0b9` on
-`develop`; exact hosted qualification remains pending for this revision.
+The final scoped candidate is `1fb3dbd1f3211e25280481f5bbdab439a850a2f9` on
+`develop`; hosted run
+[`36722865383`](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36722865383)
+passed all four platform jobs for this revision.
 
 ### Tier 4 — representative provider compatibility, quality planning, and distribution
 
@@ -229,8 +231,8 @@ Tier 4 is `PASS` at the representative compatibility boundary: T4-01, T4-02,
 and T4-03 pass; T4-04 passes for GitHub distribution with crates.io separate.
 The T4-02 result certifies only the recorded Ollama, llama.cpp, and LiteLLM
 implementations and is not a universal provider-certification claim. Tier 3,
-Tier 5, best-effort live-provider coverage, and crates.io remain separate open
-boundaries.
+best-effort live-provider coverage, and crates.io remain separate open
+boundaries; Tier 5 has its own finite T5-02 evidence.
 
 ### Tier 5 — resilience and edge cases
 
@@ -243,13 +245,28 @@ validated two completed invocations in fresh processes sharing one output
 directory, Ctrl+C during a delayed performance request with no partial
 artifact, and a fresh-process recovery run in that same output directory.
 Report reload and repeated completed runs do not prove resumable in-progress
-state; restart/state restoration, production-scale ceilings, and native
-non-Windows terminal behavior remain open.
+state. Checkpoint-based resumption and stress beyond the configured 500-request
+ceiling are outside the finite T5-02 release contract.
 See the [scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md), [bounded scale continuation evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), and [current-tree revalidation evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md).
 
-Exercise transport/protocol failures, filesystem and atomic-write failures, repeated operations and restart/state restoration, long-running interruption, scale/safety ceilings, and native non-Windows terminal behavior. The expected result is bounded, readable failure with no corrupted or convincing partial artifact.
+Exercise transport/protocol failures, filesystem and atomic-write failures,
+repeated completed operations and restart recovery of durable state, long-running
+interruption, the configured scale/safety ceiling, and native non-Windows
+terminal behavior. Checkpoint-based restoration of an in-progress benchmark is
+outside this finite release slice. The expected result is bounded, readable
+failure with no corrupted or convincing partial artifact.
 
-Current campaign state: `PARTIAL` at the dedicated Tier 5 boundary. The selected T5-01 subset and current-tree continuation pass bounded provider/CLI failures, output-path failure handling, atomic-write cleanup, performance safety ceilings, the bounded fixture matrix through concurrency 16, repeated completed operations, a delayed-request interruption with no partial artifact, the interrupted streamed-9b run with no partial saved result, fresh-process recovery after interruption, and Windows ConPTY confirmation interruption. Resumable restart/state restoration, production-scale ceilings, and native non-Windows terminal behavior remain open. See the [repeated live model evidence](../../QA/validation-2026-09-29/t3-repeated-model-evidence.md), [2026-09-28 scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md), [2026-09-28 bounded scale evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), [2026-09-28 current-tree evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md), and [T3-04/T5-01 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
+Current campaign state: `PASS` at the dedicated finite T5-02 boundary. The
+selected T5-01 subset and current-tree continuation pass bounded provider/CLI
+failures, output-path failure handling, atomic-write cleanup, performance
+safety ceilings, the bounded fixture matrix through concurrency 16, repeated
+completed operations, delayed-request interruption with no partial artifacts,
+fresh-process recovery after interruption, Windows ConPTY, and the native Unix
+PTY suite on Ubuntu, macOS Intel, and macOS Apple silicon through exact-
+candidate hosted CI. Checkpoint-based resumption and stress beyond the
+configured 500-request ceiling are outside the product requirements. See the
+[T5 release-resilience evidence](../../QA/validation-2026-09-30/t5-release-resilience-evidence.md)
+and [hosted CI run](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36722865383).
 
 #### T5-02 — restart, configured ceiling, and Unix terminal resilience
 
@@ -264,10 +281,12 @@ recovery. Acceptance requires:
 - Windows ConPTY coverage remains green.
 - Native Unix PTY coverage passes on Linux, macOS Intel, and macOS Apple silicon through hosted CI, including menu interrupt, nested cancel/back navigation, performance-confirmation interrupt, active delayed-request interrupt, and fresh-process recovery.
 
-Current T5-02 disposition: `PARTIAL`. The platform-neutral abrupt-termination
-and restart E2E, configured ceiling, above-limit refusal, and Windows ConPTY
-boundaries pass locally. Native Unix PTY execution and exact-candidate hosted
-CI remain unverified on this Windows-only checkout.
+Current T5-02 disposition: `PASS`. The platform-neutral abrupt-termination and
+restart E2E, configured ceiling, above-limit refusal, Windows ConPTY, and
+native Unix PTY boundaries pass at the finite contract. Hosted CI run
+[`36722865383`](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36722865383)
+passed 4/4 Unix PTY cases on Ubuntu, macOS Intel, and macOS Apple silicon and
+10/10 Windows ConPTY cases on the exact final revision.
 
 ## Regression map
 
@@ -289,4 +308,4 @@ Run the full locked all-target/all-feature suite once at each tier boundary and 
 
 Do not call a revision comprehensively validated until Tier 0–3 are green except for intentional product limitations, the JSONL accounting risk is disproven or fixed/regression-tested, every standard benchmark has real-CLI evidence, at least one live provider/model path is retained, provider-specific availability is explicit, interruption/persistence are safe, Windows and current CI remain green, release documentation matches GitHub, stale QA references are repaired, and every `PARTIAL`, `BLOCKED`, `UNKNOWN`, or `UNRUN` entry has a named boundary.
 
-The current campaign does not make that comprehensive claim. Tiers 0–2 pass at their recorded boundaries; Tier 3 remains partial pending larger repeated workloads and broader provider/host evidence. Tier 4 is `PASS` at the explicitly recorded representative compatibility boundary; Tier 5 remains partial, and crates.io plus external evaluator execution remain separate owner/scope boundaries.
+The current campaign does not make that comprehensive claim. Tiers 0–2 pass at their recorded boundaries; Tier 3 remains partial because comparative timing is invalid under swap pressure and the optional current LiteLLM smoke is unavailable. Tier 4 is `PASS` at the explicitly recorded representative compatibility boundary; Tier 5 is `PASS` at the finite T5-02 release boundary, and crates.io plus external evaluator execution remain separate owner/scope boundaries.
