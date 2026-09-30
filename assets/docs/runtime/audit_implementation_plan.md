@@ -18,10 +18,9 @@ The roadmap prioritizes:
 
 ## Current baseline
 
-- Package version is 0.5.0 release candidate on develop. The Windows ConPTY interruption repair and integration-fixture cleanup are committed; the full release gate and exact hosted candidate remain pending.
-- The focused report, PowerShell launcher, lifecycle, and mock-provider regressions pass against the committed develop line. The complete local release gate and representative live smoke remain required before shipping.
-- Hosted CI must certify the exact release-preparation commit across Ubuntu x86-64, Windows x86-64, macOS Intel, and macOS Apple silicon before main is synchronized.
-- The public v0.4.0 GitHub release is verified by release run 34574075684. The first crates.io publication and clean registry installation remain owner-gated.
+- Package version 0.5.0 is publicly released from the exact annotated tag commit `93fcb4145d8c3b588fd02c1a8af86661e6b178be`. The Windows ConPTY interruption repair and integration-fixture cleanup are committed.
+- The complete local release gate, representative Ollama smoke, and exact hosted four-platform candidate passed before publication. The first crates.io publication and clean registry installation remain owner-gated.
+- The public v0.5.0 GitHub release is verified by release run 36778522733 and independent checksum/provenance checks. Current comparative-performance limitations remain recorded in the status ledger.
 - Current validation is summarized in the [project status ledger](../project_status_ledger.md) and ordered in the [validation campaign](validation_campaign.md).
 
 ## Durable decisions
@@ -50,14 +49,14 @@ The roadmap prioritizes:
 | 4. CLI runtime contract | Complete | Non-TTY refusal, clean stdout/stderr separation, typed output choices, menu cancellation, and terminal restoration. | [Modes](modes.md), [CLI flow](../architecture/cli_flow.md), CLI contract and PTY tests. |
 | 5. Statistically honest metrics | Complete | Sample counts, nearest-rank percentiles, population standard deviation, failure separation, warmups, and explicit telemetry/load modes. | [Benchmark execution](../architecture/benchmark_execution.md), performance metric tests, [reports and results](../user/reports_and_results.md). |
 | 6. Telemetry and concurrency | Complete | Bounded telemetry sampling, interruptible sampler shutdown, bounded concurrency, shared immutable plans, and cancellation checks. | [Benchmark execution](../architecture/benchmark_execution.md), performance runner/configuration tests, resilience and PTY tests. |
-| 7. CI and maintainer validation | Implemented; current source recheck pending hosted rerun | Four-target CI, serialized all-target/all-feature gates, release builds, native PTY suites, and exact-candidate release qualification. | [Testing and quality](../coding/testing_and_quality.md), [validation campaign](validation_campaign.md), hosted CI links in the ledger. |
-| 8. Lifecycle and distribution | Local lifecycle complete; registry publication pending | Local file-copy lifecycle is explicit; GitHub binary distribution is verified; remote self-update and crates.io publication are not implied. | [Deployment](deployment.md), [release checklist](release_checklist.md), [supported platforms](../../../SUPPORTED_PLATFORMS.md). |
+| 7. CI and maintainer validation | Complete for the v0.5.0 release boundary | Four-target CI, serialized all-target/all-feature gates, release builds, native PTY suites, and exact-candidate release qualification. | [Testing and quality](../coding/testing_and_quality.md), [validation campaign](validation_campaign.md), hosted CI links in the ledger. |
+| 8. Lifecycle and distribution | Local lifecycle and GitHub distribution complete; registry publication pending | Local file-copy lifecycle is explicit; GitHub binary distribution is verified; remote self-update and crates.io publication are not implied. | [Deployment](deployment.md), [release checklist](release_checklist.md), [supported platforms](../../../SUPPORTED_PLATFORMS.md). |
 
 ## Remaining work
 
 | Work item | Status and boundary |
 |---|---|
-| Exact hosted revalidation of the current ConPTY repair | Required after the current source change is committed. The local tree is green; prior hosted CI remains valid only for its recorded candidate. |
+| v0.5.0 release qualification | Complete. The exact tag passed local gates, four-platform hosted CI, release packaging, checksums, and provenance verification. |
 | Comparative performance qualification | Open. Repeat the functional performance boundary on a host without material swap pressure before making timing or model-ranking claims. |
 | Broader live provider coverage | Open. The registered preset fixture is validated; live certification for unexercised providers requires available, exact provider/model targets. |
 | crates.io publication and clean install | Owner-gated and unperformed. Do not document registry installation as available until both publication and clean-root verification pass. |

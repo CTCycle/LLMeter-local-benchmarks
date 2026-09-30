@@ -15,10 +15,10 @@ This document is the canonical current operational status catalog for LLMeter. I
 
 ## Current validation boundary
 
-- Package version is `0.5.0` release candidate on `develop`. The Windows ConPTY interruption repair and integration-fixture cleanup are committed.
-- The focused report, PowerShell launcher, lifecycle, and mock-provider regressions pass. The complete local release gate, representative live smoke, and exact hosted candidate remain pending.
-- Hosted CI must certify the exact release-preparation commit across Ubuntu x86-64, Windows x86-64, macOS Intel, and macOS Apple silicon before `main` is synchronized.
-- The public [`v0.4.0` GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.4.0) is verified by hosted release run [34574075684](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/34574075684). The first crates.io publication and clean registry install remain unperformed.
+- Package version `0.5.0` is public. The annotated [`v0.5.0` tag](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.0) points to exact release commit `93fcb4145d8c3b588fd02c1a8af86661e6b178be`; the Windows ConPTY interruption repair and integration-fixture cleanup are committed.
+- The complete local release gate passed with 156/156 serialized tests, the representative Ollama smoke passed with 2/2 requests successful, and the exact release candidate passed hosted CI on all four native targets.
+- Exact candidate evidence is recorded by develop CI [36777294635](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36777294635), main CI [36777821559](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36777821559), and the tag-gated release [36778522733](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36778522733).
+- The public [`v0.5.0` GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.0) has four independently downloaded archives whose GitHub digests and `SHA256SUMS` entries match; all four provenance attestations verify. The first crates.io publication and clean registry install remain unperformed.
 - Current live Ollama evidence covers `qwen3.5:2b` and `qwen3.5:9b`. Default `latency`, `throughput`, and `sweep` profiles completed functionally, as did the matched two-model matrix, but swap pressure prevents comparative timing or model-ranking claims. LiteLLM is currently unavailable because no Docker engine is reachable.
 
 ## Status vocabulary
@@ -37,7 +37,7 @@ This document is the canonical current operational status catalog for LLMeter. I
 | Component | Status | Evidence and current guarantee | Boundary or next check |
 |---|---|---|---|
 | `application.startup` | `VALIDATED` | CLI contract coverage, release-binary startup/help/status smoke, provider resolution, and non-TTY dispatch pass. See [startup](runtime/startup.md), [configuration](runtime/configuration.md), and [CLI contract tests](../../tests/cli_contract_tests.rs). | Live status and benchmarks still require a provider started by the user. |
-| `cli.interactive` | `VALIDATED` | Current Windows ConPTY suite passes 10/10, and the committed interruption repair has focused launcher/lifecycle coverage. | Re-run native Unix PTY and exact four-platform hosted coverage for the `v0.5.0` candidate. |
+| `cli.interactive` | `VALIDATED` | Current Windows ConPTY suite passes 10/10, and the committed interruption repair has focused launcher/lifecycle coverage. | Re-run native PTY coverage after future terminal or launcher changes. |
 | `cli.scriptable` | `VALIDATED` | CLI contract tests, release-binary smoke, mock-provider execution, JSON cleanliness, documented exit codes, and report commands pass. See [scriptable usage](user/scriptable_usage.md) and [mock-provider E2E](../../tests/mock_provider_e2e.rs). | Provider-backed outcomes remain dependent on the external server and model. |
 | `cli.help-catalogs` | `VALIDATED` | Provider, benchmark, quality, and built-in help catalogs are exercised through real CLI output and contract tests. | Re-run after changing catalog registration or help behavior. |
 | `configuration.resolution` | `VALIDATED` | CLI, environment, and persisted precedence; URL normalization; numeric bounds; provider validation; and embedded-credential rejection are covered by tests and launcher smoke. | Re-run configuration and error-contract tests after changing precedence or validation. |
@@ -53,18 +53,18 @@ This document is the canonical current operational status catalog for LLMeter. I
 | `reporting` | `VALIDATED` | Terminal list/show and Markdown/HTML generation reload standard, performance, error, and adversarial result shapes with escaping and privacy checks. See [report tests](../../tests/test_reporting.rs). | Unsupported or truncated result files fail closed. |
 | `lifecycle.local-install` | `VALIDATED` | Install, overwrite refusal, rollback cleanup, update, uninstall, purge, and preservation of unrelated home data pass the lifecycle tests and documented local boundary. | These are local file operations, not a remote updater or package manager. |
 | `launcher.powershell` | `VALIDATED` | Release-binary reuse, argument forwarding, fallback selection, noninteractive refusal, ConPTY confirmation, protected-home refusal, and owned cleanup pass [launcher E2E tests](../../tests/launcher_powershell_e2e.rs). | The primary launcher evidence is Windows-specific. |
-| `test.local-quality-gates` | `VALIDATED` | The prior release boundary passed local formatting, locked checks, warning-denied Clippy/rustdoc, release build, audit/tree inspection, serialized tests, and Windows PTY coverage; the current fixture repair passes all four focused regressions. | Re-run the complete local gate and hosted four-platform matrix for the `v0.5.0` candidate. |
-| `release.cross-platform` | `VALIDATED` | The tag-gated workflow produced and published the four native `v0.4.0` archives with checksums, packaged tests, and provenance in [release run 34574075684](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/34574075684). | Repeat the hosted matrix and independent artifact verification for future tags. |
-| `release.public-distribution` | `PARTIAL` | GitHub `v0.4.0` is public and verified; `v0.5.0` is a pre-tag release candidate and is not yet public. | The `v0.5.0` tag workflow, independent archive verification, first crates.io publication, and clean `cargo install` verification remain pending or owner-gated. |
+| `test.local-quality-gates` | `VALIDATED` | Exact `v0.5.0` source passed formatting, locked all-target/all-feature checks, warning-denied Clippy/rustdoc, release build, audit/tree inspection, serialized 156/156 tests, and Windows PTY coverage. | Re-run the complete local gate after future source or release-workflow changes. |
+| `release.cross-platform` | `VALIDATED` | The tag-gated workflow produced and published four native `v0.5.0` archives, packaged tests, extracted-binary smoke checks, checksums, and provenance in [release run 36778522733](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36778522733); independent downloads and all four attestations verify. | Repeat the hosted matrix and independent artifact verification for future tags. |
+| `release.public-distribution` | `PARTIAL` | GitHub [`v0.5.0`](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.0) is public and verified across all four archives. Registry installation is not a current claim. | Owner-gated first crates.io publication followed by clean `cargo install` verification remains open. |
 
 ## Open issues
 
 | ID | Component | Severity | Current boundary | Required action |
 |---|---|---|---|---|
-| `ISSUE-001` | `release.public-distribution` | Medium | GitHub archives are verified; registry installation is not a current claim. | Publish from an approved exact tag, then verify a clean registry install. |
+| `ISSUE-001` | `release.public-distribution` | Medium | GitHub `v0.5.0` archives are verified; registry installation is not a current claim. | With owner approval, publish from the exact tag, then verify a clean registry install. |
 | `ISSUE-003` | `quality.external-plans` | Low | External quality tools are intentionally planning-only. | Keep execution outside the runtime contract unless a separate adapter and ownership boundary are approved. |
 
-The `v0.5.0` hosted revalidation is a release gate, not an application defect: validate the exact release-preparation commit across all four platforms and update the release boundary before shipping it.
+The `v0.5.0` hosted revalidation and public artifact checks are complete release evidence, not an application defect. Comparative performance and registry distribution remain explicitly separate boundaries.
 
 ## Validation debt
 
