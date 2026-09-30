@@ -1,6 +1,6 @@
 # Project status ledger
 
-Last updated: 2026-09-29
+Last updated: 2026-09-30
 
 This document is the canonical, current operational status catalog for LLMeter. It summarizes what is working, validated, partial, blocked, unvalidated, or intentionally limited. Detailed architecture documents define intended behavior; QA records, tests, and implementation plans provide the evidence behind these entries.
 
@@ -20,6 +20,39 @@ Future coding agents must:
 10. Keep this ledger synchronized with the repository, current branch, supported runtime, and actual external validation state.
 
 The ledger describes current truth. Fixed findings must leave the active issue catalog. Historical provenance belongs in [Resolved / historical findings](#resolved--historical-findings).
+
+## 2026-09-30 release-qualification addendum
+
+The base `develop` checkout is `922da56ebf96834d905d918400f2dee0ea3c3491`.
+The working tree contains uncommitted release-validation tests, documentation,
+and the minimal locked `rustls 0.23.45` security update; no candidate SHA has
+been assigned. The following addendum supersedes older numerical counts in
+historical evidence paragraphs while preserving their original revision
+boundaries:
+
+- `benchmark.performance` remains `PARTIAL`. The new loopback fixture reaches
+  exactly 500 configured requests with 25 scenarios and complete persisted
+  measured accounting; an above-limit 525-request plan is rejected before chat
+  execution. Current Ollama `qwen3.5:2b` default latency/throughput/sweep
+  profiles and the matched `qwen3.5:2b`/`qwen3.5:9b` functional matrix now
+  pass, with swap pressure limiting timing interpretation. The optional
+  LiteLLM path is unavailable, and current-candidate hosted CI is not yet run.
+  See the [current live Ollama evidence](../QA/validation-2026-09-30/t3-live-ollama-revalidation-evidence.md).
+- `resilience.edge-cases` remains `PARTIAL`. The new platform-neutral E2E proves
+  abrupt child termination, byte-for-byte completed-result preservation,
+  report reload, and fresh-process recovery locally. Native Unix PTY execution
+  remains a hosted-CI boundary; in-progress checkpointing is not a product
+  requirement.
+- `cli.interactive.non-windows` remains open at its existing `P2` boundary.
+  `tests/pty_menu_unix_e2e.rs` is present and Unix-cfg type-checks, but native
+  Linux/macOS execution is unverified on this Windows-only host.
+- `results.persistence` retains `VALIDATED` status at its existing schema and
+  atomic-write scope, with the new restart-preservation evidence linked from
+  [T5 release-resilience evidence](../QA/validation-2026-09-30/t5-release-resilience-evidence.md).
+- The release remains non-comprehensive: Tier 3 and Tier 5 are partial, the
+  optional second-provider path and current-candidate hosted CI remain open,
+  and crates.io publication/install remains owner-gated. See the [T3 release-performance evidence](../QA/validation-2026-09-30/t3-release-performance-evidence.md)
+  and [release-readiness evidence](../QA/validation-2026-09-30/release-readiness-evidence.md).
 
 ## Status taxonomy
 
@@ -124,7 +157,7 @@ Validation debt is insufficient evidence, not proof of a defect.
 | `provider.live.representative` | Medium | Broader provider/version/model/host variance beyond the recorded Ollama, llama.cpp, and LiteLLM representatives remains unvalidated; all other presets remain fixture-validated only. | `P2` |
 | `provider.best-effort.live` | Low | Live status, model discovery, capability probes, and representative benchmark runs for TGI, text-generation-webui, Jan, and MLX-LM configurations. Their deterministic preset contracts are validated; live certification remains intentionally absent. | `P2` |
 | `provider.optional-capabilities` | Medium | The representative live probes covered streaming/non-streaming chat and Responses for Ollama, llama.cpp, and LiteLLM; llama.cpp embeddings returned controlled HTTP 501 and LiteLLM embeddings controlled HTTP 400, while prior live evidence covers embeddings on a separate Ollama model. Broader provider/model optional-capability variance remains open. | `P2` |
-| `benchmark.performance.full-profiles` | Medium | The four profile-owned default matrices now execute through the fixture, the bounded fixture continuation reaches concurrency 16 with 170 total requests, and current live evidence covers full default `latency`, `throughput`, and `sweep` for `qwen3.5:2b`. A 25-sample repeated live subset now passes for that model and a separate 5-sample non-streaming smoke passes for `qwen3.5:9b`; the modes and workloads are not comparable. Broader concurrency in a live environment, matched repeated samples across models/providers, and production-sized interpretation across host variance remain open. See the [repeated live model evidence](../QA/validation-2026-09-29/t3-repeated-model-evidence.md). | `P2` |
+| `benchmark.performance.full-profiles` | Medium | The four profile-owned default matrices now execute through the fixture, the bounded fixture continuation reaches concurrency 16 with 170 total requests, and current live evidence covers full default `latency`, `throughput`, and `sweep` for `qwen3.5:2b`. The current two-model non-streaming matrix also passes 20 measured samples per scenario for `qwen3.5:2b` and `qwen3.5:9b`; swap pressure disqualifies timing comparison, and the optional LiteLLM path plus broader host/provider variance remain open. See the [live Ollama revalidation evidence](../QA/validation-2026-09-30/t3-live-ollama-revalidation-evidence.md). | `P2` |
 | `cli.interactive.non-windows` | Low | Native terminal behavior and interruption cleanup on supported non-Windows targets. | `P2` |
 | `resilience.edge-cases` | Low | The bounded Tier 5 subset now also covers repeated completed operations, the bounded fixture matrix through concurrency 16, a delayed-request Ctrl+C interruption with no partial result artifact, the interrupted streamed-9b run with no partial saved result, and fresh-process recovery in the same output directory after interruption. Resumable restart/state restoration, production-scale ceilings, and native non-Windows terminal behavior remain open. See the [repeated live model evidence](../QA/validation-2026-09-29/t3-repeated-model-evidence.md). | `P2` |
 | `release.v0.4.0.cross-platform` | High | Future-tag hosted Linux/macOS/Windows release execution, public artifact download, checksum, and provenance evidence. Current `v0.4.0` is validated. | `P2` |

@@ -1,6 +1,6 @@
 # LLMeter validation campaign
 
-Last updated: 2026-09-29
+Last updated: 2026-09-30
 
 ## Purpose and authority
 
@@ -110,6 +110,30 @@ strengthens fixture-scale scheduling and accounting evidence without
 expanding the live-provider or statistical claim.
 
 Current campaign state: `PARTIAL`; `T3-02`, deterministic T3-03 including default-matrix execution, the bounded fixture continuation through concurrency 16, the full default live `latency`/`throughput` profiles for one Ollama model, the explicit live capability smoke, the full live `sweep` at the recorded Ollama/model boundary, the repeated 25-sample live subset, the bounded 9b smoke, the prior bounded one-model live progression, and the current local quality gates pass. Broader live concurrency and provider/model/host variance, matched repeated samples across models/providers, and production-sized interpretation remain open. Host swap-pressure warnings limit timing interpretation. See the [repeated live model evidence](../../QA/validation-2026-09-29/t3-repeated-model-evidence.md), [live full-sweep evidence](../../QA/validation-2026-09-29/t3-live-sweep-evidence.md), [live default profile evidence](../../QA/validation-2026-09-29/t3-t4-live-default-profiles-evidence.md), [scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md), [bounded scale evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), [T3-02 evidence](../../QA/validation-2026-09-24/t3-02-jsonl-accounting-evidence.md), [prior T3-03 evidence](../../QA/validation-2026-09-24/t3-profile-progression-evidence.md), [default-matrix evidence](../../QA/validation-2026-09-26/t3-default-matrix-evidence.md), and [T3-04 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
+
+#### T3-05 — matched live variance and release-scale qualification
+
+This is the finite Tier 3 release slice for the local, single-user benchmark
+CLI. It does not certify universal provider, model, host, or timing behavior.
+Acceptance requires all of the following:
+
+- T3-02 JSONL accounting and deterministic default-matrix fixture execution remain green.
+- The real CLI reaches the configured `DEFAULT_MAX_PERFORMANCE_REQUESTS = 500` ceiling against the loopback fixture, with exact provider accounting, complete persisted measured traces, reloadable schema `3.0` output, privacy flags, and no temporary files.
+- A matrix above 500 requests is rejected before any performance chat request and produces no result artifact unless an explicit override is supplied.
+- Full live default `latency`, `throughput`, and `sweep` profiles remain green for the recorded baseline model.
+- At least two locally available generation models execute an identical non-streaming matched matrix with prompt size, output size, concurrency including a value greater than one, warmup, measured count, telemetry, stream mode, and request cap held constant.
+- The primary matched scenarios retain at least 20 measured observations so the current percentile implementation can represent P95; swap-pressure warnings disqualify comparative timing interpretation while leaving functional validation scoped as such.
+- A second OpenAI-compatible provider path is exercised where already available, preferably the recorded LiteLLM-over-Ollama route, without adding provider lifecycle management or permanent configuration.
+- JSON, CSV, Markdown, and HTML outputs reload successfully, response previews remain absent unless explicitly requested, and privacy scanning is clean.
+- Hosted Ubuntu x86-64, Windows x86-64, macOS Intel x86-64, and macOS Apple-silicon CI pass on the exact candidate revision.
+
+Current T3-05 disposition: `PARTIAL`. The deterministic ceiling and above-limit
+fixture regressions, current Ollama default profiles, matched two-model
+functional matrix, persistence/reload, and privacy checks pass. The optional
+LiteLLM path is unavailable, swap pressure disqualifies comparative timing
+interpretation, and exact-candidate hosted CI remains open. Broader cross-host
+numeric performance remains validation debt. See the [current live Ollama
+evidence](../../QA/validation-2026-09-30/t3-live-ollama-revalidation-evidence.md).
 
 ### Tier 4 — representative provider compatibility, quality planning, and distribution
 
@@ -222,6 +246,24 @@ See the [scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-contin
 Exercise transport/protocol failures, filesystem and atomic-write failures, repeated operations and restart/state restoration, long-running interruption, scale/safety ceilings, and native non-Windows terminal behavior. The expected result is bounded, readable failure with no corrupted or convincing partial artifact.
 
 Current campaign state: `PARTIAL` at the dedicated Tier 5 boundary. The selected T5-01 subset and current-tree continuation pass bounded provider/CLI failures, output-path failure handling, atomic-write cleanup, performance safety ceilings, the bounded fixture matrix through concurrency 16, repeated completed operations, a delayed-request interruption with no partial artifact, the interrupted streamed-9b run with no partial saved result, fresh-process recovery after interruption, and Windows ConPTY confirmation interruption. Resumable restart/state restoration, production-scale ceilings, and native non-Windows terminal behavior remain open. See the [repeated live model evidence](../../QA/validation-2026-09-29/t3-repeated-model-evidence.md), [2026-09-28 scale-16 evidence](../../QA/validation-2026-09-28/t3-t5-scale-16-continuation-evidence.md), [2026-09-28 bounded scale evidence](../../QA/validation-2026-09-28/t3-t5-scale-continuation-evidence.md), [2026-09-28 current-tree evidence](../../QA/validation-2026-09-28/t3-t5-revalidation-evidence.md), and [T3-04/T5-01 evidence](../../QA/validation-2026-09-26/t3-t5-followup-evidence.md).
+
+#### T5-02 — restart, configured ceiling, and Unix terminal resilience
+
+This is the finite Tier 5 release slice for durable state and terminal
+recovery. Acceptance requires:
+
+- Controlled provider/protocol failures, invalid output paths, and atomic-write cleanup remain green.
+- A completed result remains byte-for-byte intact across a later interrupted process; an interrupted in-progress benchmark leaves no canonical or convincing partial JSON, report, or temporary atomic-write artifact.
+- Abrupt child termination is tested independently of clean Ctrl+C cancellation.
+- A fresh process can list and show the completed result, then complete another benchmark in the same output directory with distinct, independently loadable run IDs.
+- The configured 500-request fixture ceiling executes successfully and an above-ceiling plan is rejected before provider execution.
+- Windows ConPTY coverage remains green.
+- Native Unix PTY coverage passes on Linux, macOS Intel, and macOS Apple silicon through hosted CI, including menu interrupt, nested cancel/back navigation, performance-confirmation interrupt, active delayed-request interrupt, and fresh-process recovery.
+
+Current T5-02 disposition: `PARTIAL`. The platform-neutral abrupt-termination
+and restart E2E, configured ceiling, above-limit refusal, and Windows ConPTY
+boundaries pass locally. Native Unix PTY execution and exact-candidate hosted
+CI remain unverified on this Windows-only checkout.
 
 ## Regression map
 

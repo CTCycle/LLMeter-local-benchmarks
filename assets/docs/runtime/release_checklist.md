@@ -1,5 +1,19 @@
 # Release checklist
 
+## Release-candidate validation condition
+
+Before tagging a release candidate, confirm that:
+
+- the canonical ledger is reviewed and Tier 0 through Tier 5 release boundaries are satisfied at their documented scopes;
+- no unresolved release-blocking `BROKEN`, `BLOCKED`, or `PARTIAL` application-validation entry remains;
+- the exact candidate commit has green four-platform hosted CI for Ubuntu x86-64, Windows x86-64, macOS Intel x86-64, and macOS Apple silicon;
+- current live-provider evidence, the configured 500-request ceiling, resilience/restart evidence, native PTY evidence, privacy scan, and QA references are retained;
+- the working tree is clean and the candidate SHA is recorded in the release evidence.
+
+Crates.io publication and clean registry installation remain a separate
+owner-gated publication step. Do not mark `release.public-distribution`
+validated from a package dry-run or a GitHub release alone.
+
 ## Before tagging
 
 1. Confirm `Cargo.toml` version.
@@ -45,4 +59,4 @@ Local builds inherit the trust of the checked-out source and Rust dependency res
 7. Verify `cargo install llmeter --version <version> --locked --root <clean-temp-root>` and the installed binary.
 8. Configure crates.io trusted publishing for later releases. Stop publication if any hosted or registry verification fails.
 
-Last updated: 2026-09-21
+Last updated: 2026-09-30

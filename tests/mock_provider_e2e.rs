@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -322,6 +322,27 @@ fn json_result_files(output_dir: &Path) -> Vec<PathBuf> {
         .collect::<Vec<_>>();
     files.sort();
     files
+}
+
+fn assert_no_temporary_output_files(output_dir: &Path) {
+    if !output_dir.exists() {
+        return;
+    }
+
+    let temporary_files = fs::read_dir(output_dir)
+        .expect("read output directory")
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.contains(".tmp-"))
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        temporary_files.is_empty(),
+        "temporary atomic-write files remain: {temporary_files:?}"
+    );
 }
 
 #[cfg(windows)]
@@ -1403,6 +1424,198 @@ fn performance_profiles_handle_bounded_high_concurrency_matrix() {
         .filter(|request| request.method == "POST" && request.path == "/v1/chat/completions")
         .count();
     assert_eq!(measured_and_warmup_chat_requests, 170);
+}
+
+#[test]
+fn performance_reaches_configured_request_ceiling_with_complete_accounting() {
+    let provider = MockProvider::start();
+    let temp = TempDir::new().expect("tempdir");
+    let output = temp.path().join("results-ceiling");
+
+    let run_output = llmeter_command(temp.path(), &output, &provider.base_url)
+        .args([
+            "bench",
+            "perf",
+            "--profile",
+            "throughput",
+            "--models",
+            "mock-model",
+            "--prompt-tokens",
+            "1,2,3,4,5",
+            "--output-tokens",
+            "1",
+            "--concurrency",
+            "1,2,4,8,16",
+            "--warmup",
+            "1",
+            "--runs",
+            "19",
+            "--no-stream",
+            "--load-measurement",
+            "off",
+            "--telemetry",
+            "off",
+            "--detail",
+            "full",
+            "--max-requests",
+            "500",
+            "--export",
+            "json",
+            "--report",
+            "none",
+        ])
+        .output()
+        .expect("run performance plan at the configured request ceiling");
+    assert!(
+        run_output.status.success(),
+        "ceiling run failed: {}",
+        String::from_utf8_lossy(&run_output.stderr)
+    );
+
+    let estimate = String::from_utf8_lossy(&run_output.stdout);
+    assert!(estimate.contains("Scenarios: 25"), "{estimate}");
+    assert!(estimate.contains("Warmup requests: 25"), "{estimate}");
+    assert!(estimate.contains("Measured requests: 475"), "{estimate}");
+    assert!(estimate.contains("Total requests: 500"), "{estimate}");
+    assert!(estimate.contains("Max requests: 500"), "{estimate}");
+
+    let chat_requests = provider
+        .requests()
+        .into_iter()
+        .filter(|request| request.method == "POST" && request.path == "/v1/chat/completions")
+        .collect::<Vec<_>>();
+    assert_eq!(chat_requests.len(), 500, "provider request accounting");
+
+    let result_files = json_result_files(&output);
+    assert_eq!(result_files.len(), 1, "canonical ceiling result");
+    let result_content = fs::read_to_string(&result_files[0]).expect("read ceiling result");
+    let run: Value = serde_json::from_str(&result_content).expect("parse ceiling result");
+    assert_eq!(run["schema_version"], "3.0");
+    assert_eq!(run["run_kind"], "performance");
+    assert_eq!(run["models"], serde_json::json!(["mock-model"]));
+    assert_eq!(run["performance_plan"]["profile"], "throughput");
+    assert_eq!(
+        run["performance_plan"]["prompt_sizes"]["estimated_tokens"],
+        serde_json::json!([1, 2, 3, 4, 5])
+    );
+    assert_eq!(
+        run["performance_plan"]["concurrency"]["levels"],
+        serde_json::json!([1, 2, 4, 8, 16])
+    );
+    assert_eq!(run["performance_plan"]["warmup"]["requests"], 1);
+    assert_eq!(run["performance_plan"]["runs"], 19);
+    assert_eq!(run["config"]["response_previews_included"], false);
+    assert_eq!(run["config"]["sensitive_values_redacted"], true);
+
+    let scenarios = run["results"].as_array().expect("ceiling scenario records");
+    assert_eq!(scenarios.len(), 25, "persisted scenario count");
+    let mut request_ids = HashSet::new();
+    let mut persisted_trace_count = 0usize;
+    for scenario in scenarios {
+        assert_eq!(scenario["error"], Value::Null);
+        assert!(scenario["response_preview"].is_null());
+        assert_eq!(scenario["metrics"]["request_count"], 19);
+        assert_eq!(scenario["metrics"]["success_count"], 19);
+        assert_eq!(scenario["metrics"]["error_count"], 0);
+        let traces = scenario["metadata"]["request_traces"]
+            .as_array()
+            .expect("persisted measured request traces");
+        assert_eq!(traces.len(), 19);
+        persisted_trace_count += traces.len();
+        for (index, trace) in traces.iter().enumerate() {
+            assert_eq!(trace["run_index"], (index + 1) as u64);
+            assert_eq!(trace["success"], true);
+            assert!(matches!(trace["http_status"].as_u64(), Some(200 | 201)));
+            assert!(
+                request_ids.insert(
+                    trace["request_id"]
+                        .as_str()
+                        .expect("request trace id")
+                        .to_string()
+                ),
+                "duplicate request index/id in persisted traces: {}",
+                trace["request_id"]
+            );
+        }
+    }
+    assert_eq!(persisted_trace_count, 475, "measured request accounting");
+    assert_eq!(request_ids.len(), 475, "unique measured request IDs");
+    assert_no_temporary_output_files(&output);
+
+    let shown = llmeter_command(temp.path(), &output, &provider.base_url)
+        .args(["report", "show"])
+        .arg(&result_files[0])
+        .output()
+        .expect("reload ceiling result through report command");
+    assert!(
+        shown.status.success(),
+        "report reload failed: {}",
+        String::from_utf8_lossy(&shown.stderr)
+    );
+}
+
+#[test]
+fn performance_above_configured_request_ceiling_is_rejected_before_execution() {
+    let provider = MockProvider::start();
+    let temp = TempDir::new().expect("tempdir");
+    let output = temp.path().join("results-over-ceiling");
+
+    let run_output = llmeter_command(temp.path(), &output, &provider.base_url)
+        .args([
+            "bench",
+            "perf",
+            "--profile",
+            "throughput",
+            "--models",
+            "mock-model",
+            "--prompt-tokens",
+            "1,2,3,4,5",
+            "--output-tokens",
+            "1",
+            "--concurrency",
+            "1,2,4,8,16",
+            "--warmup",
+            "1",
+            "--runs",
+            "20",
+            "--no-stream",
+            "--load-measurement",
+            "off",
+            "--telemetry",
+            "off",
+            "--max-requests",
+            "500",
+            "--export",
+            "json",
+            "--report",
+            "none",
+        ])
+        .output()
+        .expect("run above-ceiling performance plan");
+    assert!(!run_output.status.success());
+    assert!(
+        String::from_utf8_lossy(&run_output.stderr)
+            .contains("requests 525 exceed --max-requests 500"),
+        "{}",
+        String::from_utf8_lossy(&run_output.stderr)
+    );
+
+    let chat_requests = provider
+        .requests()
+        .into_iter()
+        .filter(|request| request.method == "POST" && request.path == "/v1/chat/completions")
+        .count();
+    assert_eq!(
+        chat_requests, 0,
+        "above-ceiling plan reached the chat endpoint"
+    );
+    let json_count = if output.exists() {
+        json_result_files(&output).len()
+    } else {
+        0
+    };
+    assert_eq!(json_count, 0, "above-ceiling plan wrote a result artifact");
+    assert_no_temporary_output_files(&output);
 }
 
 #[test]
