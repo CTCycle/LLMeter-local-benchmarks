@@ -8,14 +8,14 @@ This file is the entry point for the maintained documentation tree. Read it firs
 
 ## Current snapshot
 
-- Package version: `0.4.0` on `develop`.
+- Package version: `0.5.0` release candidate on `develop`.
 - Persisted result schema: `3.0`; schema identity and run kind are mandatory, and older result shapes are rejected rather than silently normalized.
 - Runtime surfaces: standard `llm` and `embeddings` suites, native `bench perf` scenarios, and dry-run external quality plans.
 - Provider catalogs may be cached for ordinary interactive navigation; status, model listing, benchmark validation, and measured probes use fresh reads.
 - `install`, `update`, and `uninstall` are local convenience file operations, not remote update or signature-verification mechanisms.
-- Authorized `v*` tags publish Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The public `v0.4.0` GitHub release is verified; the first crates.io publication remains owner-gated.
+- Authorized `v*` tags publish Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The public `v0.4.0` GitHub release is verified; `v0.5.0` remains a pre-tag release candidate and the first crates.io publication remains owner-gated.
 
-The current working tree also contains an uncommitted Windows ConPTY interruption repair. Local validation is green, while hosted CI for that exact working-tree change is still pending. The ledger records this boundary; it must not be inferred from the public release status.
+The committed develop line contains the Windows ConPTY interruption repair and the integration-fixture cleanup. Focused regressions pass; the exact `v0.5.0` candidate still requires the full local release gate and hosted CI. The ledger records this boundary; it must not be inferred from the public release status.
 
 ## Documentation ontology
 

@@ -15,11 +15,11 @@ Before tagging a release candidate, confirm that:
 
 Do not use a package dry-run or a GitHub release alone to mark crates.io distribution validated. Publication and clean registry installation are separate owner-gated steps.
 
-## Current v0.4.0 boundary
+## Current v0.5.0 release-candidate boundary
 
 The public [v0.4.0 GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.4.0) passed the four-target release workflow, packaged mock-provider checks, checksums, provenance, and publication in [run 34574075684](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/34574075684). It is the verified archive distribution path.
 
-The current checkout contains an uncommitted ConPTY interruption repair. Local gates and Windows PTY coverage pass, but hosted [CI run 36722865383](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36722865383) certifies the earlier exact candidate rather than this working-tree change. Commit the repair and rerun the exact hosted matrix before shipping it.
+The develop line contains the committed ConPTY interruption repair and integration-fixture cleanup. The focused regressions pass, but the exact `v0.5.0` candidate must still pass the complete local release gate and four-platform hosted CI before main is synchronized or a tag is created.
 
 ## Non-blocking evidence limitations
 

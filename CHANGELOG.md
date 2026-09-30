@@ -2,6 +2,15 @@
 
 All notable changes are documented here.
 
+## 0.5.0 - 2026-09-30
+
+- Improve the Windows PowerShell launcher and ConPTY interruption path, with native Unix PTY regression coverage.
+- Add graceful interruption and cancellation handling for active performance runs while preserving completed results and cleaning transient output.
+- Strengthen restart, interrupted-run, atomic-output, and recovery guarantees.
+- Expand performance validation for request accounting, the 500-request ceiling, bounded concurrency through 16, JSONL accounting, and complete default profile matrices.
+- Expand provider transport and preset fixture coverage, report and lifecycle CLI coverage, privacy checks, and scriptable E2E checks.
+- Consolidate validation and release-status documentation and remove transient QA directories from the maintained repository tree.
+
 ## 0.4.0 - 2026-09-10
 
 - Establish canonical provider metadata, base-URL resolution, model identity, typed output formats, and shared performance-profile defaults across scriptable and interactive workflows.
