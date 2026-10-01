@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use llmeter::performance::metrics::{
     inter_token_latency_ms, percentile, summarize_traces, RequestTiming, RequestTrace,
 };

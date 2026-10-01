@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use llmeter::performance::provider_probe::{endpoint_probe_from_result, parse_model_capabilities};
 use serde_json::json;
 

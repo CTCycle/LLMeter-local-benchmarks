@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use std::collections::VecDeque;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread::{self, JoinHandle};

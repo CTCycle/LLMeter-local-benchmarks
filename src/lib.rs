@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 pub mod benchmarks;
 pub mod cli;
 pub mod config;

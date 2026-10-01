@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use std::process::Command;
 
 use llmeter::quality::adapter::build_quality_plan;

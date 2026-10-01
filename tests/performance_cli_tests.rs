@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use llmeter::performance::config::{
     LoadMeasurementMode, PerformancePlan, PerformanceProfile, PerformanceSafetyOptions,
     ReportDetailLevel, TelemetryLevel, DEFAULT_MAX_PERFORMANCE_REQUESTS,

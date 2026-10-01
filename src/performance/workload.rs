@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;

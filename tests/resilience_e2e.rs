@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Read, Write};

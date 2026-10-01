@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use std::process::{Command, Stdio};
 
 use llmeter::cli::{parse_positive_u32, parse_temperature};

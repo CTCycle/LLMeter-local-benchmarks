@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use std::path::Path;
 use std::time::SystemTime;
 use std::{fs, io::Write};

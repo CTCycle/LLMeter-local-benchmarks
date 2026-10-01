@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use clap::{Parser, Subcommand, ValueEnum};
 use serde_json::Value;
 use std::collections::HashMap;

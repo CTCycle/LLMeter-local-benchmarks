@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use llmeter::benchmarks::metrics::pairwise_similarity;
 use llmeter::providers::ApiResult;
 use serde_json::json;

@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use llmeter::benchmarks::base::BenchmarkResultRecord;
 use llmeter::results::{BenchmarkRun, BenchmarkRunKind, ResultStore, RESULT_SCHEMA_VERSION};
 use serde_json::json;
