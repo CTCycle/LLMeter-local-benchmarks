@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use crate::quality::catalog::{find_catalog_entry, QualityFramework};
 use crate::quality::manifest::QualityPlan;
 

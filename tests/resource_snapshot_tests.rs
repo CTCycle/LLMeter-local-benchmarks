@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use llmeter::config::AppConfig;
 use llmeter::performance::resource::capture_environment_snapshot;
 use llmeter::providers::ProviderKind;

@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use llmeter::benchmarks::base::BenchmarkContext;
 use llmeter::benchmarks::registry::{default_registry, BenchmarkSuite};
 

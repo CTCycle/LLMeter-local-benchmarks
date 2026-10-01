@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 

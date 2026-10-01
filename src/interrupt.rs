@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static INTERRUPT_REQUESTED: AtomicBool = AtomicBool::new(false);

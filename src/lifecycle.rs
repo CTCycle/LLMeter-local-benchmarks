@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};

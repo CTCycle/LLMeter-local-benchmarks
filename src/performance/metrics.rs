@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use serde::{Deserialize, Serialize};
 
 use crate::providers::ProviderKind;

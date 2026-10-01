@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use std::fmt::Write as _;
 use std::io::{self, IsTerminal, Write};
 

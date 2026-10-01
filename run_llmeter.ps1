@@ -1,3 +1,6 @@
+# Copyright © 2026 CTCycle
+# Licensed under the MIT License.
+
 param(
     [ValidateSet('Run', 'Clean', 'RemoveAllData', 'Uninstall')]
     [string]$Action = 'Run',

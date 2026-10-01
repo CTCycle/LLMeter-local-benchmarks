@@ -1,3 +1,6 @@
+// Copyright © 2026 CTCycle
+// Licensed under the MIT License.
+
 use std::fmt;
 use std::io::{BufRead, BufReader, Read};
 use std::sync::{Arc, Mutex};
