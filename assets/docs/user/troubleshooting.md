@@ -32,7 +32,7 @@ Not every provider/model supports every OpenAI-compatible capability. `responses
 
 Check that the JSON result file exists in the output directory and is valid JSON. The output directory defaults to `benchmark_results/`.
 
-If a saved result is from an older schema, missing optional fields are supported, but malformed JSON is a hard report-loading error. Response previews are omitted by default and may be present only when the run used `--include-response-preview`.
+Saved results must use the current schema `3.0`; older or unversioned schemas are rejected on load rather than upgraded, and malformed JSON is a hard report-loading error. Response previews are omitted by default and may be present only when the run used `--include-response-preview`.
 
 ### Configuration is rejected before startup
 
@@ -58,4 +58,4 @@ Use `--dry-run` to inspect the scenario matrix and request count. Reduce the mat
 - No concurrent benchmark execution. Each benchmark runs serially.
 - Results are machine-specific. Compare runs from the same host under similar load.
 
-Last updated: 2026-08-02
+Last updated: 2026-10-18

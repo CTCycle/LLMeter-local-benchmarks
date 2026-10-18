@@ -28,6 +28,20 @@ Check lint:
 cargo clippy --locked --all-targets --all-features -- -D warnings
 ```
 
+## Check and documentation
+
+Compile all targets and features without producing a binary:
+
+```bash
+cargo check --locked --all-targets --all-features
+```
+
+Build documentation with rustdoc warnings denied:
+
+```bash
+RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps --all-features
+```
+
 ## Formatting
 
 `cargo fmt` ensures consistent code style.
@@ -51,22 +65,28 @@ macOS Apple silicon.
 
 ## Test coverage
 
-Currently no coverage threshold enforced. Each test file in `tests/` mirrors a source module:
+No coverage threshold is enforced. Integration tests are grouped by area:
 
-| Test file | Module under test |
+| Test file | Coverage |
 |---|---|
-| `tests/test_metrics.rs` | `llmeter::benchmarks::metrics` |
-| `tests/test_results.rs` | `llmeter::results` |
-| `tests/test_registry.rs` | `llmeter::benchmarks::registry` |
-| `tests/test_reporting.rs` | `llmeter::reporting` |
-| `tests/mock_provider_e2e.rs` | Real CLI execution against a local mock OpenAI-compatible `/v1` provider |
-| `tests/resilience_e2e.rs` | Platform-neutral abrupt termination, durable-result preservation, restart report loading, and recovery |
-| `tests/performance_cli_tests.rs` | `llmeter::performance::config`, request matrix estimation, safety guards, and CLI parsing |
-| `tests/performance_metrics_tests.rs` | `llmeter::performance::metrics` |
-| `tests/quality_cli_tests.rs` | `llmeter::quality::*` planning surfaces |
-| `tests/result_schema_tests.rs` | backward-compatible run serialization |
-| `tests/pty_menu_e2e.rs` | Windows ConPTY launch, interruption, and child-process cleanup |
-| `tests/pty_menu_unix_e2e.rs` | Native Unix PTY menu cancellation, performance interruption, cleanup, and recovery |
+| `tests/cli_contract_tests.rs` | Non-TTY dispatch, exit codes, help/catalog output, and CLI option parsing. |
+| `tests/launcher_powershell_e2e.rs` | Windows launcher build reuse, argument forwarding, confirmation, protected-home refusal, and cleanup. |
+| `tests/lifecycle_cli_e2e.rs` | Install, update, uninstall, and purge lifecycle behavior. |
+| `tests/mock_provider_e2e.rs` | Real CLI execution against a local mock OpenAI-compatible `/v1` provider, including the preset baseline contract. |
+| `tests/report_cli_e2e.rs` | Report list, show, and generate flows against saved runs. |
+| `tests/result_schema_tests.rs` | Run serialization and schema identity. |
+| `tests/test_results.rs` | Result persistence, atomic writes, CSV safety, and privacy policy. |
+| `tests/test_reporting.rs` | Markdown/HTML aggregation and output escaping. |
+| `tests/test_metrics.rs` | Benchmark metric extraction and pairwise similarity. |
+| `tests/test_registry.rs` | Benchmark registry selection and suite invariants. |
+| `tests/performance_cli_tests.rs` | Performance plan construction, matrix estimation, safety guards, and CLI parsing. |
+| `tests/performance_metrics_tests.rs` | Performance metric math: percentiles, rates, and aggregate counts. |
+| `tests/provider_probe_tests.rs` | Provider capability probing and model metadata parsing. |
+| `tests/resource_snapshot_tests.rs` | Environment and resource snapshot capture. |
+| `tests/resilience_e2e.rs` | Abrupt termination, durable-result preservation, restart report loading, and recovery. |
+| `tests/quality_cli_tests.rs` | Quality catalog and dry-run plan generation. |
+| `tests/pty_menu_e2e.rs` | Windows ConPTY launch, interruption, and child-process cleanup. |
+| `tests/pty_menu_unix_e2e.rs` | Native Unix PTY menu cancellation, performance interruption, cleanup, and recovery. |
 
 Unit coverage in `src/ui.rs` also locks down menu key normalization so an Enter release cannot leak from a prompt into the next menu selection.
 
@@ -77,8 +97,7 @@ Unit coverage in `src/ui.rs` also locks down menu key normalization so an Enter 
 - Native performance math must include direct tests for percentile behavior, rates, and aggregate counts.
 - CLI changes must include parse coverage for new subcommands and key validation paths.
 - Quality adapters must remain dry-run by default and test command preview generation without installing tools or downloading datasets.
-- Result schema changes must preserve old JSON readability when fields are absent.
-- Release validation must also run `cargo audit`, a locked package dry-run, a release build, and extracted-binary `--version`/`--help` plus mock-provider smoke checks.
+- Result schema changes must keep saved `3.0` results readable when newly added optional fields are absent; files with any other `schema_version` are rejected on load.
 - The configured `DEFAULT_MAX_PERFORMANCE_REQUESTS = 500` boundary must be
   exercised end to end against the deterministic fixture, with an adjacent
   above-limit refusal that proves no performance chat request is issued.
@@ -89,11 +108,10 @@ Unit coverage in `src/ui.rs` also locks down menu key normalization so an Enter 
   integration test on each hosted Linux and macOS architecture; local Windows
   success does not substitute for those hosted executions.
 
-The current local audit evidence covers the serialized all-target/all-feature
-suite on Windows at the 2026-09-30 boundary, including the 500-request ceiling,
-above-limit refusal, abrupt restart/recovery, and Windows ConPTY regressions.
-Native hosted Linux/Windows/macOS workflow execution is defined in CI and
-release workflows but must still be treated separately from local evidence
-when it has not been run for the current commit.
+Release-time gates beyond the standard suite (dependency audit, package dry-run,
+release build, and extracted-binary smoke checks) are listed in the
+[release checklist](../runtime/release_checklist.md). The current evidence
+boundary for these gates is recorded in the
+[project status ledger](../project_status_ledger.md).
 
-Last updated: 2026-09-30
+Last updated: 2026-10-18

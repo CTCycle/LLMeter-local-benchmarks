@@ -1,6 +1,6 @@
 # LLMeter
 
-Last updated: 2026-09-30
+Last updated: 2026-10-18
 
 [![CI](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml?query=branch%3Adevelop) [![Rust](https://img.shields.io/badge/rust-2021-orange?logo=rust&logoColor=white)](./Cargo.toml) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](./LICENSE)
 
@@ -137,13 +137,14 @@ Response previews are omitted from saved output unless `--include-response-previ
 Run the repository gates from its root:
 
 ```bash
-cargo fmt --check
-cargo clippy -- -D warnings
-cargo test -- --test-threads=1
-cargo doc --no-deps --all-features
+cargo fmt --all -- --check
+cargo check --locked --all-targets --all-features
+cargo clippy --locked --all-targets --all-features -- -D warnings
+cargo test --locked --all-targets --all-features -- --test-threads=1
+RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps --all-features
 ```
 
-Use one test thread because configuration tests mutate process environment variables. The [testing and quality guide](assets/docs/coding/testing_and_quality.md) describes the full locked and hosted checks.
+Use one test thread because configuration tests mutate process environment variables. These are the same gates hosted CI runs; the [testing and quality guide](assets/docs/coding/testing_and_quality.md) describes them in full.
 
 ## Documentation
 

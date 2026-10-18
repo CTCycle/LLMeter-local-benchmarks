@@ -5,12 +5,12 @@
 Install the stable Rust toolchain, then run:
 
 ```bash
-cargo fmt --check
-cargo clippy -- -D warnings
-cargo test -- --test-threads=1
+cargo fmt --all -- --check
+cargo clippy --locked --all-targets --all-features -- -D warnings
+cargo test --locked --all-targets --all-features -- --test-threads=1
 ```
 
-Use `--test-threads=1` because some configuration tests intentionally mutate process environment variables.
+Use `--test-threads=1` because some configuration tests intentionally mutate process environment variables. These are the same gates hosted CI runs; see [testing and quality](assets/docs/coding/testing_and_quality.md) for details.
 
 ## Scope
 
@@ -23,4 +23,4 @@ Keep changes focused on local OpenAI-compatible provider benchmarking, report ge
 - Avoid committing benchmark outputs, local model data, generated target directories, or provider logs.
 - Do not include API keys, private prompts, internal hostnames, or sensitive model outputs in examples.
 
-Last updated: 2026-07-01
+Last updated: 2026-10-18

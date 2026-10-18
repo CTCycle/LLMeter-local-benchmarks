@@ -58,9 +58,11 @@ src/
   performance/         Scenario plans, load estimates, fresh probes, inventory, metrics, telemetry, and concurrency.
   quality/             External quality-framework catalog and dry-run plan adapters.
   lifecycle.rs         Local convenience install, update, and uninstall operations.
+  progress.rs          Progress phases, updates, and terminal renderer with a null sink.
+  interrupt.rs         Cooperative interruption requests and the Windows ConPTY monitor.
   ui.rs                Interactive menus and terminal output.
 ```
 
 The current package version is `0.5.0`; the public [`v0.5.0` GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.0) has verified Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The first crates.io publication remains manual.
 
-Last updated: 2026-09-30
+Last updated: 2026-10-18
