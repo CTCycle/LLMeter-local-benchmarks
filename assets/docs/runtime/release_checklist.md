@@ -1,12 +1,12 @@
 # Release checklist
 
-Last updated: 2026-09-30
+Last updated: 2026-10-18
 
 ## Release-candidate condition
 
 Before tagging a release candidate, confirm that:
 
-- the [project status ledger](../project_status_ledger.md) has been reviewed and the Tier 0 through Tier 5 boundaries are satisfied at their documented scopes;
+- the [project status ledger](../project_status_ledger.md) has been reviewed and the [validation campaign](validation_campaign.md) tier boundaries are satisfied at their documented scopes;
 - no unresolved release-blocking application-validation entry remains;
 - the exact candidate commit has green hosted CI for Ubuntu x86-64, Windows x86-64, macOS Intel, and macOS Apple silicon;
 - the current live-provider boundary, configured 500-request ceiling, interruption/restart evidence, native PTY evidence, privacy checks, and release artifact checks are complete;
@@ -14,12 +14,6 @@ Before tagging a release candidate, confirm that:
 - any PARTIAL or BLOCKED result is explicitly classified as a non-blocking environment, optional-provider, or out-of-scope limitation, with the claims it prevents.
 
 Do not use a package dry-run or a GitHub release alone to mark crates.io distribution validated. Publication and clean registry installation are separate owner-gated steps.
-
-## Current v0.5.0 release boundary
-
-The public [v0.5.0 GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.0) passed the four-target release workflow, packaged mock-provider checks, extracted-binary smoke checks, checksums, provenance, and publication in [run 36778522733](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36778522733). The tag points to exact commit `93fcb4145d8c3b588fd02c1a8af86661e6b178be`.
-
-The release candidate passed the complete local release gate, representative live smoke, develop CI [36777294635](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36777294635), and main CI [36777821559](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/runs/36777821559) before the tag was created. Independent downloads match the GitHub asset digests and `SHA256SUMS`, all four `gh attestation verify` checks pass, and the Windows archive reports `llmeter 0.5.0` for `--version` and exits successfully for `--help`.
 
 ## Non-blocking evidence limitations
 
@@ -29,23 +23,17 @@ Swap pressure invalidates numeric comparative timing and model-ranking claims, a
 
 ## Before tagging
 
-1. Confirm the version in Cargo.toml.
-2. Update CHANGELOG.md.
-3. Run:
+1. Confirm the version in `Cargo.toml`.
+2. Update `CHANGELOG.md`.
+3. Run the local gates from [testing and quality](../coding/testing_and_quality.md), plus the release-only checks:
 
 ```
-cargo fmt --all -- --check
-cargo check --locked --all-targets --all-features
-cargo clippy --locked --all-targets --all-features -- -D warnings
-cargo test --locked --all-targets --all-features -- --test-threads=1
-RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps --all-features
-cargo build --locked --release --all-features
 cargo audit
 cargo tree --locked --duplicates
 cargo publish --locked --dry-run
 ```
 
-On Windows, use an isolated target directory if the shared target/ tree is locked:
+On Windows, use an isolated target directory if the shared `target/` tree is locked:
 
 ```
 cargo build --locked --release --all-features --target-dir "$env:TEMP\llmeter-release-target"
@@ -53,7 +41,7 @@ cargo build --locked --release --all-features --target-dir "$env:TEMP\llmeter-re
 
 ## Release artifacts and trust
 
-The authorized v* release workflow gates publication on the Cargo version, changelog heading, locked all-target/all-feature quality suite, dependency audit, package dry-run, native platform builds, packaged mock-provider tests, archive extraction/content checks, and extracted-binary --version/--help smoke checks. It publishes four archives, filename-only SHA256SUMS, and GitHub artifact provenance attestations.
+The authorized `v*` release workflow gates publication on the Cargo version, changelog heading, locked all-target/all-feature quality suite, dependency audit, package dry-run, native platform builds, packaged mock-provider tests, archive extraction/content checks, and extracted-binary `--version`/`--help` smoke checks. It publishes four archives, filename-only `SHA256SUMS`, and GitHub artifact provenance attestations.
 
 Users should verify checksums and provenance before running a downloaded binary. The GNU/Linux archive requires a compatible glibc runtime and is not fully static.
 
@@ -61,10 +49,10 @@ Users should verify checksums and provenance before running a downloaded binary.
 
 1. Review and commit the prepared changes, push develop, and require green four-platform CI.
 2. Merge or fast-forward the verified commit to main and require CI there.
-3. Confirm Cargo.toml and CHANGELOG.md identify the version, the worktree is clean, and no matching tag or release exists.
+3. Confirm `Cargo.toml` and `CHANGELOG.md` identify the version, the worktree is clean, and no matching tag or release exists.
 4. Create and push an annotated tag from that main commit.
 5. Verify all four archives, archive contents, checksums, extracted-binary smoke tests, and provenance attestations.
 6. Independently download and verify the public assets.
-7. If approved, run cargo publish --locked from the exact tagged source.
-8. Verify cargo install llmeter --version <version> --locked --root <clean-temp-root> and the installed binary.
+7. If approved, run `cargo publish --locked` from the exact tagged source.
+8. Verify `cargo install llmeter --version <version> --locked --root <clean-temp-root>` and the installed binary.
 9. Stop publication if any hosted or registry verification fails.

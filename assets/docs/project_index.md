@@ -1,6 +1,6 @@
 # Project index
 
-Last updated: 2026-09-30
+Last updated: 2026-10-18
 
 ## Purpose
 
@@ -47,7 +47,6 @@ The committed develop line contains the Windows ConPTY interruption repair and t
 - `runtime/configuration.md` — environment variables, CLI overrides, URL normalization, and `AppConfig`.
 - `runtime/deployment.md` — source builds, `cargo install`, prebuilt binaries, platforms, and versioning.
 - `runtime/release_checklist.md` — release gates, artifact verification, and trust model.
-- `runtime/audit_implementation_plan.md` — durable implementation roadmap and audit decisions.
 - `runtime/validation_campaign.md` — ordered validation scope, tier gates, and claim boundaries.
 - `runtime/troubleshooting.md` — startup, provider connectivity, empty catalogs, and output-path recovery.
 
@@ -64,8 +63,7 @@ The committed develop line contains the Windows ConPTY interruption repair and t
 ## Source-of-truth rules
 
 - Architecture and user documents describe the intended runtime contract.
-- The status ledger is the only current-state catalog. Do not copy a detailed run narrative into it.
-- The audit plan records durable implementation decisions and remaining roadmap work.
+- The status ledger is the only current-state catalog. It records the evidence boundary, durable decisions, remaining validation work, and revalidation triggers. Do not copy a detailed run narrative into it.
 - The validation campaign records what to exercise, in what order, and what each tier can claim.
 - Tests are executable evidence. Hosted CI and public-release links are the evidence for cross-platform and distribution claims.
 - Transient validation output is not part of the maintained documentation tree. Do not add dated ledgers, generated reports, provider logs, or copied audit narratives as a parallel documentation tree.

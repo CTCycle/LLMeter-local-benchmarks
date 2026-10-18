@@ -36,13 +36,15 @@ Default base URLs:
 
 The provider list includes compatibility tiers. Ollama, LM Studio, and llama.cpp are first-class local targets. vLLM, SGLang, LocalAI, and LiteLLM are known OpenAI-compatible presets. TGI, text-generation-webui, Jan, and MLX-LM are best-effort because endpoint shape can vary by configuration or version.
 
-Tier 4 validates every preset against a deterministic OpenAI-compatible fixture,
-then uses a small representative live matrix for providers that are actually
+Every preset is validated against a deterministic OpenAI-compatible fixture,
+then a small representative live matrix covers providers that are actually
 available. A fixture-validated preset is not a live certification of every
 provider version, model, extension, or optional endpoint. Best-effort presets
 may therefore be listed as `preset contract: validated; live provider: not
 certified` without being treated as a product failure. LLMeter does not install,
-download, start, or stop provider servers.
+download, start, or stop provider servers; the
+[validation campaign](../runtime/validation_campaign.md) defines the ordered
+evidence.
 
 ## General rule
 
@@ -113,4 +115,4 @@ LLMeter accepts a base URL with or without the `/v1` suffix and normalizes it in
 - Ensure the server is local and exposes the required `/v1` endpoints.
 - Capability coverage varies by implementation, so some benchmark types may report per-record errors.
 
-Last updated: 2026-09-29
+Last updated: 2026-10-18

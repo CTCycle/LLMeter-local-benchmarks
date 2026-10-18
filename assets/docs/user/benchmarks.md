@@ -51,8 +51,8 @@ Performance safety limits are enforced before requests are sent: prompt values a
 
 ## Quality preparation
 
-`llmeter quality` is a planning surface, not a native evaluator. Tier 4
-validates all four adapter plans and their serialized requirement flags without
+`llmeter quality` is a planning surface, not a native evaluator. All four
+adapter plans and their serialized requirement flags are validated without
 installing external frameworks, downloading datasets, executing code, running
 SWE-bench, or producing an external quality score.
 
@@ -108,4 +108,4 @@ Key types:
 
 The benchmark appears in both interactive and scriptable flows.
 
-Last updated: 2026-09-29
+Last updated: 2026-10-18
