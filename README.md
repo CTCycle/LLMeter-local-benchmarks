@@ -1,74 +1,48 @@
 # LLMeter
 
-Last updated: 2026-10-18
+**Benchmark local OpenAI-compatible language-model providers from a single Rust command-line tool.**
 
-[![CI](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml?query=branch%3Adevelop) [![Rust](https://img.shields.io/badge/rust-2021-orange?logo=rust&logoColor=white)](./Cargo.toml) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](./LICENSE)
+[![License](https://img.shields.io/github/license/CTCycle/LLMeter-local-benchmarks?style=flat-square)](LICENSE) [![Release](https://img.shields.io/github/v/release/CTCycle/LLMeter-local-benchmarks?style=flat-square)](https://github.com/CTCycle/LLMeter-local-benchmarks/releases) [![CI](https://img.shields.io/github/actions/workflow/status/CTCycle/LLMeter-local-benchmarks/ci.yml?branch=develop&style=flat-square)](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml?query=branch%3Adevelop) [![Rust 2021](https://img.shields.io/badge/Rust-2021-000000?logo=rust&logoColor=white&style=flat-square)](Cargo.toml) [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-informational?style=flat-square)](SUPPORTED_PLATFORMS.md)
 
-LLMeter is a single-binary Rust CLI for measuring local OpenAI-compatible LLM providers. It offers a guided terminal workflow, scriptable benchmark commands, native performance scenarios, and Markdown/HTML reports.
+## Overview
 
-The current package version is `0.5.0`. The public [GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.0) is the verified release distribution; the first crates.io publication remains owner-gated.
+LLMeter is a single-binary CLI for benchmarking local and custom OpenAI-compatible providers. Start the provider separately and expose at least one model through its `/v1` API; LLMeter does not start provider servers or load models.
 
-LLMeter does not start provider servers, install models, or manage provider processes. Start a provider externally, expose at least one model, and give LLMeter its OpenAI-compatible `/v1` base URL.
+## Key Features
 
-## Before you start
+- Interactive terminal workflows and scriptable commands for `llm` and `embeddings` benchmark suites.
+- Native performance scenarios for smoke, latency, throughput, and parameter sweeps.
+- JSON and CSV measurements plus Markdown and self-contained HTML reports.
+- Dry-run quality plans that print commands or serialized plans for external evaluators without installing or running them.
+- Secret redaction and opt-in response previews for persisted results.
 
-- Rust stable, when building from source.
-- A running provider with an OpenAI-compatible `/v1` API.
-- At least one loaded or exposed model.
+Performance results describe the selected provider, model, host, and run conditions. They are not hardware-independent rankings.
 
-Common presets include `ollama`, `lmstudio`, `llama-cpp`, and `openai-compatible`. Run `llmeter providers list` for the complete catalog and compatibility tiers. Provider and model capabilities remain endpoint- and version-dependent.
+## Technology Stack
 
-## Install
+LLMeter is written in Rust 2021 and builds as a native CLI for the platforms listed in [Supported Platforms](SUPPORTED_PLATFORMS.md).
 
-### Verified release archive
+## Installation and Usage
 
-Download the appropriate archive from [GitHub Releases](https://github.com/CTCycle/LLMeter-local-benchmarks/releases). Authorized tags publish Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with `SHA256SUMS` and GitHub artifact provenance.
+Download a release archive from [GitHub Releases](https://github.com/CTCycle/LLMeter-local-benchmarks/releases). Archives are published for Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon with checksums and provenance attestations. Verify the archive before running it. GNU/Linux archives require a compatible glibc runtime.
 
-Verify an archive before running it:
-
-```bash
-sha256sum --check SHA256SUMS
-gh attestation verify llmeter-v<version>-<target>.<archive> \
-  --repo CTCycle/LLMeter-local-benchmarks
-```
-
-On Windows, compare `Get-FileHash <archive> -Algorithm SHA256` with the matching checksum entry. The GNU/Linux archive requires a compatible glibc runtime and is not fully static. See [supported platforms](SUPPORTED_PLATFORMS.md) for the maintained boundaries.
-
-### Build from source
+To build and install from a source checkout, install the stable Rust toolchain, then run:
 
 ```bash
 git clone https://github.com/CTCycle/LLMeter-local-benchmarks.git
 cd LLMeter-local-benchmarks
-cargo build --release
-```
-
-Until the crate is published, install a checked-out source tree with:
-
-```bash
 cargo install --path . --locked
 ```
 
-On Windows, the repository launcher can build when needed and forward arguments to the release binary:
-
-```powershell
-.\run_llmeter.ps1 status
-.\run_llmeter.ps1 --provider lmstudio bench run --models all --benchmarks all
-```
-
-The launcher and the `install`, `update`, and `uninstall` commands are local convenience operations. They do not download, authenticate, verify, or select remote updates. Verify any replacement executable yourself.
-
-## Quick start
-
-Start the provider, then inspect its preset and model catalog:
+Start a provider and then check its catalog and status:
 
 ```bash
 llmeter providers list
 llmeter --provider ollama status
 llmeter --provider ollama models
-llmeter bench list --suite llm
 ```
 
-Run the standard LLM suite:
+Run the standard LLM suite and save measurements and reports:
 
 ```bash
 llmeter --provider ollama bench run \
@@ -79,84 +53,21 @@ llmeter --provider ollama bench run \
   --report both
 ```
 
-Run the guided workflow with:
+On Windows, the repository also includes `run_llmeter.ps1`, which builds when needed and forwards CLI arguments to the release binary.
 
-```bash
-llmeter
-```
+## Configuration
 
-Interactive mode requires a terminal. A piped or CI invocation without a subcommand prints help and returns usage status `2`. `status` prints its panel and returns `0` for a reachable provider or `1` when the provider cannot be reached.
-
-## Native performance
-
-`llmeter bench perf` runs the native `smoke`, `latency`, `throughput`, and `sweep` profiles:
-
-```bash
-llmeter --provider ollama bench perf \
-  --models all \
-  --profile smoke \
-  --export both \
-  --report both
-```
-
-Preview a matrix without sending requests:
-
-```bash
-llmeter bench perf \
-  --models llama3.1 \
-  --profile sweep \
-  --prompt-tokens 128,512 \
-  --output-tokens 64,128 \
-  --concurrency 1,2 \
-  --dry-run
-```
-
-The default performance request ceiling is `500`, counting warmups and measured requests. Larger matrices require `--allow-large-matrix`; prompt or output sizes above the documented bounds require `--allow-large-prompt`.
-
-Telemetry is `off` by default. `--telemetry standard` or `--telemetry detailed` samples host state during execution. The default load mode is the client-observed `first-request-estimate`; use `--load-measurement off` to disable it. Neither signal measures provider restart, cache eviction, model loading, or native lifecycle telemetry.
-
-Performance results describe the observed provider, model, host, sample count, and telemetry conditions. They are not universal hardware-independent rankings, and timing comparisons are not meaningful when the result reports material swap pressure.
-
-## Results and privacy
-
-By default, LLMeter stores state and results under:
-
-- Windows: `%USERPROFILE%\.llmeter\benchmark_results`
-- Unix: `~/.llmeter/benchmark_results`
-
-Set `LLMETER_HOME` to move the state tree, or use `--output-dir` / `LLMETER_OUTPUT_DIR` for results. A run may produce JSON, CSV, Markdown, and self-contained HTML files. Current result files use schema `3.0`; `schema_version` and `run_kind` are mandatory, and older or malformed schemas are rejected rather than silently normalized.
-
-Response previews are omitted from saved output unless `--include-response-preview` is requested. Credential-shaped values and explicitly secret-named provider parameters are redacted before persistence. `LLMETER_API_KEY` is process-local and is not persisted or printed.
-
-## Quality planning
-
-`llmeter quality` is a dry-run planning surface for external evaluators. It lists supported plan adapters and prints commands or serialized plans; LLMeter does not install or execute those frameworks and does not produce their scores.
-
-## Development
-
-Run the repository gates from its root:
-
-```bash
-cargo fmt --all -- --check
-cargo check --locked --all-targets --all-features
-cargo clippy --locked --all-targets --all-features -- -D warnings
-cargo test --locked --all-targets --all-features -- --test-threads=1
-RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps --all-features
-```
-
-Use one test thread because configuration tests mutate process environment variables. These are the same gates hosted CI runs; the [testing and quality guide](assets/docs/coding/testing_and_quality.md) describes them in full.
+- Select a provider preset with `--provider`; custom OpenAI-compatible endpoints and provider setup are covered in the [User Manual](USER_MANUAL.md).
+- Set `LLMETER_API_KEY` in the current process for providers that require authentication. The key is not persisted.
+- By default, LLMeter stores its configuration and results under `%USERPROFILE%\.llmeter` on Windows or `~/.llmeter` on Unix; result files are placed in `benchmark_results/`. Set `LLMETER_HOME` to move this state tree.
+- Set `LLMETER_OUTPUT_DIR` or use `--output-dir` to choose a result location.
+- Response previews are omitted by default, and credential-shaped values are redacted before persistence.
 
 ## Documentation
 
-- [User manual](USER_MANUAL.md): command reference, provider setup, benchmarks, reports, and troubleshooting.
-- [Supported platforms](SUPPORTED_PLATFORMS.md): support tiers and distribution boundaries.
-- [Project index](assets/docs/project_index.md): maintained documentation ontology and reading order.
-- [Project status ledger](assets/docs/project_status_ledger.md): current validation status, evidence boundaries, and open work.
-- [Validation campaign](assets/docs/runtime/validation_campaign.md): ordered validation scope and claim boundaries.
-- [Release checklist](assets/docs/runtime/release_checklist.md): maintainer gates, artifacts, and trust model.
-
-Durable QA knowledge belongs in the documents above, tests, and linked hosted CI; dated per-run reports are not maintained as parallel documentation.
+- [User Manual](USER_MANUAL.md)
+- [Supported Platforms](SUPPORTED_PLATFORMS.md)
 
 ## License
 
-LLMeter is distributed under the MIT License. See [LICENSE](LICENSE).
+Licensed under the MIT License. See [LICENSE](LICENSE).
