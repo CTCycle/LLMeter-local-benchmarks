@@ -97,21 +97,18 @@ fn expect_prompt(session: &mut OsSession, prompt: &str) {
 }
 
 fn interrupt_performance_confirmation(session: &mut OsSession) {
-    #[cfg(target_os = "macos")]
-    {
-        // macOS does not consistently surface an injected ETX byte to the
-        // inquire/crossterm confirmation reader; SIGINT is the equivalent
-        // native terminal interrupt and keeps this path bounded.
-        session
-            .get_process_mut()
-            .kill(Signal::SIGINT)
-            .expect("interrupt performance confirmation with SIGINT");
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        session
-            .send(ControlCode::ETX)
-            .expect("interrupt performance confirmation");
+    // The confirmation prompt transitions from table output into the raw-mode
+    // inquire reader. A single interrupt can land during that transition and
+    // be consumed before the prompt is listening. Send the terminal Ctrl+C
+    // byte, the same input a user produces, for a bounded interval so the
+    // interrupt is observed once the reader is active. A directly delivered
+    // SIGINT is not reliable here because the CI child can inherit it ignored.
+    thread::sleep(Duration::from_millis(100));
+    for _ in 0..8 {
+        if session.send(ControlCode::ETX).is_err() {
+            break;
+        }
+        thread::sleep(Duration::from_millis(75));
     }
 }
 

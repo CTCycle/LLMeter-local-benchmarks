@@ -2,6 +2,11 @@
 
 All notable changes are documented here.
 
+## Unreleased
+
+- Refresh `rustls` and `quinn-proto` in the locked dependency graph to address current RustSec advisories.
+- Stabilize the macOS Unix PTY confirmation-interruption regression test by using repeated terminal Ctrl+C input instead of a directly delivered `SIGINT`.
+
 ## 0.5.0 - 2026-09-30
 
 - Improve the Windows PowerShell launcher and ConPTY interruption path, with native Unix PTY regression coverage.
@@ -40,4 +45,4 @@ All notable changes are documented here.
 - Make provider status return exit code `1` when unreachable, make performance telemetry opt-in, and harden managed install purge and replacement behavior.
 - Refresh compatible dependencies, remove the unmaintained fuzzy-matcher chain, and use release-oriented optimization.
 
-Last updated: 2026-09-30
+Last updated: 2026-10-20
