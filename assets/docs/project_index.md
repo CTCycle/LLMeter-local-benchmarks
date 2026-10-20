@@ -1,6 +1,6 @@
 # Project index
 
-Last updated: 2026-10-18
+Last updated: 2026-10-20
 
 ## Purpose
 
@@ -15,7 +15,7 @@ This file is the entry point for the maintained documentation tree. Read it firs
 - `install`, `update`, and `uninstall` are local convenience file operations, not remote update or signature-verification mechanisms.
 - Authorized `v*` tags publish Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The public `v0.5.0` GitHub release is verified; the first crates.io publication remains owner-gated.
 
-The committed develop line contains the Windows ConPTY interruption repair and the integration-fixture cleanup. The exact `v0.5.0` release boundary passed the full local gate and hosted matrix; the ledger records the remaining crates.io and comparative-performance boundaries.
+The current `develop` validation boundary is `d512be4`: the local gate, three consecutive four-platform CI attempts, live Ollama `llm`/`embeddings`/performance smokes, and a disposable LiteLLM proxy smoke pass. Comparative performance remains unqualified because the matched matrix recorded a `0.971` maximum swap-used ratio. The ledger records the remaining crates.io and comparative-performance boundaries.
 
 ## Documentation ontology
 

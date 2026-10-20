@@ -1,6 +1,6 @@
 # Release checklist
 
-Last updated: 2026-10-18
+Last updated: 2026-10-20
 
 ## Release-candidate condition
 
@@ -19,7 +19,7 @@ Do not use a package dry-run or a GitHub release alone to mark crates.io distrib
 
 A host or provider limitation does not block a scoped release when the functional, safety, quality, and exact-candidate hosted gates pass, the limitation is not a known product defect, and the release record states the claims that remain out of scope.
 
-Swap pressure invalidates numeric comparative timing and model-ranking claims, and therefore keeps the comprehensive-validation claim open. It does not invalidate functional benchmark execution, persistence, reporting, privacy, or safety evidence. An unavailable optional provider route, such as a disposable LiteLLM proxy, follows the same boundary.
+Swap pressure invalidates numeric comparative timing and model-ranking claims, and therefore keeps the comprehensive-validation claim open. It does not invalidate functional benchmark execution, persistence, reporting, privacy, or safety evidence. An unavailable optional provider route, such as a disposable external proxy, follows the same boundary.
 
 ## Before tagging
 
