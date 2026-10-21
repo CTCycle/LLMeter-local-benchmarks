@@ -110,7 +110,7 @@ Authorized `v*` tags publish validated Windows x86-64, GNU/Linux x86-64, macOS I
 
 Verify checksums from the asset directory with `sha256sum --check SHA256SUMS` (or `Get-FileHash` on Windows), then verify an archive with `gh attestation verify <archive> --repo CTCycle/LLMeter-local-benchmarks`. The Linux GNU archive requires a compatible glibc runtime and is not fully static.
 
-The current package version is `0.5.0`, published in the [GitHub `v0.5.0` release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.0). The four native archives, checksums, and provenance attestations have been independently verified; the [project status ledger](../project_status_ledger.md) records the current distribution boundary. The first crates.io publication remains a manual follow-up, so use the verified archive or a source checkout until `llmeter` is available from the registry. Treat any replacement executable as untrusted until independently verified before using `llmeter update --source`.
+The latest public package version is `0.5.0`, published in the [GitHub `v0.5.0` release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.0). The four native archives, checksums, and provenance attestations have been independently verified; the `v0.5.1` tag has no published release. The [project status ledger](../project_status_ledger.md) records the current distribution boundary. The first crates.io publication remains a manual follow-up, so use the verified archive or a source checkout until `llmeter` is available from the registry. Treat any replacement executable as untrusted until independently verified before using `llmeter update --source`.
 
 ## Dependencies
 
@@ -122,7 +122,7 @@ The current package version is `0.5.0`, published in the [GitHub `v0.5.0` releas
 
 ## Versioning
 
-Current version: `0.5.0`. Follows semantic versioning. Defined in `Cargo.toml`.
+Latest public version: `0.5.0`; manifest version: `0.5.1` (unpublished). Follows semantic versioning. Defined in `Cargo.toml`; see the [project status ledger](../project_status_ledger.md) for release status.
 
 ## Platforms
 
@@ -130,4 +130,4 @@ Windows x86-64 is Tier 1. Ubuntu GNU/Linux x86-64 and macOS Intel/Apple silicon 
 
 The binary uses `rustls`, so it does not require an OpenSSL runtime dependency. A musl-targeted Linux build is the portable Linux option; the released GNU/Linux artifact still has a glibc compatibility boundary.
 
-Last updated: 2026-10-18
+Last updated: 2026-10-21

@@ -1,6 +1,6 @@
 # Project index
 
-Last updated: 2026-10-20
+Last updated: 2026-10-21
 
 ## Purpose
 
@@ -8,14 +8,14 @@ This file is the entry point for the maintained documentation tree. Read it firs
 
 ## Current snapshot
 
-- Package version: `0.5.0`, publicly released from the verified `v0.5.0` tag.
+- Package manifest version: `0.5.1`; latest public release: `0.5.0` from the verified `v0.5.0` tag.
 - Persisted result schema: `3.0`; schema identity and run kind are mandatory, and older result shapes are rejected rather than silently normalized.
 - Runtime surfaces: standard `llm` and `embeddings` suites, native `bench perf` scenarios, and dry-run external quality plans.
 - Provider catalogs may be cached for ordinary interactive navigation; status, model listing, benchmark validation, and measured probes use fresh reads.
 - `install`, `update`, and `uninstall` are local convenience file operations, not remote update or signature-verification mechanisms.
-- Authorized `v*` tags publish Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The public `v0.5.0` GitHub release is verified; the first crates.io publication remains owner-gated.
+- Authorized `v*` tags publish Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The public `v0.5.0` GitHub release is verified. The `v0.5.1` tag is blocked and unpublished; see the status ledger. The first crates.io publication remains owner-gated.
 
-The current `develop` validation boundary is `d512be4`: the local gate, three consecutive four-platform CI attempts, live Ollama `llm`/`embeddings`/performance smokes, and a disposable LiteLLM proxy smoke pass. Comparative performance remains unqualified because the matched matrix recorded a `0.971` maximum swap-used ratio. The ledger records the remaining crates.io and comparative-performance boundaries.
+The `main` and `develop` branches are aligned. The fixed TLS dependency graph is at `c58a756`, and four-platform CI passes at that code boundary. Recorded live Ollama and LiteLLM evidence remains at `d512be4`; comparative performance remains unqualified because the matched matrix recorded a `0.971` maximum swap-used ratio. The ledger records the local network limitation, blocked `v0.5.1` tag, and remaining crates.io and comparative-performance boundaries.
 
 ## Documentation ontology
 
