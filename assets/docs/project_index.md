@@ -8,14 +8,14 @@ This file is the entry point for the maintained documentation tree. Read it firs
 
 ## Current snapshot
 
-- Package manifest version: `0.5.1`; latest public release: `0.5.0` from the verified `v0.5.0` tag.
+- Package manifest version: `0.5.1`; latest GitHub release: [`v0.5.1`](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.1), published 2026-10-21.
 - Persisted result schema: `3.0`; schema identity and run kind are mandatory, and older result shapes are rejected rather than silently normalized.
 - Runtime surfaces: standard `llm` and `embeddings` suites, native `bench perf` scenarios, and dry-run external quality plans.
 - Provider catalogs may be cached for ordinary interactive navigation; status, model listing, benchmark validation, and measured probes use fresh reads.
 - `install`, `update`, and `uninstall` are local convenience file operations, not remote update or signature-verification mechanisms.
-- Authorized `v*` tags publish Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The public `v0.5.0` GitHub release is verified. The `v0.5.1` tag is blocked and unpublished; see the status ledger. The first crates.io publication remains owner-gated.
+- Authorized `v*` tags publish Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The `v0.5.1` release workflow passed and published all four archives, `SHA256SUMS`, and provenance attestations. The first crates.io publication remains owner-gated; see the status ledger for the local DNS limitation and exact validation boundary.
 
-The `main` and `develop` branches are aligned. The fixed TLS dependency graph is at `c58a756`, and four-platform CI passes at that code boundary. Recorded live Ollama and LiteLLM evidence remains at `d512be4`; comparative performance remains unqualified because the matched matrix recorded a `0.971` maximum swap-used ratio. The ledger records the local network limitation, blocked `v0.5.1` tag, and remaining crates.io and comparative-performance boundaries.
+The `main` and `develop` branches are aligned and contain release commit `34f6b48`; the `v0.5.1` tag resolves to that commit. The fixed TLS dependency graph is at `c58a756`, and four-platform CI passes at that code boundary. The tag-gated release checks and four native builds pass at `34f6b48`. Recorded live Ollama and LiteLLM evidence remains at `d512be4`; comparative performance remains unqualified because the matched matrix recorded a `0.971` maximum swap-used ratio. The ledger records the local crate-download DNS limit and the remaining crates.io and comparative-performance boundaries.
 
 ## Documentation ontology
 

@@ -63,6 +63,6 @@ src/
   ui.rs                Interactive menus and terminal output.
 ```
 
-The latest public package release is `0.5.0`; the public [`v0.5.0` GitHub release](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.0) has verified Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives with checksums and provenance attestations. The `v0.5.1` tag is not a published release; see the [project status ledger](../project_status_ledger.md). The first crates.io publication remains manual.
+The latest GitHub binary release is [`v0.5.1`](https://github.com/CTCycle/LLMeter-local-benchmarks/releases/tag/v0.5.1). Its tag-gated workflow passed and published Windows x86-64, GNU/Linux x86-64, macOS Intel, and macOS Apple silicon archives, `SHA256SUMS`, and provenance attestations. The first crates.io publication remains manual; see the [project status ledger](../project_status_ledger.md) for the exact validation boundary.
 
 Last updated: 2026-10-21
