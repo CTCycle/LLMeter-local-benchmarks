@@ -271,7 +271,7 @@ fn launcher_reuses_fixture_release_binary_and_forwards_status() {
         version_text.contains("Using existing release build."),
         "{version_text}"
     );
-    assert!(version_text.contains("llmeter 0.5.0"), "{version_text}");
+    assert!(version_text.contains("llmeter 0.5.1"), "{version_text}");
 
     let status = fixture.run_redirected(&[
         "--provider",
@@ -345,7 +345,7 @@ fn fallback_build_is_selected_after_default_build_failure() {
     let text = LauncherFixture::output_text(&output);
     assert!(text.contains("Default target build failed."), "{text}");
     assert!(text.contains("Retrying with fallback target dir"), "{text}");
-    assert!(text.contains("llmeter 0.5.0"), "{text}");
+    assert!(text.contains("llmeter 0.5.1"), "{text}");
     assert!(
         fixture
             .fallback_target()
