@@ -7,7 +7,7 @@ All notable changes are documented here.
 ## 0.5.1 - 2026-10-21
 
 - Remove the launcher's legacy `.uv-cache` cache-path cleanup and prune stale Python-era environment ignores.
-- Refresh `rustls` and `quinn-proto` in the locked dependency graph to address current RustSec advisories.
+- Refresh the locked Rust TLS dependency graph, including `rustls`, `quinn-proto`, `rustls-webpki`, and `webpki-roots`, to address RustSec advisories.
 - Stabilize the macOS Unix PTY confirmation-interruption regression test by using repeated terminal Ctrl+C input instead of a directly delivered `SIGINT`.
 
 ## 0.5.0 - 2026-09-30
