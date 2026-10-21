@@ -4,6 +4,7 @@ All notable changes are documented here.
 
 ## Unreleased
 
+- Remove the launcher's legacy `.uv-cache` cache-path cleanup and prune stale Python-era environment ignores.
 - Refresh `rustls` and `quinn-proto` in the locked dependency graph to address current RustSec advisories.
 - Stabilize the macOS Unix PTY confirmation-interruption regression test by using repeated terminal Ctrl+C input instead of a directly delivered `SIGINT`.
 

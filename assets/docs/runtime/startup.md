@@ -42,7 +42,7 @@ The wrapper also exposes storage-aware maintenance actions:
 
 Each destructive action requires an affirmative `[y/N]` confirmation and fails
 closed when input is redirected. `Clean` removes the repository or fallback
-Cargo build trees and repository-local legacy cache paths such as `.uv-cache`.
+Cargo build trees.
 `RemoveAllData` additionally removes LLMeter-owned `bin`,
 `config`, and `benchmark_results` data under the configured `LLMETER_HOME`.
 `Uninstall` removes only the managed installation, cleans wrapper-owned build/cache paths, and preserves home data.
