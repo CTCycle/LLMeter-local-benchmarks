@@ -17,9 +17,6 @@ $defaultTargetDir = Join-Path $repoRoot "target"
 $defaultBinaryPath = Join-Path $defaultTargetDir "release\llmeter.exe"
 $fallbackTargetDir = Join-Path ([System.IO.Path]::GetTempPath()) "llmeter-build"
 $fallbackBinaryPath = Join-Path $fallbackTargetDir "release\llmeter.exe"
-$legacyCachePaths = @(
-    (Join-Path $repoRoot '.uv-cache')
-)
 $script:NextProgressId = 1
 $script:ActiveProgressActivities = [Collections.Generic.Dictionary[int, string]]::new()
 
@@ -213,9 +210,6 @@ function Get-LauncherCleanupTargets {
     $targets = [Collections.Generic.List[string]]::new()
     [void]$targets.Add($defaultTargetDir)
     [void]$targets.Add($fallbackTargetDir)
-    foreach ($legacyCachePath in $legacyCachePaths) {
-        [void]$targets.Add($legacyCachePath)
-    }
     if ($IncludeHomeData) {
         $llmeterHome = Get-LlmeterHomePath
         foreach ($relative in @('bin', 'config', 'benchmark_results')) {

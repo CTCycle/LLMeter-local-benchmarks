@@ -113,7 +113,6 @@ impl LauncherFixture {
     fn owned_paths(&self, home: &Path) -> Vec<PathBuf> {
         vec![
             self.root.path().join("target"),
-            self.root.path().join(".uv-cache"),
             self.fallback_target(),
             home.join("bin"),
             home.join("config"),
