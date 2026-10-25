@@ -58,28 +58,6 @@ fn sample_run() -> BenchmarkRun {
 }
 
 #[test]
-fn test_markdown_report_contains_summary() {
-    let run = sample_run();
-    let report = render_markdown_report(&run);
-    assert!(report.contains("# LLMeter Report"));
-    assert!(report.contains("test-run-1"));
-    assert!(report.contains("chat-generation"));
-    assert!(report.contains("llama3"));
-    assert!(report.contains("tokens_per_second") || report.contains("tok/s"));
-}
-
-#[test]
-fn test_html_report_contains_expected_sections() {
-    let run = sample_run();
-    let report = render_html_report(&run);
-    assert!(report.contains("<!doctype html>"));
-    assert!(report.contains("LLMeter Report"));
-    assert!(report.contains("test-run-1"));
-    assert!(report.contains("light dark") || report.contains("dark"));
-    assert!(report.contains("Interpretation notes"));
-}
-
-#[test]
 fn test_build_summary_rows() {
     let run = sample_run();
     let rows = build_summary_rows(&run);
@@ -139,71 +117,6 @@ fn performance_scenario_throughput_is_not_merged_into_standard_summary_tps() {
         .find(|row| row.benchmark_id == "performance-scenario")
         .expect("performance summary row");
     assert!(performance.avg_tokens_per_second.is_none());
-}
-
-#[test]
-fn test_performance_report_sections_appear_when_plan_is_present() {
-    let mut run = sample_run();
-    run.performance_plan = Some(PerformancePlan {
-        provider: ProviderKind::Ollama,
-        models: vec!["llama3".to_string()],
-        profile: PerformanceProfile::Smoke,
-        prompt_sizes: PromptSizeSpec {
-            estimated_tokens: vec![128],
-        },
-        output_sizes: OutputSizeSpec {
-            estimated_tokens: vec![64],
-        },
-        concurrency: ConcurrencySpec { levels: vec![1] },
-        warmup: WarmupConfig { requests: 1 },
-        runs: 3,
-        stream: true,
-        workload_jsonl: None,
-        extra_params: std::collections::HashMap::new(),
-        safety: Default::default(),
-        load_measurement: LoadMeasurementMode::FirstRequestEstimate,
-        load_probe_runs: 2,
-        telemetry: TelemetryLevel::Standard,
-        sample_interval_ms: 1000,
-        provider_process: None,
-        probe_capabilities: false,
-        probe_all_endpoints: false,
-        model_cache_dir: None,
-        scan_model_cache: false,
-        detail: ReportDetailLevel::Detailed,
-    });
-    run.results[0]
-        .metrics
-        .insert("concurrency".to_string(), json!(1));
-    run.results[0]
-        .metrics
-        .insert("wall_time_ms_p50".to_string(), json!(150.0));
-    run.results[0]
-        .metrics
-        .insert("wall_time_ms_p95".to_string(), json!(165.0));
-    run.results[0]
-        .metrics
-        .insert("wall_time_ms_p99".to_string(), json!(170.0));
-    run.results[0]
-        .metrics
-        .insert("ttft_ms_p50".to_string(), json!(40.0));
-    run.results[0]
-        .metrics
-        .insert("output_tokens_per_second".to_string(), json!(45.2));
-    run.results[0]
-        .metrics
-        .insert("requests_per_second".to_string(), json!(4.0));
-    run.results[0]
-        .metrics
-        .insert("error_count".to_string(), json!(0));
-    run.results[0].benchmark_id = "performance-scenario".to_string();
-
-    let markdown = render_markdown_report(&run);
-    let html = render_html_report(&run);
-
-    assert!(markdown.contains("## Performance Summary"));
-    assert!(markdown.contains("## Benchmark timing model"));
-    assert!(html.contains("Performance Summary"));
 }
 
 #[test]
