@@ -3,14 +3,9 @@
 # LLMeter
 
 A Rust CLI for benchmarking local and custom OpenAI-compatible model servers.
-[![GitHub stars](https://img.shields.io/github/stars/CTCycle/LLMeter-local-benchmarks?style=flat-square)](https://github.com/CTCycle/LLMeter-local-benchmarks/stargazers)
-[![Last commit](https://img.shields.io/github/last-commit/CTCycle/LLMeter-local-benchmarks?style=flat-square)](https://github.com/CTCycle/LLMeter-local-benchmarks/commits)
+[![GitHub stars](https://img.shields.io/github/stars/CTCycle/LLMeter-local-benchmarks?style=flat-square)](https://github.com/CTCycle/LLMeter-local-benchmarks/stargazers) [![Last commit](https://img.shields.io/github/last-commit/CTCycle/LLMeter-local-benchmarks?style=flat-square)](https://github.com/CTCycle/LLMeter-local-benchmarks/commits) [![Release](https://img.shields.io/github/v/release/CTCycle/LLMeter-local-benchmarks?style=flat-square)](https://github.com/CTCycle/LLMeter-local-benchmarks/releases) [![License](https://img.shields.io/github/license/CTCycle/LLMeter-local-benchmarks?style=flat-square)](LICENSE)
 
-[![Release](https://img.shields.io/github/v/release/CTCycle/LLMeter-local-benchmarks?style=flat-square)](https://github.com/CTCycle/LLMeter-local-benchmarks/releases)
-[![CI](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/CTCycle/LLMeter-local-benchmarks?style=flat-square)](LICENSE)
-[![Rust 2021](https://img.shields.io/badge/Rust-2021-000000?logo=rust&logoColor=white&style=flat-square)](Cargo.toml)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-informational?style=flat-square)](SUPPORTED_PLATFORMS.md)
+[![CI](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/CTCycle/LLMeter-local-benchmarks/actions/workflows/ci.yml) [![Rust 2021](https://img.shields.io/badge/Rust-2021-000000?logo=rust&logoColor=white&style=flat-square)](Cargo.toml) [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-informational?style=flat-square)](SUPPORTED_PLATFORMS.md)
 
 [Get started](#get-started) · [Benchmark suites](#benchmark-suites) · [Configuration](#configuration) · [Documentation](assets/docs/project_index.md)
 
