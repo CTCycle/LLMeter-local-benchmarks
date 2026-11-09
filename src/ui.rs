@@ -548,7 +548,7 @@ pub fn print_saved_paths(paths: &[PathBuf]) {
 
 pub fn print_file_list(paths: &[PathBuf], title: &str) {
     if paths.is_empty() {
-        println!("{} No files found.", "Info:".dimmed());
+        println!("{} {title}: none found.", "Info:".dimmed());
         return;
     }
     let mut builder = Builder::new();
